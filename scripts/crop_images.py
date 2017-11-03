@@ -11,7 +11,7 @@ src_root_dir = '/performer_source_data/wpafb/satellite_imagery'
 dst_root_dir = '/performer_source_data/cropped/wpafb-D1/'
 
 # pad the crop by the following percentage in width and height
-padding_percentage = 10
+padding_percentage = 1
 
 ### jacksonville
 #ul_lon = -81.67078466333165
@@ -66,18 +66,19 @@ ll_lat = 39.78287156225952
 #ll_lat = 39.78430009793551
 
 
+ulon_pad = ((ur_lon - ul_lon)*padding_percentage)/2
+llon_pad = ((lr_lon - ll_lon)*padding_percentage)/2
+ul_lon = ul_lon - ulon_pad
+ur_lon = ur_lon + ulon_pad
+lr_lon = lr_lon + llon_pad
+ll_lon = ll_lon - llon_pad
 
-lon_pad = ((ur_lon - ul_lon)/padding_percentage)/2
-ul_lon = ul_lon - lon_pad
-ur_lon = ur_lon + lon_pad
-ll_lon = ll_lon - lon_pad
-lr_lon = lr_lon + lon_pad
-
-lat_pad = ((ur_lat - ul_lat)/padding_percentage)/2
-ul_lat = ul_lat - lat_pad
-ur_lat = ur_lat + lat_pad
-ll_lat = ll_lat - lat_pad
-lr_lat = lr_lat + lat_pad
+ulat_pad = ((ur_lat - ul_lat)*padding_percentage)/2
+llat_pad = ((lr_lat - ll_lat)*padding_percentage)/2
+ul_lat = ul_lat - ulat_pad
+ur_lat = ur_lat + ulat_pad
+lr_lat = lr_lat + llat_pad
+ll_lat = ll_lat - llat_pad
 
 working_dst_dir = dst_root_dir
 
