@@ -11,6 +11,8 @@ src_root_dir = '/performer_source_data/wpafb/satellite_imagery'
 dst_root_dir = '/performer_source_data/cropped/wpafb-D1/'
 
 # pad the crop by the following percentage in width and height
+# This value should be 1 >= padding_percentage > 0
+# Setting padding_percentage to 0 disables padding.
 padding_percentage = 1
 
 ### jacksonville
@@ -65,20 +67,22 @@ ll_lat = 39.78287156225952
 #ll_lon = -84.0882028871317
 #ll_lat = 39.78430009793551
 
+# Apply the padding if the value of padding_percentage > 0
+if padding_percentage > 0:
+    ulon_pad = ((ur_lon - ul_lon)*padding_percentage)/2
+    llon_pad = ((lr_lon - ll_lon)*padding_percentage)/2
+    ul_lon = ul_lon - ulon_pad
+    ur_lon = ur_lon + ulon_pad
+    lr_lon = lr_lon + llon_pad
+    ll_lon = ll_lon - llon_pad
 
-ulon_pad = ((ur_lon - ul_lon)*padding_percentage)/2
-llon_pad = ((lr_lon - ll_lon)*padding_percentage)/2
-ul_lon = ul_lon - ulon_pad
-ur_lon = ur_lon + ulon_pad
-lr_lon = lr_lon + llon_pad
-ll_lon = ll_lon - llon_pad
+    ulat_pad = ((ur_lat - ul_lat)*padding_percentage)/2
+    llat_pad = ((lr_lat - ll_lat)*padding_percentage)/2
+    ul_lat = ul_lat - ulat_pad
+    ur_lat = ur_lat + ulat_pad
+    lr_lat = lr_lat + llat_pad
+    ll_lat = ll_lat - llat_pad
 
-ulat_pad = ((ur_lat - ul_lat)*padding_percentage)/2
-llat_pad = ((lr_lat - ll_lat)*padding_percentage)/2
-ul_lat = ul_lat - ulat_pad
-ur_lat = ur_lat + ulat_pad
-lr_lat = lr_lat + llat_pad
-ll_lat = ll_lat - llat_pad
 
 working_dst_dir = dst_root_dir
 
