@@ -20,4 +20,8 @@ dependencies:
 - celery
 - psycopg2
 - geoalchemy2
-- girder
+- mongodb
+- nodejs
+- jsonschema
+- geojson
+- geos>=3.6.2
