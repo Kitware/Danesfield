@@ -75,13 +75,12 @@ if padding_percentage > 0:
     ur_lon = ur_lon + ulon_pad
     lr_lon = lr_lon + llon_pad
     ll_lon = ll_lon - llon_pad
-
-    ulat_pad = ((ur_lat - ul_lat)*padding_percentage)/2
-    llat_pad = ((lr_lat - ll_lat)*padding_percentage)/2
-    ul_lat = ul_lat - ulat_pad
-    ur_lat = ur_lat + ulat_pad
-    lr_lat = lr_lat + llat_pad
-    ll_lat = ll_lat - llat_pad
+    llat_pad = ((ll_lat - ul_lat)*padding_percentage)/2
+    rlat_pad = ((lr_lat - ur_lat)*padding_percentage)/2
+    ul_lat = ul_lat - llat_pad
+    ur_lat = ur_lat - rlat_pad
+    lr_lat = lr_lat + rlat_pad
+    ll_lat = ll_lat + llat_pad
 
 
 working_dst_dir = dst_root_dir
