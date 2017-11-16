@@ -14,7 +14,7 @@ Create Core3D Conda Environment
 
 .. code-block:: bash
 
-   conda env create -f conda_env.yml python=2.7
+   conda env create -f conda_env.yml python=3.6.3
    source activate core3d-dev
 
 Install Kitware Stack
