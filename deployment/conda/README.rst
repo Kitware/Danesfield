@@ -28,6 +28,7 @@ Create Core3D Conda Environment
 Gaia is a Python library aiming for geospatial analytics reusable components
 
 .. code-block:: bash
+
    cd .. (assuming you are at the root level inside of CORE3D_DIR)
    git clone https://github.com/OpenDataAnalytics/gaia.git
    cd gaia
@@ -35,6 +36,16 @@ Gaia is a Python library aiming for geospatial analytics reusable components
    pip install -e .
 
 
+###################################
+Test Core3D development environent
+###################################
+
+Invoke pytest and flake8 at the root level of the repository
+
+.. code-block:: bash
+
+   pytest (should pass all tests under tests sub directory)
+   flake8 . (should pass all style checks)
 
 
 
