@@ -25,3 +25,4 @@ dependencies:
 - jsonschema
 - geojson
 - geos>=3.6.2
+- proj4
