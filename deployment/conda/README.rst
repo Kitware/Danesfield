@@ -20,6 +20,7 @@ Create Core3D Conda Environment
    cd danesfield
    conda env create -f deployment/conda/conda_env.yml python=3.6.3
    source activate core3d-dev
+   pip install -e .
 
 
 3. Install Gaia
