@@ -2,7 +2,7 @@ import gdal
 import math
 import numpy
 import pdal
-import rpc
+import danesfield.rpc
 import sys
 
 if (len(sys.argv) < 4):
