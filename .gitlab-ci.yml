@@ -1,8 +1,0 @@
-test:
-  script:
-  - apt-get update -qy
-  - wget http://repo.continuum.io/archive/Anaconda3-4.0.0-Linux-x86_64.sh
-  - bash Anaconda3-4.0.0-Linux-x86_64.sh
-  - conda env create -f conda_env.yml python=3.6.3
-  - source activate core3d-dev
-  - pytest
