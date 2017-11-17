@@ -14,7 +14,11 @@ Create Core3D Conda Environment
 
 .. code-block:: bash
 
-   conda env create -f conda_env.yml python=3.6.3
+   mkdir CORE3D_DIR (pick a name of your choice)
+   cd CORE3D_DIR
+   git clone https://gitlab.kitware.com/core3d/danesfield.git
+   cd danesfield
+   conda env create -f deployment/conda/conda_env.yml python=3.6.3
    source activate core3d-dev
 
 Install Kitware Stack
@@ -25,6 +29,7 @@ Install Kitware Stack
 
 .. code-block:: bash
 
+   cd .. (assuming you are at the root level inside of CORE3D_DIR)
    git clone https://github.com/girder/girder.git
    cd girder
    pip install -e .
@@ -39,7 +44,7 @@ Exit out (ctrl-c) to install the point cloud plugin
 
 .. code-block:: bash
 
-   cd ..
+   cd .. (assuming you are at the root level inside of CORE3D_DIR)
    git clone https://github.com/OpenGeoscience/pointcloud_viewer.git
    girder-install plugin -s pointcloud_viewer
    girder-install web --dev --plugins pointcloud_viewer
@@ -48,10 +53,10 @@ Install the plugin after you create a Girder username as admin in the
 Girder Admin console.
 
 3. Install Gaia
------------------------------
+---------------
 
 .. code-block:: bash
-   cd ..
+   cd .. (assuming you are at the root level inside of CORE3D_DIR)
    git clone https://github.com/OpenDataAnalytics/gaia.git
    cd gaia
    pip install -r requirements-dev.txt
