@@ -23,8 +23,8 @@ Create Core3D Conda Environment
    pip install -e .
 
 
-3. Install Gaia
-===============
+Install Gaia
+============
 
 Gaia is a Python library aiming for geospatial analytics reusable components
 
