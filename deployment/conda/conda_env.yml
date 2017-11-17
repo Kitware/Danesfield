@@ -24,3 +24,4 @@ dependencies:
 - geos>=3.6.2
 - proj4
 - flake8
+- pytest
