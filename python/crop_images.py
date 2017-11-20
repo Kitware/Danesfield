@@ -4,13 +4,69 @@
 import gdalconst
 
 from gaia.geo.gdal_functions import *
-from gaia.geo.processes_raster import *
+#from gaia.geo.processes_raster import *
 
 import os
 import fnmatch
 
 import traceback
 import sys
+
+import numpy as np
+
+def parse_raytheon_rpc_file(fp):
+    """Parse the Raytheon RPC file format from an open file pointer
+    """
+    def parse_rational_poly(fp):
+        """Parse coefficients for a two polynomials from the file stream
+        """
+        coeff = np.zeros((2,20), dtype='float64')
+        idx = 0
+        powers = True
+        # The expected exponent order matrix.  Currently we only support this default
+        # if what is in the file doesn't match, raise an exception
+        expected_exp_mat =[[0, 0, 0, 1],[1, 0, 0, 1],[0, 1, 0, 1],[0, 0, 1, 1],
+                           [1, 1, 0, 1],[1, 0, 1, 1],[0, 1, 1, 1],[2, 0, 0, 1],
+                           [0, 2, 0, 1],[0, 0, 2, 1],[1, 1, 1, 1],[3, 0, 0, 1],
+                           [1, 2, 0, 1],[1, 0, 2, 1],[2, 1, 0, 1],[0, 3, 0, 1],
+                           [0, 1, 2, 1],[2, 0, 1, 1],[0, 2, 1, 1],[0, 0, 3, 1]]
+        for line in fp:
+            if line.strip() == '20':
+                data = []
+                for i in range(20):
+                    data.append(fp.next())
+                if powers:
+                    powers = False
+                    exp_mat = np.array([d.split() for d in data], dtype='int')
+                    if not np.array_equal(exp_mat, expected_exp_mat):
+                        raise ValueError
+                else:
+                    powers = True
+                    coeff[idx,:] = np.array(data, dtype='float64')
+                    idx = idx + 1
+                if idx > 1:
+                    break
+        return coeff
+
+    rpc = RPCModel()
+    for line in fp:
+        if line.startswith('# uvOffset_'):
+            line = fp.next()
+            rpc.image_offset = np.array(line.split(), dtype='float64')
+        if line.startswith('# uvScale_'):
+            line = fp.next()
+            rpc.image_scale = np.array(line.split(), dtype='float64')
+        if line.startswith('# xyzOffset_'):
+            line = fp.next()
+            rpc.world_offset = np.array(line.split(), dtype='float64')
+        if line.startswith('# xyzScale_'):
+            line = fp.next()
+            rpc.world_scale = np.array(line.split(), dtype='float64')
+        if line.startswith('# u=sample'):
+            rpc.coeff[0:2,:] = parse_rational_poly(fp)
+        if line.startswith('# v=line'):
+            rpc.coeff[2:4,:] = parse_rational_poly(fp)
+    return rpc
 
 
 def image_to_array(i):
@@ -23,7 +79,7 @@ def image_to_array(i):
     return a
 
 
-def world_to_pixel_poly(rpc_dict, geometry):
+def world_to_pixel_poly(rpc, geometry):
     """
     Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
     the pixel location of a geospatial coordinate
@@ -31,7 +87,6 @@ def world_to_pixel_poly(rpc_dict, geometry):
     pixelRing = ogr.Geometry(ogr.wkbLinearRing)
     geoRing = geometry.GetGeometryRef(0)
     numPoints = geoRing.GetPointCount()
-    rpc = rpc_from_gdal_dict(rpc_dict)
     for p in range(numPoints):
         point = numpy.array(map(float, geoRing.GetPoint(p)))
         pixel, line = rpc.project(point)
@@ -57,12 +112,22 @@ def world_to_pixel(geoMatrix, x, y):
     return (pixel, line)
 
 
+def read_raytheon_RPC(rpc_path, img_file):
+    #image file name for pattern of raytheon RPC
+    file_no_ext = os.path.splitext(img_file)[0]
+    rpc_file = rpc_path + 'GRA_' + file_no_ext + '.up.rpc'
+    if (os.path.isfile(rpc_file) == False):
+        rpc_file = rpc_file = rpc_path + 'GRA_' + file_no_ext + '_0.up.rpc'
+        if (os.path.isfile(rpc_file) == False):
+            return None
 
-
-
+    with open(rpc_file, 'r') as f:
+        return parse_raytheon_rpc_file(f)
 
 src_root_dir = '/videonas2/fouo/data_golden/CORE3D-Phase1A/performer_data/performer_source_data/wpafb/satellite_imagery/'
-dst_root_dir = '/home/david/kitware/data/fouo/core3D/test/wpafb-D2/'
+dst_root_dir = '/home/david/kitware/data/fouo/core3D/test/wpafb-D1/'
+
+corrected_rpc_dir = '/videonas2/fouo/data_working/CORE3D-Phase1A/AOIs/D1_WPAFB/P3D/D1_ptclds_WPAFB_museum/ba_updated_rpcs/'
 
 # pad the crop by the following percentage in width and height
 # This value should be 1 >= padding_percentage > 0
@@ -96,30 +161,30 @@ padding_percentage = 0
 #ll_lat = 32.882811496466012
 
 ### wpafb D1
-#ul_lon = -84.11236693243779
-#ul_lat = 39.77747025512961
+ul_lon = -84.11236693243779
+ul_lat = 39.77747025512961
 
-#ur_lon = -84.10530109439955
-#ur_lat = 39.77749705975315
+ur_lon = -84.10530109439955
+ur_lat = 39.77749705975315
 
-#lr_lon = -84.10511182729961
-#lr_lat = 39.78290042788092
+lr_lon = -84.10511182729961
+lr_lat = 39.78290042788092
 
-#ll_lon = -84.11236485416471
-#ll_lat = 39.78287156225952
+ll_lon = -84.11236485416471
+ll_lat = 39.78287156225952
 
 ### wpafb D2
-ul_lon = -84.08847226672408
-ul_lat = 39.77650841377968
+#ul_lon = -84.08847226672408
+#ul_lat = 39.77650841377968
 
-ur_lon = -84.07992142333644
-ur_lat = 39.77652166058358
+#ur_lon = -84.07992142333644
+#ur_lat = 39.77652166058358
 
-lr_lon = -84.07959205694203
-lr_lat = 39.78413758747398
+#lr_lon = -84.07959205694203
+#lr_lat = 39.78413758747398
 
-ll_lon = -84.0882028871317
-ll_lat = 39.78430009793551
+#ll_lon = -84.0882028871317
+#ll_lat = 39.78430009793551
 
 # Apply the padding if the value of padding_percentage > 0
 if padding_percentage > 0:
@@ -163,7 +228,6 @@ for root, dirs, files in os.walk(src_root_dir):
                     nodata_value = nodata
                 nodata_values.append(nodata_value)
 
-
             polygon_json = {"type":
                                  "Polygon", "coordinates":
                                  [[[ul_lon, ul_lat], [ur_lon, ur_lat],
@@ -175,7 +239,15 @@ for root, dirs, files in os.walk(src_root_dir):
             poly = ogr.CreateGeometryFromJson(polygon_json)
             min_x, max_x, min_y, max_y = poly.GetEnvelope()
             rpc_md = src_image.GetMetadata('RPC')
-            pixelPoly = world_to_pixel_poly(rpc_md, poly)
+            rpc = rpc_from_gdal_dict(rpc_md)
+            if (corrected_rpc_dir) :
+                updated_rpc = read_raytheon_RPC(corrected_rpc_dir, file_)
+                if updated_rpc is None:
+                    print 'No RPC file exists for image file: ' + src_img_file
+                else:
+                    rpc = updated_rpc
+
+            pixelPoly = world_to_pixel_poly(rpc, poly)
 
             ul_x, lr_x, ul_y, lr_y = map(int, pixelPoly.GetEnvelope())
             ul_x = max(0, ul_x)
