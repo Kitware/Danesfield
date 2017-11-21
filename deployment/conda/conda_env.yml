@@ -8,6 +8,7 @@ name: core3d-dev
 channels:
 - conda-forge
 - defaults
+- kitware-geospatial
 
 dependencies:
 - python=3
@@ -23,6 +24,7 @@ dependencies:
 - jsonschema
 - geojson
 - geos>=3.6.2
-- proj4
+- proj4>=4.9.3
+- geopandas
 - flake8
 - pytest
