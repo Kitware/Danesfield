@@ -22,6 +22,18 @@ Create Core3D Conda Environment
    source activate core3d-dev
    pip install -e .
 
+To deactivate the core3d-dev environent, run:
+
+.. code-block:: bash
+
+   source deactivate
+
+To remove the core3d-dev environent, run:
+
+.. code-block:: bash
+
+   source deactivate (if core3d-dev is activated before)
+   conda remove --name core3d-dev --all
 
 Install Gaia
 ============
