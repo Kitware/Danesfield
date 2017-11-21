@@ -124,10 +124,10 @@ def read_raytheon_RPC(rpc_path, img_file):
     with open(rpc_file, 'r') as f:
         return parse_raytheon_rpc_file(f)
 
-src_root_dir = '/videonas2/fouo/data_golden/CORE3D-Phase1A/performer_data/performer_source_data/wpafb/satellite_imagery/'
-dst_root_dir = '/home/david/kitware/data/fouo/core3D/test/wpafb-D1/'
+src_root_dir = '/source/image/path'
+dst_root_dir = '/destination/image/path'
 
-corrected_rpc_dir = '/videonas2/fouo/data_working/CORE3D-Phase1A/AOIs/D1_WPAFB/P3D/D1_ptclds_WPAFB_museum/ba_updated_rpcs/'
+corrected_rpc_dir = '/updated/rpc/path/'
 
 # pad the crop by the following percentage in width and height
 # This value should be 1 >= padding_percentage > 0
@@ -135,17 +135,17 @@ corrected_rpc_dir = '/videonas2/fouo/data_working/CORE3D-Phase1A/AOIs/D1_WPAFB/P
 padding_percentage = 0
 
 ### jacksonville
-#ul_lon = -81.67078466333165
-#ul_lat = 30.31698808384777
+ul_lon = -81.67078466333165
+ul_lat = 30.31698808384777
 
-#ur_lon = -81.65616946309449
-#ur_lat = 30.31729872444624
+ur_lon = -81.65616946309449
+ur_lat = 30.31729872444624
 
-#lr_lon = -81.65620275072482
-#lr_lat = 30.329923847788603
+lr_lon = -81.65620275072482
+lr_lat = 30.329923847788603
 
-#ll_lon = -81.67062242425624
-#ll_lat = 30.32997669492018
+ll_lon = -81.67062242425624
+ll_lat = 30.32997669492018
 
 ### ucsd
 #ul_lon = -117.24298768132505
@@ -161,17 +161,17 @@ padding_percentage = 0
 #ll_lat = 32.882811496466012
 
 ### wpafb D1
-ul_lon = -84.11236693243779
-ul_lat = 39.77747025512961
+#ul_lon = -84.11236693243779
+#ul_lat = 39.77747025512961
 
-ur_lon = -84.10530109439955
-ur_lat = 39.77749705975315
+#ur_lon = -84.10530109439955
+#ur_lat = 39.77749705975315
 
-lr_lon = -84.10511182729961
-lr_lat = 39.78290042788092
+#lr_lon = -84.10511182729961
+#lr_lat = 39.78290042788092
 
-ll_lon = -84.11236485416471
-ll_lat = 39.78287156225952
+#ll_lon = -84.11236485416471
+#ll_lat = 39.78287156225952
 
 ### wpafb D2
 #ul_lon = -84.08847226672408
@@ -216,6 +216,8 @@ for root, dirs, files in os.walk(src_root_dir):
         try:
             src_img_file = os.path.join(root, file_)
             dst_img_file = os.path.join(new_root, file_)
+            dst_file_no_ext = os.path.splitext(dst_img_file)[0]
+            dst_img_file = dst_file_no_ext + ".tiff"
 
             src_image = gdal.Open(src_img_file, gdalconst.GA_ReadOnly)
             geo_trans = gdal_get_transform(src_image)
