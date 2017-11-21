@@ -18,6 +18,7 @@ dependencies:
 - shapely
 - geopandas
 - pillow
+- libgdal
 - gdal
 - celery
 - nodejs
@@ -25,6 +26,8 @@ dependencies:
 - geojson
 - geos>=3.6.2
 - proj4>=4.9.3
+- libpdal
+- pdal
 - geopandas
 - flake8
 - pytest
