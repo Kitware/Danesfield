@@ -20,7 +20,7 @@ driver = sourceImage.GetDriver()
 driverMetadata = driver.GetMetadata()
 destImage = None
 if driverMetadata.get(gdal.DCAP_CREATECOPY) == "YES":
-    print "Copy source to destination image ..."
+    print("Copy source to destination image ...")
     destImage = driver.CreateCopy(destImageFileName, sourceImage, strict=0)
     # create an emtpy image
     raster = numpy.zeros((sourceImage.RasterYSize, sourceImage.RasterXSize), dtype=numpy.uint16)
@@ -41,7 +41,7 @@ json = u"""
   ]
 }"""
 json = json % pointsFileName
-print "Project points to destination image ..."
+print ("Project points to destination image ...")
 pipeline = pdal.Pipeline(json)
 pipeline.validate() # check if our JSON and options were good
 pipeline.loglevel = 8 #really noisy
@@ -63,7 +63,7 @@ for i in range(0, len(arrayX)):
         raster[int(rpcPoint[0]), int(rpcPoint[1])] = quantizedZ
 
 # Write the image
-print "Write destination image ..."
+print("Write destination image ...")
 destImage.GetRasterBand(1).WriteArray(raster)
 
 # close the gdal files
