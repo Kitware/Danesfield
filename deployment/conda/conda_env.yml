@@ -24,7 +24,7 @@ dependencies:
 - nodejs
 - jsonschema
 - geojson
-- geos>=3.6.2
+- geos>=3.6.0
 - proj4>=4.9.3
 - libpdal
 - pdal
