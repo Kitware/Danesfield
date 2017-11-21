@@ -3,7 +3,10 @@ Setup Core3D development environent
 ###################################
 
 This document describes how to setup a development environment for the
-Core3D using Conda. Please follow the instructions below step-by-step.
+Core3D using Conda. Please follow the instructions step-by-step.
+Currently, the environment is tested only on Mac OS and Linux and not on
+Windows. It is possible that future version of environment may not work
+on Windows because of the binary packages not available on Windows platform.
 
 Install Conda
 =============
