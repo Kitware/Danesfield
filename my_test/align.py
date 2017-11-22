@@ -38,8 +38,11 @@ if scale != 1.0:
     color_image = small_color_image
 
 grayimg = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-edge_img = cv2.Canny(grayimg, 100, 200)
-cv2.imwrite('{}_edge.jpg'.format(basename),edge_img)
+#high_thresh, thresh_im = cv2.threshold(grayimg, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+#lowThresh = 0.5*high_thresh
+edge_img = cv2.Canny(grayimg, 200, 300)
+#edge_img = cv2.Canny(grayimg, lowThresh, high_thresh)
+cv2.imwrite('../data/{}_edge.jpg'.format(basename),edge_img)
 
 # open the GDAL file
 sourceImage = gdal.Open(input_img, gdal.GA_ReadOnly)
