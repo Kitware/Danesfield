@@ -20,6 +20,10 @@ parser.add_argument("-o", "--no_offset", action="store_true",
                     help="Save distance of the test pairs")
 args = parser.parse_args()
 
+import os
+base=os.path.basename(args.input_img)
+basename = os.path.splitext(base)[0]
+
 input_img = args.input_img
 scale = args.scale
 
@@ -35,7 +39,7 @@ if scale != 1.0:
 
 grayimg = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 edge_img = cv2.Canny(grayimg, 100, 200)
-cv2.imwrite('edge.jpg',edge_img)
+cv2.imwrite('{}_edge.jpg'.format(basename),edge_img)
 
 # open the GDAL file
 sourceImage = gdal.Open(input_img, gdal.GA_ReadOnly)
@@ -121,17 +125,24 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
     max_value = 0
     offsetx = 0
     offsety = 0
+    img_height = edge_img.shape[0]
+    img_width = edge_img.shape[1]
     if not args.no_offset:
         for dy in range(-40,40,2):
             for dx in range(-40,40,2):
                 total_value = 0
                 for pt in check_point_list:
+                    if pt[1]+dy<0 or pt[1]+dy>=img_height or\
+                            pt[0]+dx<0 or pt[0]+dx >= img_width:
+                        continue
+
                     if edge_img[pt[1]+dy,pt[0]+dx] > 200:
                         total_value += 1
-                        if total_value>max_value:
-                            max_value = total_value
-                            offsetx = dx
-                            offsety = dy
+
+                if total_value>max_value:
+                    max_value = total_value
+                    offsetx = dx
+                    offsety = dy
         print(max_value)
         print(offsetx, offsety)
         #do something to deal with the bad data
@@ -165,7 +176,7 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
 #print(nameList)
 ds.Destroy()
 if not args.no_offset:
-    cv2.imwrite('../data/mask.png',full_res_mask)
+    cv2.imwrite('../data/{}_mask.png'.format(basename),full_res_mask)
 else:
-    cv2.imwrite('../data/original_mask.png',full_res_mask)
+    cv2.imwrite('../data/{}_original_mask.png'.format(basename),full_res_mask)
 sourceImage = None
