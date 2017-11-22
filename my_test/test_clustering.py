@@ -15,9 +15,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('--input_img', default='../data/Dayton.tiff', help='folder to output log')
 parser.add_argument('--input_osm', default='../data/Dayton_map.osm', help='folder to output log')
 parser.add_argument('--scale' , type=float, default=0.2, help='beta hyperparameter value')
-parser.add_argument('--cluster_thres' , type=float, default=100, help='beta hyperparameter value')
-parser.add_argument("-o", "--no_offset", action="store_true",
-                    help="Save distance of the test pairs")
+parser.add_argument('--cluster_thres' , type=float, default=200, help='beta hyperparameter value')
 args = parser.parse_args()
 
 input_img = args.input_img
@@ -40,7 +38,7 @@ cv2.imwrite('edge.jpg',edge_img)
 # open the GDAL file
 sourceImage = gdal.Open(input_img, gdal.GA_ReadOnly)
 rpcMetaData = sourceImage.GetMetadata('RPC')
-full_res_mask = np.ones((sourceImage.RasterYSize,sourceImage.RasterXSize))*255
+full_res_mask = np.zeros((sourceImage.RasterYSize,sourceImage.RasterXSize))
 
 gt = sourceImage.GetGeoTransform() # captures origin and pixel size
 print('Origin:', (gt[0], gt[3]))
@@ -60,11 +58,9 @@ ds = ogr.Open(args.input_osm)
 layer = ds.GetLayerByIndex(3)
 nameList = []
 
-draw_flag = False
-
 building_list = []
 for feature in layer:
-    if feature.GetField("building") != None:  # only streets
+    if feature.GetField("building") != None:  # only buildings
         flag = True
         #print("haha")
         name = feature.GetField("name")
@@ -85,10 +81,10 @@ for feature in layer:
         if flag:
             building_list.append(feature)
 
-building_cluster_list = Utils.GetBuildingCluster(building_list, model)
+building_cluster_list = Utils.GetBuildingCluster(building_list, model, cluster_thres)
 
 for cluster_idx, building_cluster in enumerate(building_cluster_list):
-    
+    print(len(building_cluster))
     tmp_img = np.zeros((int(color_image.shape[0]),\
         int(color_image.shape[1])))
     poly_array_list = []
@@ -97,12 +93,14 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
         geom = building.GetGeometryRef()
         g = geom.GetGeometryRef(0)
         for shape_idx in range(g.GetGeometryCount()):
+            #print(g.GetGeometryCount())
             polygon = g.GetGeometryRef(shape_idx)
             poly_point_list = []
             for i in range(0, polygon.GetPointCount()):
                 pt = polygon.GetPoint(i)
                 poly_point_list.append(Utils.ProjectPoint(model,pt))
             poly_array = np.array(poly_point_list)
+            #print(poly_array)
             poly_array = poly_array.reshape((-1,1,2))
             poly_array_list.append(poly_array)
             cv2.polylines(tmp_img,[poly_array],True,(255),thickness=2)
@@ -121,23 +119,6 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
     max_value = 0
     offsetx = 0
     offsety = 0
-    if not args.no_offset:
-        for dy in range(-40,40,2):
-            for dx in range(-40,40,2):
-                total_value = 0
-                for pt in check_point_list:
-                    if edge_img[pt[1]+dy,pt[0]+dx] > 200:
-                        total_value += 1
-                        if total_value>max_value:
-                            max_value = total_value
-                            offsetx = dx
-                            offsety = dy
-        print(max_value)
-        print(offsetx, offsety)
-        #do something to deal with the bad data
-        if max_value/float(len(check_point_list))<0.1:
-            offsetx = 0
-            offsety = 0
 
     index = 0
     for building in building_cluster:
@@ -146,26 +127,14 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
         for shape_idx in range(g.GetGeometryCount()):
             poly_array = poly_array_list[index]
             index = index+1
-            #for i in range(len(poly_array)):
-            #    poly_array[i,0,0] = int((poly_array[i,0,0] + offsetx))
-            #    poly_array[i,0,1] = int((poly_array[i,0,1] + offsety))
-
-            #cv2.polylines(tmp_img,[poly_array],True,(255,255,255),thickness=2)
-            #cv2.imwrite('./cluster/new_contour_{}.jpg'.format(cluster_idx),tmp_img)
-            #cv2.imshow('image',tmp_img)
-            #cv2.waitKey(0)
-
             for i in range(len(poly_array)):
-                poly_array[i,0,0] = int((poly_array[i,0,0] + offsetx)/scale)
-                poly_array[i,0,1] = int((poly_array[i,0,1] + offsety)/scale)
-            cv2.fillPoly(full_res_mask,[poly_array],True,(0))
-            #cv2.imshow('image',full_res_mask)
-            #cv2.waitKey(0)
-                
-#print(nameList)
+                poly_array[i,0,0] = int((poly_array[i,0,0] + offsetx))
+                poly_array[i,0,1] = int((poly_array[i,0,1] + offsety))
+
+            cv2.polylines(tmp_img,[poly_array],True,(255,255,255),thickness=2)
+            #cv2.imwrite('./cluster/{}_contour.jpg'.format(cluster_idx),tmp_img)
+            cv2.imshow('image',tmp_img)
+            cv2.waitKey(0)
+
 ds.Destroy()
-if not args.no_offset:
-    cv2.imwrite('../data/mask.png',full_res_mask)
-else:
-    cv2.imwrite('../data/original_mask.png',full_res_mask)
 sourceImage = None
