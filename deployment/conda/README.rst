@@ -65,5 +65,6 @@ Some Useful Resources
 ###################################
 
 GDAL/OGR cookbook: https://pcjericks.github.io/py-gdalogr-cookbook/
+
 Workshop: Raster and vector processing with GDAL: http://download.osgeo.org/gdal/workshop/foss4ge2015/workshop_gdal.pdf
 
