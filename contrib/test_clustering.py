@@ -11,6 +11,9 @@ import argparse
 
 import Utils
 
+draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
+        (0,0,255,255),(255,255,255,255)]
+
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--input_img', default='../data/Dayton.tiff', help='folder to output log')
 parser.add_argument('--input_osm', default='../data/Dayton_map.osm', help='folder to output log')
@@ -86,10 +89,12 @@ for feature in layer:
 
 building_cluster_list = Utils.GetBuildingCluster(building_list, model, cluster_thres)
 
+tmp_img = np.zeros((int(color_image.shape[0]),\
+    int(color_image.shape[1]),4))
+#tmp_img[:,:,3] = tmp_img[:,:,3]+0
+
 for cluster_idx, building_cluster in enumerate(building_cluster_list):
     print(len(building_cluster))
-    tmp_img = np.zeros((int(color_image.shape[0]),\
-        int(color_image.shape[1])))
     poly_array_list = []
     for building in building_cluster:
         name = building.GetField("name")
@@ -118,17 +123,19 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
         for shape_idx in range(g.GetGeometryCount()):
             poly_array = poly_array_list[index]
             index = index+1
+            
             for i in range(len(poly_array)):
                 poly_array[i,0,0] = int((poly_array[i,0,0] + offsetx))
                 poly_array[i,0,1] = int((poly_array[i,0,1] + offsety))
 
-            cv2.polylines(tmp_img,[poly_array],True,(255,255,255),thickness=2)
-            try:
-                os.stat('../data/cluster/{}'.format(basename))
-            except:
-                os.makedirs('../data/cluster/{}'.format(basename))
-            cv2.imwrite('../data/cluster/{}/building_cluster_{}.jpg'.\
-                    format(basename,cluster_idx),tmp_img)
+            #cv2.polylines(tmp_img, [poly_array], True,\
+            #        draw_color[6], thickness=2)
+            #cv2.imwrite('../data/{}_building_cluster_original.jpg'.\
+            #        format(basename),tmp_img)
 
+            cv2.polylines(tmp_img, [poly_array], True,\
+                    draw_color[cluster_idx%len(draw_color)], thickness=2)
+            cv2.imwrite('../data/{}_building_cluster.png'.\
+                    format(basename),tmp_img)
 ds.Destroy()
 sourceImage = None

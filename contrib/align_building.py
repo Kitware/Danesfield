@@ -18,6 +18,9 @@ import argparse
 
 import Utils
 
+draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
+        (0,0,255,255),(255,255,255,255)]
+
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--input_img', default='../data/Dayton.tiff', help='Input geotiff file')
 parser.add_argument('--input_osm', default='../data/Dayton_map.osm', help='Input osm file')
@@ -56,7 +59,7 @@ cv2.imwrite('../data/{}_edge.jpg'.format(basename),edge_img)
 # open the GDAL file
 sourceImage = gdal.Open(input_img, gdal.GA_ReadOnly)
 rpcMetaData = sourceImage.GetMetadata('RPC')
-full_res_mask = np.ones((sourceImage.RasterYSize,sourceImage.RasterXSize))*255
+full_res_mask = np.zeros((sourceImage.RasterYSize,sourceImage.RasterXSize,4))
 
 gt = sourceImage.GetGeoTransform() # captures origin and pixel size
 print('Origin:', (gt[0], gt[3]))
@@ -179,7 +182,10 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
             for i in range(len(poly_array)):
                 poly_array[i,0,0] = int((poly_array[i,0,0] + offsetx)/scale)
                 poly_array[i,0,1] = int((poly_array[i,0,1] + offsety)/scale)
-            cv2.fillPoly(full_res_mask,[poly_array],True,(0))
+                
+            cv2.polylines(full_res_mask, [poly_array], True,\
+                    draw_color[cluster_idx%len(draw_color)], thickness=12)
+            #cv2.fillPoly(full_res_mask,[poly_array],(0,0,255,80))
             #cv2.imshow('image',full_res_mask)
             #cv2.waitKey(0)
                 
