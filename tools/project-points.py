@@ -11,6 +11,7 @@ if (len(sys.argv) < 4):
 imageFileName = sys.argv[1]
 pointsFileName = sys.argv[2]
 destImageFileName = sys.argv[3]
+MAX_VALUE = 60000
 
 # open the GDAL file
 sourceImage = gdal.Open(imageFileName, gdal.GA_ReadOnly)
@@ -19,7 +20,8 @@ driver = sourceImage.GetDriver()
 driverMetadata = driver.GetMetadata()
 destImage = None
 if driverMetadata.get(gdal.DCAP_CREATECOPY) == "YES":
-    print("Copy source to destination image ...")
+    print("Copy source to destination image, size:({}, {}) ...".format(
+        sourceImage.RasterXSize, sourceImage.RasterYSize))
     destImage = driver.CreateCopy(destImageFileName, sourceImage, strict=0)
     # create an emtpy image
     raster = numpy.zeros((sourceImage.RasterYSize, sourceImage.RasterXSize), dtype=numpy.uint16)
@@ -28,7 +30,6 @@ else:
     sys.exit(0)
 
 # read the pdal file and project the points
-
 json = u"""
 {
   "pipeline": [
@@ -40,7 +41,6 @@ json = u"""
   ]
 }"""
 json = json % pointsFileName
-print("Project points to destination image ...")
 pipeline = pdal.Pipeline(json)
 pipeline.validate()  # check if our JSON and options were good
 pipeline.loglevel = 8  # really noisy
@@ -53,13 +53,30 @@ minZ = numpy.amin(arrayZ)
 maxZ = numpy.amax(arrayZ)
 model = rpc.rpc_from_gdal_dict(rpcMetaData)
 # project points to get image indexes and save their height into the image
+print("Project {} points to destination image ...".format(len(arrayX)))
+underPoint = 0
+outPoint =  0
 for i in range(0, len(arrayX)):
     point = [arrayX[i], arrayY[i], arrayZ[i]]
     # z is uint16
-    quantizedZ = arrayZ[i] * 60000 / (maxZ - minZ)
+    quantizedZ = int((arrayZ[i] - minZ) * MAX_VALUE / (maxZ - minZ))
     rpcPoint = model.project(point)
-    if (raster[int(rpcPoint[0]), int(rpcPoint[1])] < int(quantizedZ)):
-        raster[int(rpcPoint[0]), int(rpcPoint[1])] = quantizedZ
+    intRpcPoint = [int(rpcPoint[0]), int(rpcPoint[1])]
+    if (intRpcPoint[0] < raster.shape[0] and intRpcPoint[0] >= 0 and
+        intRpcPoint[1] < raster.shape[1] and intRpcPoint[1] >= 0):
+        if (raster[intRpcPoint[0], intRpcPoint[1]] < quantizedZ):
+            raster[intRpcPoint[0], intRpcPoint[1]] = quantizedZ
+        else:
+            underPoint += 1
+    else:
+        if (outPoint < 10):
+            print("outside point {}, image_coords {}".format(point, rpcPoint))
+        outPoint += 1
+
+if (underPoint > 0):
+    print("Skipped {} points of lower Z value".format(underPoint))
+if (outPoint > 0):
+    print("Skipped {} points outside image".format(outPoint))
 
 # Write the image
 print("Write destination image ...")
