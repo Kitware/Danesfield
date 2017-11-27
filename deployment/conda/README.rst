@@ -18,7 +18,7 @@ Create Core3D Conda Environment
    cd CORE3D_DIR
    git clone https://gitlab.kitware.com/core3d/danesfield.git
    cd danesfield
-   conda env create -f deployment/conda/conda_env.yml python=3.6.3
+   conda env create -f deployment/conda/conda_env.yml
    source activate core3d-dev
    pip install -e .
 
