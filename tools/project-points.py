@@ -11,7 +11,7 @@ if (len(sys.argv) < 4):
 imageFileName = sys.argv[1]
 pointsFileName = sys.argv[2]
 destImageFileName = sys.argv[3]
-MAX_VALUE = 60000
+MAX_VALUE = 65535
 
 # open the GDAL file
 sourceImage = gdal.Open(imageFileName, gdal.GA_ReadOnly)
@@ -54,6 +54,7 @@ maxZ = numpy.amax(arrayZ)
 model = rpc.rpc_from_gdal_dict(rpcMetaData)
 # project points to get image indexes and save their height into the image
 print("Project {} points to destination image ...".format(len(arrayX)))
+print("Min/max Z: {}/{}  ...".format(minZ, maxZ))
 underPoint = 0
 outPoint =  0
 for i in range(0, len(arrayX)):
