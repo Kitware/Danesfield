@@ -2,10 +2,11 @@ import gdal
 import numpy
 import pdal
 from danesfield import rpc
+from danesfield import raytheon_rpc
 import sys
 
 if (len(sys.argv) < 4):
-    print("{} <source_image> <source_points> <destination_image>".format(sys.argv[0]))
+    print("{} <source_image> <source_points> <destination_image> [<raytheon_rpc>]".format(sys.argv[0]))
     sys.exit(1)
 
 imageFileName = sys.argv[1]
@@ -15,7 +16,18 @@ MAX_VALUE = 65535
 
 # open the GDAL file
 sourceImage = gdal.Open(imageFileName, gdal.GA_ReadOnly)
-rpcMetaData = sourceImage.GetMetadata('RPC')
+model = None
+if (len(sys.argv) == 5):
+    # read the RPC from raytheon file
+    rpcFileName = sys.argv[4]
+    model = raytheon_rpc.read_raytheon_rpc_file(rpcFileName)
+    print("Using RPC from Raytheon file: {}".format(rpcFileName))
+else:
+    # read the RPC from RPC Metadata in the image file
+    print("Using RPC Metadata from {}".format(imageFileName))
+    rpcMetaData = sourceImage.GetMetadata('RPC')
+    model = rpc.rpc_from_gdal_dict(rpcMetaData)
+
 driver = sourceImage.GetDriver()
 driverMetadata = driver.GetMetadata()
 destImage = None
@@ -51,10 +63,9 @@ arrayY = arrays[0]['Y']
 arrayZ = arrays[0]['Z']
 minZ = numpy.amin(arrayZ)
 maxZ = numpy.amax(arrayZ)
-model = rpc.rpc_from_gdal_dict(rpcMetaData)
 # project points to get image indexes and save their height into the image
 print("Project {} points to destination image ...".format(len(arrayX)))
-print("Min/max Z: {}/{}  ...".format(minZ, maxZ))
+print("Points min/max Z: {}/{}  ...".format(minZ, maxZ))
 underPoint = 0
 outPoint =  0
 for i in range(0, len(arrayX)):
