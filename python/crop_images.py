@@ -217,7 +217,7 @@ for root, dirs, files in os.walk(src_root_dir):
             src_img_file = os.path.join(root, file_)
             dst_img_file = os.path.join(new_root, file_)
             dst_file_no_ext = os.path.splitext(dst_img_file)[0]
-            dst_img_file = dst_file_no_ext + ".tiff"
+            dst_img_file = dst_file_no_ext + ".tif"
 
             src_image = gdal.Open(src_img_file, gdalconst.GA_ReadOnly)
             geo_trans = gdal_get_transform(src_image)
