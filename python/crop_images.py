@@ -248,6 +248,7 @@ for root, dirs, files in os.walk(src_root_dir):
                     print 'No RPC file exists for image file: ' + src_img_file
                 else:
                     rpc = updated_rpc
+                    rpc_md = rpc_to_gdal_dict(updated_rpc)
 
             pixelPoly = world_to_pixel_poly(rpc, poly)
 
