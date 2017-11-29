@@ -62,7 +62,7 @@ for i in range(0, len(arrayX)):
     # z is uint16
     quantizedZ = int((arrayZ[i] - minZ) * MAX_VALUE / (maxZ - minZ))
     rpcPoint = model.project(point)
-    intRpcPoint = [int(rpcPoint[0]), int(rpcPoint[1])]
+    intRpcPoint = [int(rpcPoint[1]), int(rpcPoint[0])]
     if (intRpcPoint[0] < raster.shape[0] and intRpcPoint[0] >= 0 and
         intRpcPoint[1] < raster.shape[1] and intRpcPoint[1] >= 0):
         if (raster[intRpcPoint[0], intRpcPoint[1]] < quantizedZ):
