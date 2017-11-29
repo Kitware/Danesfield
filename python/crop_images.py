@@ -259,11 +259,11 @@ for root, dirs, files in os.walk(src_root_dir):
             lr_y = min(src_image.RasterYSize - 1, lr_y)
 
             samp_off = rpc_md['SAMP_OFF']
-            samp_off = float(samp_off) + ul_x
+            samp_off = float(samp_off) - ul_x
             rpc_md['SAMP_OFF'] = str(samp_off)
 
             line_off = rpc_md['LINE_OFF']
-            line_off = float(line_off) + ul_y
+            line_off = float(line_off) - ul_y
             rpc_md['LINE_OFF'] = str(line_off)
 
             # Calculate the pixel size of the new image
