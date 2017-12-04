@@ -6,28 +6,20 @@
 name: core3d-dev
 
 channels:
+- kitware-geospatial
 - conda-forge
 - defaults
-- kitware-geospatial
 
 dependencies:
-- python=3
-- numpy
+- gdal
+- pdal
 - six
 - requests
 - shapely
-- geopandas
 - pillow
-- libgdal
-- gdal
 - celery
 - nodejs
 - jsonschema
 - geojson
-- geos>=3.6.0
-- proj4>=4.9.3
-- libpdal
-- pdal
-- geopandas
 - flake8
 - pytest
