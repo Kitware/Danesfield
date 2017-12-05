@@ -52,6 +52,7 @@ json = u"""
     }
   ]
 }"""
+print("Loading Point Cloud")
 json = json % pointsFileName
 pipeline = pdal.Pipeline(json)
 pipeline.validate()  # check if our JSON and options were good
@@ -68,23 +69,24 @@ print("Project {} points to destination image ...".format(len(arrayX)))
 print("Points min/max Z: {}/{}  ...".format(minZ, maxZ))
 underPoint = 0
 outPoint =  0
-for i in range(0, len(arrayX)):
-    point = [arrayX[i], arrayY[i], arrayZ[i]]
-    # z is uint16
-    quantizedZ = int((arrayZ[i] - minZ) * MAX_VALUE / (maxZ - minZ))
-    rpcPoint = model.project(point)
-    intRpcPoint = [int(rpcPoint[1]), int(rpcPoint[0])]
-    if (intRpcPoint[0] < raster.shape[0] and intRpcPoint[0] >= 0 and
-        intRpcPoint[1] < raster.shape[1] and intRpcPoint[1] >= 0):
-        if (raster[intRpcPoint[0], intRpcPoint[1]] < quantizedZ):
-            raster[intRpcPoint[0], intRpcPoint[1]] = quantizedZ
+
+print("Projecting Points")
+quantizedZ = ((arrayZ - minZ) * MAX_VALUE / (maxZ - minZ)).astype('int')
+imgPoints = model.project(numpy.array([arrayX, arrayY, arrayZ]).transpose())
+intImgPoints = imgPoints.astype('int')
+
+print("Rendering Image")
+for (x, y), z in zip(intImgPoints, quantizedZ):
+    if (y < raster.shape[0] and y >= 0 and
+        x < raster.shape[1] and x >= 0):
+        if (raster[y, x] < z):
+            raster[y, x] = z
         else:
             underPoint += 1
     else:
         if (outPoint < 10):
-            print("outside point {}, image_coords {}".format(point, rpcPoint))
+            print("image_coords {}".format((x,y)))
         outPoint += 1
-
 if (underPoint > 0):
     print("Skipped {} points of lower Z value".format(underPoint))
 if (outPoint > 0):
