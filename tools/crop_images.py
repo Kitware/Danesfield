@@ -18,6 +18,7 @@
 ###############################################################################
 
 import gdalconst
+import gdalnumeric
 
 # from gaia.geo.gdal_functions import *
 # from gaia.geo.processes_raster import *
@@ -31,66 +32,12 @@ import json
 
 import numpy as np
 
-from danesfield.rpc import *
+from danesfield import rpc
+from danesfield import raytheon_rpc
+from PIL import Image, ImageDraw
 
 import gdal
 import ogr
-
-def parse_raytheon_rpc_file(fp):
-    """Parse the Raytheon RPC file format from an open file pointer
-    """
-    def parse_rational_poly(fp):
-        """Parse coefficients for a two polynomials from the file stream
-        """
-        coeff = numpy.zeros((2, 20), dtype='float64')
-        idx = 0
-        powers = True
-        # The expected exponent order matrix.  Currently we only support this
-        # default.  If what is in the file doesn't match, raise an exception
-        exp_exp_mat = [[0, 0, 0, 1], [1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1],
-                       [1, 1, 0, 1], [1, 0, 1, 1], [0, 1, 1, 1], [2, 0, 0, 1],
-                       [0, 2, 0, 1], [0, 0, 2, 1], [1, 1, 1, 1], [3, 0, 0, 1],
-                       [1, 2, 0, 1], [1, 0, 2, 1], [2, 1, 0, 1], [0, 3, 0, 1],
-                       [0, 1, 2, 1], [2, 0, 1, 1], [0, 2, 1, 1], [0, 0, 3, 1]]
-        for line in fp:
-            if line.strip() == '20':
-                data = []
-                for i in range(20):
-                    data.append(fp.next())
-                if powers:
-                    powers = False
-                    exp_mat = numpy.array([d.split() for d in data],
-                                          dtype='int')
-                    if not numpy.array_equal(exp_mat, exp_exp_mat):
-                        raise ValueError
-                else:
-                    powers = True
-                    coeff[idx, :] = numpy.array(data, dtype='float64')
-                    idx = idx + 1
-                if idx > 1:
-                    break
-        return coeff
-
-    rpc = RPCModel()
-    for line in fp:
-        if line.startswith('# uvOffset_'):
-            line = fp.next()
-            rpc.image_offset = numpy.array(line.split(), dtype='float64')
-        if line.startswith('# uvScale_'):
-            line = fp.next()
-            rpc.image_scale = numpy.array(line.split(), dtype='float64')
-        if line.startswith('# xyzOffset_'):
-            line = fp.next()
-            rpc.world_offset = numpy.array(line.split(), dtype='float64')
-        if line.startswith('# xyzScale_'):
-            line = fp.next()
-            rpc.world_scale = numpy.array(line.split(), dtype='float64')
-        if line.startswith('# u=sample'):
-            rpc.coeff[0:2, :] = parse_rational_poly(fp)
-        if line.startswith('# v=line'):
-            rpc.coeff[2:4, :] = parse_rational_poly(fp)
-    return rpc
-
 
 def gdal_get_transform(src_image):
     geo_trans = src_image.GetGeoTransform()
@@ -111,12 +58,12 @@ def image_to_array(i):
     Converts a Python Imaging Library array to a
     gdalnumeric image.
     """
-    a = gdalnumeric.numpy.fromstring(i.tobytes(), 'b')
+    a = gdalnumeric.np.fromstring(i.tobytes(), 'b')
     a.shape = i.im.size[1], i.im.size[0]
     return a
 
 
-def world_to_pixel_poly(rpc, geometry):
+def world_to_pixel_poly(model, geometry):
     """
     Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
     the pixel location of a geospatial coordinate
@@ -125,8 +72,8 @@ def world_to_pixel_poly(rpc, geometry):
     geoRing = geometry.GetGeometryRef(0)
     numPoints = geoRing.GetPointCount()
     for p in range(numPoints):
-        point = numpy.array(map(float, geoRing.GetPoint(p)))
-        pixel, line = rpc.project(point)
+        point = np.array(geoRing.GetPoint(p)).astype(float)
+        pixel, line = model.project(point)
         pixelRing.AddPoint(pixel, line)
     pixelPoly = ogr.Geometry(ogr.wkbPolygon)
     pixelPoly.AddGeometry(pixelRing)
@@ -160,12 +107,12 @@ def read_raytheon_RPC(rpc_path, img_file):
             return None
 
     with open(rpc_file, 'r') as f:
-        return parse_raytheon_rpc_file(f)
+        return raytheon_rpc.parse_raytheon_rpc_file(f)
 
-src_root_dir = '/home/david/Desktop/test_crop/'
-dst_root_dir = '/home/david/Desktop/test_crop/out/'
+src_root_dir = '/image/source/'
+dst_root_dir = '/image/crops/'
 
-corrected_rpc_dir = '/videonas2/fouo/data_working/CORE3D-Phase1A/AOIs/D1_WPAFB/P3D/D1_ptclds_WPAFB_museum/ba_updated_rpcs/'
+corrected_rpc_dir = '/path/ba_updated_rpcs/'
 
 # pad the crop by the following percentage in width and height
 # This value should be 1 >= padding_percentage > 0
@@ -278,16 +225,16 @@ for root, dirs, files in os.walk(src_root_dir):
             poly = ogr.CreateGeometryFromJson(polygon_json)
             min_x, max_x, min_y, max_y = poly.GetEnvelope()
             rpc_md = src_image.GetMetadata('RPC')
-            rpc = rpc_from_gdal_dict(rpc_md)
+            model = rpc.rpc_from_gdal_dict(rpc_md)
             if (corrected_rpc_dir):
                 updated_rpc = read_raytheon_RPC(corrected_rpc_dir, file_)
                 if updated_rpc is None:
                     print ('No RPC file exists for image file: ' + src_img_file)
                 else:
-                    rpc = updated_rpc
-                    rpc_md = rpc_to_gdal_dict(updated_rpc)
+                    model = updated_rpc
+                    rpc_md = rpc.rpc_to_gdal_dict(updated_rpc)
 
-            pixelPoly = world_to_pixel_poly(rpc, poly)
+            pixelPoly = world_to_pixel_poly(model, poly)
 
             ul_x, lr_x, ul_y, lr_y = map(int, pixelPoly.GetEnvelope())
             ul_x = max(0, ul_x)
@@ -391,280 +338,10 @@ for root, dirs, files in os.walk(src_root_dir):
             if dst_img_file:
                 output_driver = gdal.GetDriverByName('GTiff')
                 outfile = output_driver.CreateCopy(dst_img_file, output_dataset, False)
-                logger.debug(str(outfile))
+                print (str(outfile))
                 outfile = None
 
         except:
             print ('Problem cropping image: ' + src_img_file)
             print (traceback.format_exc())
 
-
-'''
-
-
-import gdal
-import ogr
-import osr
-from PIL import Image, ImageDraw
-import gdalnumeric
-
-from gaia.geo.processes_raster import *
-from gaia.geo.geo_inputs import *
-from gaia.geo.rpc import *
-
-
-def gdal_get_transform(src_image):
-    geo_trans = src_image.GetGeoTransform()
-    if geo_trans==(0.0, 1.0, 0.0, 0.0, 0.0, 1.0):
-        geo_trans = gdal.GCPsToGeoTransform(src_image.GetGCPs())
-    return geo_trans
-
-
-def gdal_get_projection(src_image):
-    projection = src_image.GetProjection()
-    if projection == '':
-        projection = src_image.GetGCPProjection()
-    return projection
-
-
-def image_to_array(i):
-    """
-    Converts a Python Imaging Library array to a
-    gdalnumeric image.
-    """
-    a = gdalnumeric.numpy.fromstring(i.tobytes(), 'b')
-    a.shape = i.im.size[1], i.im.size[0]
-    return a
-
-
-def world_to_pixel_poly(rpc_dict, geometry):
-    """
-    Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
-    the pixel location of a geospatial coordinate
-    """
-    pixelRing = ogr.Geometry(ogr.wkbLinearRing)
-    geoRing = geometry.GetGeometryRef(0)
-    numPoints = geoRing.GetPointCount()
-    rpc = rpc_from_gdal_dict(rpc_dict)
-    for p in range(numPoints):
-        point = np.array(map(float, geoRing.GetPoint(p)))
-        pixel, line = rpc.project(point)
-        pixelRing.AddPoint(pixel, line)
-    pixelPoly = ogr.Geometry(ogr.wkbPolygon)
-    pixelPoly.AddGeometry(pixelRing)
-    return pixelPoly
-
-def world_to_pixel(geoMatrix, x, y):
-    """
-    Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
-    the pixel location of a geospatial coordinate
-    """
-    tX = x - geoMatrix[0]
-    tY = y - geoMatrix[3]
-    a = geoMatrix[1]
-    b = geoMatrix[2]
-    c = geoMatrix[4]
-    d = geoMatrix[5]
-    div = 1.0 / (a * d - b * c)
-    pixel = int((tX * d - tY * b) * div)
-    line = int((tY * a - tX * c) * div)
-    return (pixel, line)
-
-
-padding_percentage = 1
-
-### jacksonville
-ul_lon = -81.67078466333165
-ul_lat = 30.31698808384777
-
-ur_lon = -81.65616946309449
-ur_lat = 30.31729872444624
-
-lr_lon = -81.65620275072482
-lr_lat = 30.329923847788603
-
-ll_lon = -81.67062242425624
-ll_lat = 30.32997669492018
-
-
-# Apply the padding if the value of padding_percentage > 0
-if padding_percentage > 0:
-    ulon_pad = ((ur_lon - ul_lon)*padding_percentage)/2
-    llon_pad = ((lr_lon - ll_lon)*padding_percentage)/2
-    ul_lon = ul_lon - ulon_pad
-    ur_lon = ur_lon + ulon_pad
-    lr_lon = lr_lon + llon_pad
-    ll_lon = ll_lon - llon_pad
-    llat_pad = ((ll_lat - ul_lat)*padding_percentage)/2
-    rlat_pad = ((lr_lat - ur_lat)*padding_percentage)/2
-    ul_lat = ul_lat - llat_pad
-    ur_lat = ur_lat - rlat_pad
-    lr_lat = lr_lat + rlat_pad
-    ll_lat = ll_lat + llat_pad
-
-
-
-
-src_img_file = '/videonas2/fouo/data_golden/CORE3D-Phase1A/performer_data/performer_source_data/jacksonville/satellite_imagery/WV3/PAN/18FEB16WV031200016FEB18164007-P1BS-501504472090_01_P001_________AAE_0AAAAABPABP0.NTF'
-
-dst_img_file = '/home/david/Desktop/temp.tif'
-
-
-globaltemp = RasterFileIO(uri=src_img_file)
-polygonio1 = FeatureIO(features=
-                       [{"geometry":
-                             {"type":
-                                  "Polygon", "coordinates":
-                                  [[[ul_lon, ul_lat], [ur_lon, ur_lat],
-                                    [lr_lon, lr_lat], [ll_lon, ll_lat],
-                                    [ul_lon, ul_lat]]]},
-                         "properties":
-                             {"id":
-                                  "North polygon"}} ])
-
-subset_pr = SubsetProcess(inputs=[globaltemp, polygonio1])
-
-
-raster, clip = globaltemp, polygonio1
-raster_img = raster.read()
-clip_df = clip.read(epsg=raster.get_epsg())
-clip_json = clip_df.geometry.unary_union.__geo_interface__
-raster_input = raster_img
-polygon_json = clip_json
-nodata=0
-
-src_image = raster_input
-raster_output=dst_img_file
-
-# Load as a gdal image to get geotransform
-# (world file) info
-geo_trans = gdal_get_transform(src_image)
-nodata_values = []
-for i in range(src_image.RasterCount):
-    nodata_value = src_image.GetRasterBand(i+1).GetNoDataValue()
-    if not nodata_value:
-        nodata_value = nodata
-    nodata_values.append(nodata_value)
-
-# Create an OGR layer from a boundary GeoJSON geometry string
-polygon_json = json.dumps(polygon_json)
-poly = ogr.CreateGeometryFromJson(polygon_json)
-
-
-min_x, max_x, min_y, max_y = poly.GetEnvelope()
-rpc_md = src_image.GetMetadata('RPC')
-pixelPoly = world_to_pixel_poly(rpc_md, poly)
-
-# Convert the layer extent to image pixel coordinates
-ul_x, lr_x, ul_y, lr_y = pixelPoly.GetEnvelope()
-ul_x, lr_x, ul_y, lr_y = int(ul_x), int(lr_x), int(ul_y), int(lr_y)
-
-
-if ul_x < 0:
-    ul_x = 0
-
-if ul_y < 0:
-    ul_y = 0
-
-if lr_x > src_image.RasterXSize:
-    lr_x = src_image.RasterXSize
-
-if lr_y > src_image.RasterYSize:
-    lr_y = src_image.RasterYSize
-
-# Calculate the pixel size of the new image
-# Constrain the width and height to the bounds of the image
-px_width = int(lr_x - ul_x)
-if px_width + ul_x > src_image.RasterXSize :
-    px_width = int(src_image.RasterXSize - ul_x)
-
-px_height = int(lr_y - ul_y)
-if px_height + ul_y > src_image.RasterYSize :
-    px_height = int(src_image.RasterYSize - ul_y)
-
-# Load the source data as a gdalnumeric array
-clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
-src_dtype = clip.dtype
-
-# create pixel offset to pass to new image Projection info
-xoffset = ul_x
-yoffset = ul_y
-
-# Create a new geomatrix for the image
-geo_trans = list(geo_trans)
-geo_trans[0] = min_x
-geo_trans[3] = max_y
-
-# Map points to pixels for drawing the
-# boundary on a blank 8-bit,
-# black and white, mask image.
-raster_poly = Image.new("L", (px_width, px_height), 1)
-rasterize = ImageDraw.Draw(raster_poly)
-geometry_count = poly.GetGeometryCount()
-for i in range(0, geometry_count):
-    points = []
-    pixels = []
-    pts = poly.GetGeometryRef(i)
-    if pts.GetPointCount() == 0:
-        pts = pts.GetGeometryRef(0)
-    for p in range(pts.GetPointCount()):
-        points.append((pts.GetX(p), pts.GetY(p)))
-    for p in points:
-        pixels.append(world_to_pixel(geo_trans, p[0], p[1]))
-    rasterize.polygon(pixels, 0)
-
-mask = image_to_array(raster_poly)
-
-# Clip the image using the mask
-#clip = gdalnumeric.numpy.choose(
-#    mask, (clip, nodata_value)).astype(src_dtype)
-
-# create output raster
-raster_band = raster_input.GetRasterBand(1)
-output_driver = gdal.GetDriverByName('MEM')
-
-# In the event we have multispectral images, shift the shape dimesions we are after,
-# since position 0 will be the number of bands
-clip_shp_0 = clip.shape[0]
-clip_shp_1 = clip.shape[1]
-if clip.ndim > 2:
-    clip_shp_0 = clip.shape[1]
-    clip_shp_1 = clip.shape[2]
-
-output_dataset = output_driver.Create(
-    '', clip_shp_1, clip_shp_0,
-    raster_input.RasterCount, raster_band.DataType)
-output_dataset.SetGeoTransform(geo_trans)
-output_dataset.SetProjection(gdal_get_projection(raster_input))
-
-
-#Copy All metadata data from src to dst
-domains = src_image.GetMetadataDomainList()
-for tag in domains:
-    md = src_image.GetMetadata(tag)
-    if md:
-        output_dataset.SetMetadata(md, tag)
-
-
-gdalnumeric.CopyDatasetInfo(raster_input, output_dataset,
-                            xoff=xoffset, yoff=yoffset)
-
-
-bands = raster_input.RasterCount
-if bands > 1:
-    for i in range(bands):
-        outBand = output_dataset.GetRasterBand(i + 1)
-        outBand.SetNoDataValue(nodata_values[i])
-        outBand.WriteArray(mask[i])
-else:
-    outBand = output_dataset.GetRasterBand(1)
-    outBand.SetNoDataValue(nodata_values[0])
-    outBand.WriteArray(mask)
-
-if raster_output:
-    output_driver = gdal.GetDriverByName('GTiff')
-    outfile = output_driver.CreateCopy(raster_output, output_dataset, False)
-    logger.debug(str(outfile))
-    outfile = None
-
-'''

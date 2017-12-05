@@ -21,7 +21,6 @@
 
 import numpy
 
-
 class RPCModel(object):
     """Represents a Rational Polynomial Camera (RPC) model
     """
