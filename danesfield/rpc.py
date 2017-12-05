@@ -43,6 +43,8 @@ class RPCModel(object):
     @staticmethod
     def power_vector(point):
         """Compute the vector of polynomial terms
+
+        Also applies to an (n,3) matrix where each row is a point.
         """
         x, y, z = point.transpose()
         xx = x * x
@@ -71,6 +73,10 @@ class RPCModel(object):
 
     def project(self, point):
         """Project a long, lat, alt point into image coordinates
+
+        This function can also project an (n,3) matrix where each row of the
+        matrix is a point to project.  The result is an (n,2) matrix of image
+        coordinates.
         """
         norm_pt = (numpy.array(point) - self.world_offset) / self.world_scale
         polys = numpy.dot(self.coeff, self.power_vector(norm_pt))
