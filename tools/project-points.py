@@ -73,24 +73,23 @@ outPoint =  0
 print("Projecting Points")
 quantizedZ = ((arrayZ - minZ) * MAX_VALUE / (maxZ - minZ)).astype('int')
 imgPoints = model.project(numpy.array([arrayX, arrayY, arrayZ]).transpose())
-intImgPoints = imgPoints.astype('int')
+intImgPoints = imgPoints.astype('int').transpose()
+
+# find indicies of points that fall inside the image bounds
+validIdx = numpy.logical_and.reduce((intImgPoints[1] < raster.shape[0],
+                                     intImgPoints[1] >= 0,
+                                     intImgPoints[0] < raster.shape[1],
+                                     intImgPoints[0] >= 0))
+
+# keep only the points that are in the image
+numOut = numpy.size(validIdx) - numpy.count_nonzero(validIdx)
+if (numOut > 0):
+    print("Skipped {} points outside of image".format(numOut))
+intImgPoints = intImgPoints[:, validIdx]
+quantizedZ = quantizedZ[validIdx]
 
 print("Rendering Image")
-for (x, y), z in zip(intImgPoints, quantizedZ):
-    if (y < raster.shape[0] and y >= 0 and
-        x < raster.shape[1] and x >= 0):
-        if (raster[y, x] < z):
-            raster[y, x] = z
-        else:
-            underPoint += 1
-    else:
-        if (outPoint < 10):
-            print("image_coords {}".format((x,y)))
-        outPoint += 1
-if (underPoint > 0):
-    print("Skipped {} points of lower Z value".format(underPoint))
-if (outPoint > 0):
-    print("Skipped {} points outside image".format(outPoint))
+raster[intImgPoints[1], intImgPoints[0]] = quantizedZ
 
 # Write the image
 print("Write destination image ...")
