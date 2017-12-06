@@ -80,9 +80,9 @@ underPoint = 0
 outPoint = 0
 
 print("Projecting Points")
-quantizedZ = ((arrayZ - minZ) * MAX_VALUE / (maxZ - minZ)).astype('int')
+quantizedZ = ((arrayZ - minZ) * MAX_VALUE / (maxZ - minZ)).astype(numpy.int)
 imgPoints = model.project(numpy.array([arrayX, arrayY, arrayZ]).transpose())
-intImgPoints = imgPoints.astype('int').transpose()
+intImgPoints = imgPoints.astype(numpy.int).transpose()
 
 # find indicies of points that fall inside the image bounds
 validIdx = numpy.logical_and.reduce((intImgPoints[1] < raster.shape[0],
