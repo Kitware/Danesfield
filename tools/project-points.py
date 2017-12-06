@@ -77,7 +77,7 @@ maxZ = numpy.amax(arrayZ)
 print("Project {} points to destination image ...".format(len(arrayX)))
 print("Points min/max Z: {}/{}  ...".format(minZ, maxZ))
 underPoint = 0
-outPoint =  0
+outPoint = 0
 
 print("Projecting Points")
 quantizedZ = ((arrayZ - minZ) * MAX_VALUE / (maxZ - minZ)).astype('int')
