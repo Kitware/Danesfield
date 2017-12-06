@@ -22,6 +22,7 @@
 
 import os
 import json
+import sys
 
 import numpy as np
 
@@ -107,67 +108,93 @@ def read_raytheon_RPC(rpc_path, img_file):
     with open(rpc_file, 'r') as f:
         return raytheon_rpc.parse_raytheon_rpc_file(f)
 
-src_root_dir = '/image/source/'
-dst_root_dir = '/image/crops/'
 
-corrected_rpc_dir = '/path/ba_updated_rpcs/'
+if (len(sys.argv) < 4 or
+        sys.argv[1] != 'D1' and
+        sys.argv[1] != 'D2' and
+        sys.argv[1] != 'D3' and
+        sys.argv[1] != 'D4'):
+    print("{} <dataset_AOI> <source_image_dir> <dest_image_dir> \
+           <OPTIONAL: corrected_RPC_path]".format(sys.argv[0]))
+    print("dataset_AOI options: D1 (WPAFB), D2 (WPAFB), \
+           D3 (USCD), D4 (Jacksonville)")
+    sys.exit(1)
 
-# pad the crop by the following percentage in width and height
+AOI = sys.argv[1]
+src_root_dir = os.path.join(sys.argv[2], '')
+dst_root_dir = os.path.join(sys.argv[3], '')
+
+print('Cropping images from: ' + src_root_dir)
+print('Locating crops in directory: ' + dst_root_dir)
+print('Cropping to AOI: ' + AOI)
+
+corrected_rpc_dir = ''
+if (len(sys.argv)) == 5:
+    corrected_rpc_dir = os.path.join(sys.argv[4], '')
+    print('Using update RPCs from: ' + corrected_rpc_dir)
+else:
+    print('Not using updated RPCs')
+
+# Pad the crop by the following percentage in width and height
 # This value should be 1 >= padding_percentage > 0
 # Setting padding_percentage to 0 disables padding.
 padding_percentage = 0
 
-### jacksonville
-#ul_lon = -81.67078466333165
-#ul_lat = 30.31698808384777
+# Jacksonville AOI D4
+# WPAFB AOI D1
+if AOI == 'D1':
+    ul_lon = -84.11236693243779
+    ul_lat = 39.77747025512961
 
-#ur_lon = -81.65616946309449
-#ur_lat = 30.31729872444624
+    ur_lon = -84.10530109439955
+    ur_lat = 39.77749705975315
 
-#lr_lon = -81.65620275072482
-#lr_lat = 30.329923847788603
+    lr_lon = -84.10511182729961
+    lr_lat = 39.78290042788092
 
-#ll_lon = -81.67062242425624
-#ll_lat = 30.32997669492018
+    ll_lon = -84.11236485416471
+    ll_lat = 39.78287156225952
 
-### ucsd
-#ul_lon = -117.24298768132505
-#ul_lat = 32.882791370856857
+# WPAFB AOI D2
+if AOI == 'D2':
+    ul_lon = -84.08847226672408
+    ul_lat = 39.77650841377968
 
-#ur_lon = -117.24296375496185
-#ur_lat = 32.874021450913411
+    ur_lon = -84.07992142333644
+    ur_lat = 39.77652166058358
 
-#lr_lon = -117.2323749640905
-#lr_lat = 32.874041569804469
+    lr_lon = -84.07959205694203
+    lr_lat = 39.78413758747398
 
-#ll_lon = -117.23239784772379
-#ll_lat = 32.882811496466012
+    ll_lon = -84.0882028871317
+    ll_lat = 39.78430009793551
 
-### wpafb D1
-ul_lon = -84.11236693243779
-ul_lat = 39.77747025512961
+# UCSD AOI D3
+if AOI == 'D3':
+    ul_lon = -117.24298768132505
+    ul_lat = 32.882791370856857
 
-ur_lon = -84.10530109439955
-ur_lat = 39.77749705975315
+    ur_lon = -117.24296375496185
+    ur_lat = 32.874021450913411
 
-lr_lon = -84.10511182729961
-lr_lat = 39.78290042788092
+    lr_lon = -117.2323749640905
+    lr_lat = 32.874041569804469
 
-ll_lon = -84.11236485416471
-ll_lat = 39.78287156225952
+    ll_lon = -117.23239784772379
+    ll_lat = 32.882811496466012
 
-### wpafb D2
-#ul_lon = -84.08847226672408
-#ul_lat = 39.77650841377968
+if AOI == 'D4':
+    ul_lon = -81.67078466333165
+    ul_lat = 30.31698808384777
 
-#ur_lon = -84.07992142333644
-#ur_lat = 39.77652166058358
+    ur_lon = -81.65616946309449
+    ur_lat = 30.31729872444624
 
-#lr_lon = -84.07959205694203
-#lr_lat = 39.78413758747398
+    lr_lon = -81.65620275072482
+    lr_lat = 30.329923847788603
 
-#ll_lon = -84.0882028871317
-#ll_lat = 39.78430009793551
+    ll_lon = -81.67062242425624
+    ll_lat = 30.32997669492018
 
 # Apply the padding if the value of padding_percentage > 0
 if padding_percentage > 0:
