@@ -52,6 +52,7 @@ json = u"""
     }
   ]
 }"""
+print("Loading Point Cloud")
 json = json % pointsFileName
 pipeline = pdal.Pipeline(json)
 pipeline.validate()  # check if our JSON and options were good
@@ -61,34 +62,43 @@ arrays = pipeline.arrays
 arrayX = arrays[0]['X']
 arrayY = arrays[0]['Y']
 arrayZ = arrays[0]['Z']
+
+# Sort the points by height so that higher points project last
+print("Sorting by Height")
+heightIdx = numpy.argsort(arrayZ)
+arrayX = arrayX[heightIdx]
+arrayY = arrayY[heightIdx]
+arrayZ = arrayZ[heightIdx]
+
+
 minZ = numpy.amin(arrayZ)
 maxZ = numpy.amax(arrayZ)
 # project points to get image indexes and save their height into the image
 print("Project {} points to destination image ...".format(len(arrayX)))
 print("Points min/max Z: {}/{}  ...".format(minZ, maxZ))
 underPoint = 0
-outPoint =  0
-for i in range(0, len(arrayX)):
-    point = [arrayX[i], arrayY[i], arrayZ[i]]
-    # z is uint16
-    quantizedZ = int((arrayZ[i] - minZ) * MAX_VALUE / (maxZ - minZ))
-    rpcPoint = model.project(point)
-    intRpcPoint = [int(rpcPoint[1]), int(rpcPoint[0])]
-    if (intRpcPoint[0] < raster.shape[0] and intRpcPoint[0] >= 0 and
-        intRpcPoint[1] < raster.shape[1] and intRpcPoint[1] >= 0):
-        if (raster[intRpcPoint[0], intRpcPoint[1]] < quantizedZ):
-            raster[intRpcPoint[0], intRpcPoint[1]] = quantizedZ
-        else:
-            underPoint += 1
-    else:
-        if (outPoint < 10):
-            print("outside point {}, image_coords {}".format(point, rpcPoint))
-        outPoint += 1
+outPoint = 0
 
-if (underPoint > 0):
-    print("Skipped {} points of lower Z value".format(underPoint))
-if (outPoint > 0):
-    print("Skipped {} points outside image".format(outPoint))
+print("Projecting Points")
+quantizedZ = ((arrayZ - minZ) * MAX_VALUE / (maxZ - minZ)).astype(numpy.int)
+imgPoints = model.project(numpy.array([arrayX, arrayY, arrayZ]).transpose())
+intImgPoints = imgPoints.astype(numpy.int).transpose()
+
+# find indicies of points that fall inside the image bounds
+validIdx = numpy.logical_and.reduce((intImgPoints[1] < raster.shape[0],
+                                     intImgPoints[1] >= 0,
+                                     intImgPoints[0] < raster.shape[1],
+                                     intImgPoints[0] >= 0))
+
+# keep only the points that are in the image
+numOut = numpy.size(validIdx) - numpy.count_nonzero(validIdx)
+if (numOut > 0):
+    print("Skipped {} points outside of image".format(numOut))
+intImgPoints = intImgPoints[:, validIdx]
+quantizedZ = quantizedZ[validIdx]
+
+print("Rendering Image")
+raster[intImgPoints[1], intImgPoints[0]] = quantizedZ
 
 # Write the image
 print("Write destination image ...")

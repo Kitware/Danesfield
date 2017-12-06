@@ -43,8 +43,10 @@ class RPCModel(object):
     @staticmethod
     def power_vector(point):
         """Compute the vector of polynomial terms
+
+        Also applies to an (n,3) matrix where each row is a point.
         """
-        x, y, z = point
+        x, y, z = point.transpose()
         xx = x * x
         xy = x * y
         xz = x * z
@@ -61,17 +63,25 @@ class RPCModel(object):
         yyz = yy * z
         yzz = yz * z
         zzz = zz * z
+        try:
+            w = numpy.ones(x.shape)
+        except TypeError:
+            w = 1
         # This is the standard order of terms used in NITF metadata
-        return numpy.array([1, x, y, z, xy, xz, yz, xx, yy, zz,
+        return numpy.array([w, x, y, z, xy, xz, yz, xx, yy, zz,
                             xyz, xxx, xyy, xzz, xxy, yyy, yzz, xxz, yyz, zzz])
 
     def project(self, point):
         """Project a long, lat, alt point into image coordinates
+
+        This function can also project an (n,3) matrix where each row of the
+        matrix is a point to project.  The result is an (n,2) matrix of image
+        coordinates.
         """
         norm_pt = (numpy.array(point) - self.world_offset) / self.world_scale
         polys = numpy.dot(self.coeff, self.power_vector(norm_pt))
         img_pt = numpy.array([polys[0] / polys[1], polys[2] / polys[3]])
-        return img_pt * self.image_scale + self.image_offset
+        return img_pt.transpose() * self.image_scale + self.image_offset
 
 
 def rpc_from_gdal_dict(md_dict):
