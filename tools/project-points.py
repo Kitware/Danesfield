@@ -62,6 +62,15 @@ arrays = pipeline.arrays
 arrayX = arrays[0]['X']
 arrayY = arrays[0]['Y']
 arrayZ = arrays[0]['Z']
+
+# Sort the points by height so that higher points project last
+print("Sorting by Height")
+heightIdx = numpy.argsort(arrayZ)
+arrayX = arrayX[heightIdx]
+arrayY = arrayY[heightIdx]
+arrayZ = arrayZ[heightIdx]
+
+
 minZ = numpy.amin(arrayZ)
 maxZ = numpy.amax(arrayZ)
 # project points to get image indexes and save their height into the image
