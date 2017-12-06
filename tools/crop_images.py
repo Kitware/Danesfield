@@ -309,17 +309,15 @@ for root, dirs, files in os.walk(src_root_dir):
             output_dataset = output_driver.Create(
                 '', clip_shp_1, clip_shp_0,
                 src_image.RasterCount, raster_band.DataType)
-            output_dataset.SetGeoTransform(geo_trans)
-            output_dataset.SetProjection(gdal_get_projection(src_image))
 
             # Copy All metadata data from src to dst
-            # domains = src_image.GetMetadataDomainList()
-            # for tag in domains:
-            #     md = src_image.GetMetadata(tag)
-            #     if md:
-            #         output_dataset.SetMetadata(md, tag)
+            domains = src_image.GetMetadataDomainList()
+            for tag in domains:
+                md = src_image.GetMetadata(tag)
+                if md:
+                    output_dataset.SetMetadata(md, tag)
 
-            # write out the rpc_md that we modified above
+            # Rewrite the rpc_md that we modified above.
             output_dataset.SetMetadata(rpc_md, 'RPC')
             gdalnumeric.CopyDatasetInfo(src_image, output_dataset,
                                         xoff=ul_x, yoff=ul_y)
@@ -338,7 +336,11 @@ for root, dirs, files in os.walk(src_root_dir):
             if dst_img_file:
                 output_driver = gdal.GetDriverByName('GTiff')
                 outfile = output_driver.CreateCopy(dst_img_file, output_dataset, False)
-                print (str(outfile))
+
+                # We need to write this data out after the CreateCopy call or it's lost
+                # This change seems to happen in GDAL with python 3
+                output_dataset.SetGeoTransform(geo_trans)
+                output_dataset.SetProjection(gdal_get_projection(src_image))
                 outfile = None
 
         except:
