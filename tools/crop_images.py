@@ -62,7 +62,7 @@ def image_to_array(i):
     return a
 
 
-def world_to_pixel_poly(model, geometry):
+def world_to_pixel_poly(model, geometry, elevation):
     """
     Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
     the pixel location of a geospatial coordinate
@@ -71,8 +71,10 @@ def world_to_pixel_poly(model, geometry):
     geoRing = geometry.GetGeometryRef(0)
     numPoints = geoRing.GetPointCount()
     for p in range(numPoints):
-        point = np.array(geoRing.GetPoint(p)).astype(float)
-        pixel, line = model.project(point)
+        point = geoRing.GetPoint(p)
+        new_point = (point[0], point[1], elevation)
+        np_point = np.array(new_point).astype(float)
+        pixel, line = model.project(np_point)
         pixelRing.AddPoint(pixel, line)
     pixelPoly = ogr.Geometry(ogr.wkbPolygon)
     pixelPoly.AddGeometry(pixelRing)
@@ -140,9 +142,9 @@ else:
 # Setting padding_percentage to 0 disables padding.
 padding_percentage = 0
 
-# Jacksonville AOI D4
 # WPAFB AOI D1
 if AOI == 'D1':
+    elevation = 240
     ul_lon = -84.11236693243779
     ul_lat = 39.77747025512961
 
@@ -157,6 +159,7 @@ if AOI == 'D1':
 
 # WPAFB AOI D2
 if AOI == 'D2':
+    elevation = 300
     ul_lon = -84.08847226672408
     ul_lat = 39.77650841377968
 
@@ -171,6 +174,7 @@ if AOI == 'D2':
 
 # UCSD AOI D3
 if AOI == 'D3':
+    elevation = 120
     ul_lon = -117.24298768132505
     ul_lat = 32.882791370856857
 
@@ -183,7 +187,9 @@ if AOI == 'D3':
     ll_lon = -117.23239784772379
     ll_lat = 32.882811496466012
 
+# Jacksonville AOI D4
 if AOI == 'D4':
+    elevation = 2
     ul_lon = -81.67078466333165
     ul_lat = 30.31698808384777
 
@@ -259,7 +265,7 @@ for root, dirs, files in os.walk(src_root_dir):
                 model = updated_rpc
                 rpc_md = rpc.rpc_to_gdal_dict(updated_rpc)
 
-        pixelPoly = world_to_pixel_poly(model, poly)
+        pixelPoly = world_to_pixel_poly(model, poly, elevation)
 
         ul_x, lr_x, ul_y, lr_y = map(int, pixelPoly.GetEnvelope())
         ul_x = max(0, ul_x)
