@@ -103,7 +103,8 @@ print("Loading Point Cloud")
 json = json % args.source_points
 pipeline = pdal.Pipeline(json)
 pipeline.validate()  # check if our JSON and options were good
-pipeline.loglevel = 8  # really noisy
+# this causes a segfault at the end of the program
+# pipeline.loglevel = 8  # really noisy
 count = pipeline.execute()
 arrays = pipeline.arrays
 arrayX = arrays[0]['X']
