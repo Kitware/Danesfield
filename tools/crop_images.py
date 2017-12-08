@@ -21,7 +21,7 @@
 # from gaia.geo.processes_raster import *
 
 import os
-import json
+#import json
 import sys
 
 import numpy as np
@@ -52,33 +52,22 @@ def gdal_get_projection(src_image):
     return projection
 
 
-def image_to_array(i):
-    """
-    Converts a Python Imaging Library array to a
-    gdalnumeric image.
-    """
-    a = gdalnumeric.np.fromstring(i.tobytes(), 'b')
-    a.shape = i.im.size[1], i.im.size[0]
-    return a
-
-
-def world_to_pixel_poly(model, geometry, elevation):
+def world_to_pixel_poly(model, poly):
     """
     Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
     the pixel location of a geospatial coordinate
     """
-    pixelRing = ogr.Geometry(ogr.wkbLinearRing)
-    geoRing = geometry.GetGeometryRef(0)
-    numPoints = geoRing.GetPointCount()
-    for p in range(numPoints):
-        point = geoRing.GetPoint(p)
-        new_point = (point[0], point[1], elevation)
-        np_point = np.array(new_point).astype(float)
-        pixel, line = model.project(np_point)
-        pixelRing.AddPoint(pixel, line)
-    pixelPoly = ogr.Geometry(ogr.wkbPolygon)
-    pixelPoly.AddGeometry(pixelRing)
-    return pixelPoly
+    first_point = True
+    for p in range(poly.shape[0]):
+        point = poly[p]
+        proj_point = model.project(point)
+        if first_point is True:
+            pixel_poly = np.array(proj_point)
+            first_point = False
+        else:
+            pixel_poly = np.vstack([pixel_poly, proj_point])
+
+    return pixel_poly
 
 
 def world_to_pixel(geoMatrix, x, y):
@@ -141,6 +130,8 @@ else:
 # This value should be 1 >= padding_percentage > 0
 # Setting padding_percentage to 0 disables padding.
 padding_percentage = 0
+
+elevation_range = 100
 
 # WPAFB AOI D1
 if AOI == 'D1':
@@ -246,15 +237,18 @@ for root, dirs, files in os.walk(src_root_dir):
                 nodata_value = nodata
             nodata_values.append(nodata_value)
 
-        polygon_json = {"type":
-                        "Polygon", "coordinates":
-                            [[[ul_lon, ul_lat], [ur_lon, ur_lat],
-                              [lr_lon, lr_lat], [ll_lon, ll_lat],
-                              [ul_lon, ul_lat]]]}
+        # +- elevation_range
+        poly = np.array([[ul_lon, ul_lat, elevation + elevation_range],
+                         [ur_lon, ur_lat, elevation + elevation_range],
+                         [lr_lon, lr_lat, elevation + elevation_range],
+                         [ll_lon, ll_lat, elevation + elevation_range],
+                         [ul_lon, ul_lat, elevation + elevation_range],
+                         [ul_lon, ul_lat, elevation - elevation_range],
+                         [ur_lon, ur_lat, elevation - elevation_range],
+                         [lr_lon, lr_lat, elevation - elevation_range],
+                         [ll_lon, ll_lat, elevation - elevation_range],
+                         [ul_lon, ul_lat, elevation - elevation_range]])
 
-        polygon_json = json.dumps(polygon_json)
-        poly = ogr.CreateGeometryFromJson(polygon_json)
-        min_x, max_x, min_y, max_y = poly.GetEnvelope()
         rpc_md = src_image.GetMetadata('RPC')
         model = rpc.rpc_from_gdal_dict(rpc_md)
         if (corrected_rpc_dir):
@@ -265,9 +259,13 @@ for root, dirs, files in os.walk(src_root_dir):
                 model = updated_rpc
                 rpc_md = rpc.rpc_to_gdal_dict(updated_rpc)
 
-        pixelPoly = world_to_pixel_poly(model, poly, elevation)
+        pixel_poly = world_to_pixel_poly(model, poly)
 
-        ul_x, lr_x, ul_y, lr_y = map(int, pixelPoly.GetEnvelope())
+        ul_x, ul_y = map(int, pixel_poly.min(0))
+        lr_x, lr_y = map(int, pixel_poly.max(0))
+        min_x, min_y, z = poly.min(0)
+        max_x, max_y, z = poly.max(0)
+
         ul_x = max(0, ul_x)
         ul_y = max(0, ul_y)
         lr_x = min(src_image.RasterXSize - 1, lr_x)
@@ -297,32 +295,13 @@ for root, dirs, files in os.walk(src_root_dir):
         if px_width < 0 or px_height < 0:
             continue
 
-        # Load the source data as a gdalnumeric array
-        clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
-        src_dtype = clip.dtype
+        try:
+            # Load the source data as a gdalnumeric array
+            clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
+        except:
+            print('Error decoding image, skipping')
+            continue
 
-        # Create a new geomatrix for the image
-        geo_trans = list(geo_trans)
-        geo_trans[0] = min_x
-        geo_trans[3] = max_y
-
-        # Map points to pixels for drawing the
-        # boundary on a blank 8-bit,
-        # black and white, mask image.
-        raster_poly = Image.new("L", (px_width, px_height), 1)
-        rasterize = ImageDraw.Draw(raster_poly)
-        geometry_count = poly.GetGeometryCount()
-        for i in range(0, geometry_count):
-            points = []
-            pixels = []
-            pts = poly.GetGeometryRef(i)
-            if pts.GetPointCount() == 0:
-                pts = pts.GetGeometryRef(0)
-            for p in range(pts.GetPointCount()):
-                points.append((pts.GetX(p), pts.GetY(p)))
-            for p in points:
-                pixels.append(world_to_pixel(geo_trans, p[0], p[1]))
-            rasterize.polygon(pixels, 0)
 
         # create output raster
         raster_band = src_image.GetRasterBand(1)
@@ -364,14 +343,21 @@ for root, dirs, files in os.walk(src_root_dir):
             outBand.SetNoDataValue(nodata_values[0])
             outBand.WriteArray(clip)
 
+
         if dst_img_file:
             output_driver = gdal.GetDriverByName('GTiff')
             outfile = output_driver.CreateCopy(
                 dst_img_file, output_dataset, False)
 
-            # We need to write this data out
-            # after the CreateCopy call or it's lost
-            # This change seems to happen in GDAL with python 3
-            output_dataset.SetGeoTransform(geo_trans)
-            output_dataset.SetProjection(gdal_get_projection(src_image))
-            outfile = None
+        # We need to write this data out
+        # after the CreateCopy call or it's lost
+        # This change seems to happen in GDAL with python 3
+
+        # Create a new geomatrix for the image
+        geo_trans = list(geo_trans)
+        geo_trans[0] = min_x
+        geo_trans[3] = max_y
+
+        output_dataset.SetGeoTransform(geo_trans)
+        output_dataset.SetProjection(gdal_get_projection(src_image))
+        outfile = None
