@@ -17,11 +17,7 @@
 #  limitations under the License.
 ###############################################################################
 
-# from gaia.geo.gdal_functions import *
-# from gaia.geo.processes_raster import *
-
 import os
-#import json
 import sys
 
 import numpy as np
@@ -32,9 +28,6 @@ from danesfield import raytheon_rpc
 import gdalconst
 import gdalnumeric
 import gdal
-import ogr
-
-from PIL import Image, ImageDraw
 
 
 def gdal_get_transform(src_image):
@@ -92,9 +85,13 @@ def read_raytheon_RPC(rpc_path, img_file):
     file_no_ext = os.path.splitext(img_file)[0]
     rpc_file = rpc_path + 'GRA_' + file_no_ext + '.up.rpc'
     if os.path.isfile(rpc_file) is False:
-        rpc_file = rpc_file = rpc_path + 'GRA_' + file_no_ext + '_0.up.rpc'
+        rpc_file = rpc_path + 'GRA_' + file_no_ext + '_0.up.rpc'
         if os.path.isfile(rpc_file) is False:
-            return None
+            rpc_file = rpc_path + file_no_ext + '.up.rpc'
+            if os.path.isfile(rpc_file) is False:
+                rpc_file = rpc_path + file_no_ext + '_0.up.rpc'
+                if os.path.isfile(rpc_file) is False:
+                    return None
 
     with open(rpc_file, 'r') as f:
         return raytheon_rpc.parse_raytheon_rpc_file(f)
