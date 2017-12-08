@@ -292,15 +292,11 @@ for root, dirs, files in os.walk(src_root_dir):
         # If the width or height ends up negative at this point,
         # the AOI is completely outside the image
         if px_width < 0 or px_height < 0:
+            print('AOI out of range, skipping\n')
             continue
 
-        try:
-            # Load the source data as a gdalnumeric array
-            clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
-        except:
-            print('Error decoding image, skipping')
-            continue
-
+        # Load the source data as a gdalnumeric array
+        clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
 
         # create output raster
         raster_band = src_image.GetRasterBand(1)
@@ -309,11 +305,15 @@ for root, dirs, files in os.walk(src_root_dir):
         # In the event we have multispectral images,
         # shift the shape dimesions we are after,
         # since position 0 will be the number of bands
-        clip_shp_0 = clip.shape[0]
-        clip_shp_1 = clip.shape[1]
-        if clip.ndim > 2:
-            clip_shp_0 = clip.shape[1]
-            clip_shp_1 = clip.shape[2]
+        try:
+            clip_shp_0 = clip.shape[0]
+            clip_shp_1 = clip.shape[1]
+            if clip.ndim > 2:
+                clip_shp_0 = clip.shape[1]
+                clip_shp_1 = clip.shape[2]
+        except (AttributeError):
+            print('Error decoding image, skipping\n')
+            continue
 
         output_dataset = output_driver.Create(
             '', clip_shp_1, clip_shp_0,
@@ -331,6 +331,8 @@ for root, dirs, files in os.walk(src_root_dir):
         gdalnumeric.CopyDatasetInfo(src_image, output_dataset,
                                     xoff=ul_x, yoff=ul_y)
 
+        # End logging, print blank line for clarity
+        print('')
         bands = src_image.RasterCount
         if bands > 1:
             for i in range(bands):
@@ -342,21 +344,20 @@ for root, dirs, files in os.walk(src_root_dir):
             outBand.SetNoDataValue(nodata_values[0])
             outBand.WriteArray(clip)
 
-
         if dst_img_file:
             output_driver = gdal.GetDriverByName('GTiff')
             outfile = output_driver.CreateCopy(
                 dst_img_file, output_dataset, False)
 
-        # We need to write this data out
-        # after the CreateCopy call or it's lost
-        # This change seems to happen in GDAL with python 3
+            # We need to write this data out
+            # after the CreateCopy call or it's lost
+            # This change seems to happen in GDAL with python 3
 
-        # Create a new geomatrix for the image
-        geo_trans = list(geo_trans)
-        geo_trans[0] = min_x
-        geo_trans[3] = max_y
+            # Create a new geomatrix for the image
+            geo_trans = list(geo_trans)
+            geo_trans[0] = min_x
+            geo_trans[3] = max_y
 
-        output_dataset.SetGeoTransform(geo_trans)
-        output_dataset.SetProjection(gdal_get_projection(src_image))
-        outfile = None
+            output_dataset.SetGeoTransform(geo_trans)
+            output_dataset.SetProjection(gdal_get_projection(src_image))
+            outfile = None
