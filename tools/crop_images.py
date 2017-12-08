@@ -251,7 +251,9 @@ for root, dirs, files in os.walk(src_root_dir):
         if (corrected_rpc_dir):
             updated_rpc = read_raytheon_RPC(corrected_rpc_dir, file_)
             if updated_rpc is None:
-                print('No RPC file exists for image file: ' + src_img_file)
+                print('No RPC file exists for image file, skipping: ' +
+                      src_img_file + '\n')
+                continue
             else:
                 model = updated_rpc
                 rpc_md = rpc.rpc_to_gdal_dict(updated_rpc)
