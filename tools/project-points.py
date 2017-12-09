@@ -6,7 +6,8 @@ from danesfield import raytheon_rpc
 import sys
 
 if (len(sys.argv) < 4):
-    print("{} <source_image> <source_points> <destination_image> [<raytheon_rpc>]".format(sys.argv[0]))
+    print("{} <source_image> <source_points> <destination_image> "
+          "[<raytheon_rpc>]".format(sys.argv[0]))
     sys.exit(1)
 
 imageFileName = sys.argv[1]
@@ -36,7 +37,8 @@ if driverMetadata.get(gdal.DCAP_CREATECOPY) == "YES":
         sourceImage.RasterXSize, sourceImage.RasterYSize))
     destImage = driver.CreateCopy(destImageFileName, sourceImage, strict=0)
     # create an emtpy image
-    raster = numpy.zeros((sourceImage.RasterYSize, sourceImage.RasterXSize), dtype=numpy.uint16)
+    raster = numpy.zeros((sourceImage.RasterYSize, sourceImage.RasterXSize),
+                         dtype=numpy.uint16)
 else:
     print("Driver {} does not supports CreateCopy() method.".format(driver))
     sys.exit(0)

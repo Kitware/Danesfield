@@ -8,9 +8,10 @@ Currently, the environment is tested only on Mac OS and Linux and not on
 Windows. It is possible that future version of environment may not work
 on Windows because of the binary packages not available on Windows platform.
 
-Install Conda
-=============
-https://conda.io/miniconda.html
+Install Conda3
+==============
+Plase ensure that you install Conda3 (for Python3) and not Conda2 or Anaconda
+from miniconda site https://conda.io/miniconda.html
 
 Create Core3D Conda Environment
 ===============================
@@ -37,19 +38,6 @@ To remove the core3d-dev environent, run:
 
    source deactivate (if core3d-dev is activated before)
    conda remove --name core3d-dev --all
-
-Install Gaia
-============
-
-Gaia is a Python library aiming for geospatial analytics reusable components
-
-.. code-block:: bash
-
-   cd .. (assuming you are at the root level inside of CORE3D_DIR)
-   git clone https://github.com/OpenDataAnalytics/gaia.git
-   cd gaia
-   pip install -r requirements-dev.txt
-   pip install -e .
 
 
 ###################################
