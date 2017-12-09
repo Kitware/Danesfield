@@ -38,19 +38,6 @@ To remove the core3d-dev environent, run:
    source deactivate (if core3d-dev is activated before)
    conda remove --name core3d-dev --all
 
-Install Gaia
-============
-
-Gaia is a Python library aiming for geospatial analytics reusable components
-
-.. code-block:: bash
-
-   cd .. (assuming you are at the root level inside of CORE3D_DIR)
-   git clone https://github.com/OpenDataAnalytics/gaia.git
-   cd gaia
-   pip install -r requirements-dev.txt
-   pip install -e .
-
 
 ###################################
 Test Core3D development environent
