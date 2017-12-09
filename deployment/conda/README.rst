@@ -8,9 +8,10 @@ Currently, the environment is tested only on Mac OS and Linux and not on
 Windows. It is possible that future version of environment may not work
 on Windows because of the binary packages not available on Windows platform.
 
-Install Conda
-=============
-https://conda.io/miniconda.html
+Install Conda3
+==============
+Plase ensure that you install Conda3 (for Python3) and not Conda2 or Anaconda
+from miniconda site https://conda.io/miniconda.html
 
 Create Core3D Conda Environment
 ===============================
