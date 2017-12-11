@@ -32,6 +32,7 @@ for feature in layer:
     g = geom.GetGeometryRef(0)
     print(g)
     print(g.GetGeometryName())
+    print(g.GetGeometryCount())
     print(g.GetPointCount())
     for shape_idx in range(g.GetGeometryCount()):
         polygon = g.GetGeometryRef(shape_idx)

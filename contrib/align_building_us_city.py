@@ -15,15 +15,18 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import plotly.plotly as py
 import argparse
-
+import pdb
 import Utils
 
 draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
         (0,0,255,255),(255,255,255,255)]
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--input_img', default='../data/Jacksonville.tiff', help='Input geotiff file')
-parser.add_argument('--input_osm', default='../data/Dayton_map.osm', help='Input osm file')
+parser.add_argument('--input_img', default='../data/Jacksonville/Jacksonville.tiff', help='Input geotiff file')
+#parser.add_argument('--input_osm', default='../data/Jacksonville/BLD2/jacksonville_2d_bldgs_2.shp', help='Input osm file')
+parser.add_argument('--input_osm', default='../data/Jacksonville/Jacksonville.osm', help='Input osm file')
+#parser.add_argument('--input_img', default='../data/Dayton.tiff', help='Input geotiff file')
+#parser.add_argument('--input_osm', default='../data/Dayton_map.osm', help='Input osm file')
 parser.add_argument('--scale' , type=float, default=0.2, help='Scale factor. We cannot deal with the images with original resolution')
 parser.add_argument('--cluster_thres' , type=float, default=100, help='Distance for building clustering')
 parser.add_argument('--move_thres' , type=float, default=40, help='Distance for edge matching')
@@ -38,7 +41,7 @@ input_img = args.input_img
 scale = args.scale
 
 cluster_thres = args.cluster_thres
-color_image = cv2.imread(input_img) 
+color_image = cv2.imread(input_img)
 
 small_color_image = np.zeros((int(color_image.shape[0]*scale),\
         int(color_image.shape[1]*scale), 3))
@@ -53,7 +56,8 @@ grayimg = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 #high_thresh, thresh_im = cv2.threshold(grayimg, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 #lowThresh = 0.5*high_thresh
 #edge_img = cv2.Canny(grayimg, lowThresh, high_thresh)
-edge_img = cv2.Canny(grayimg, 200, 300)
+#edge_img = cv2.Canny(grayimg, 200, 300)
+edge_img = cv2.Canny(grayimg, 100, 200)
 cv2.imwrite('../data/{}_edge.jpg'.format(basename),edge_img)
 
 # open the GDAL file
@@ -76,24 +80,41 @@ model['project_model'] = gt
 model['scale'] = scale
 
 ds = ogr.Open(args.input_osm)
-layer = ds.GetLayerByIndex(3)
+if ds.GetLayerCount()<=1:
+    layer = ds.GetLayerByIndex(0)
+else:
+    layer = ds.GetLayerByIndex(3)
 nameList = []
 
 draw_flag = False
 
 building_list = []
 for feature in layer:
-    if feature.GetField("building") != None:  # only streets
+    building_flag = False
+    try:
+        tmp_field = feature.GetField("building")
+        if tmp_field != None:
+            building_flag = True
+        else:
+            building_flag = False
+    except:
+        building_flag = True
+    
+    if building_flag:  # only streets
         flag = True
-        #print("haha")
-        name = feature.GetField("name")
         geom = feature.GetGeometryRef()
+        shape_ptr = None 
         g = geom.GetGeometryRef(0)
+        #pdb.set_trace()
+        #print(g.GetPointCount())
+        if g.GetPointCount()<=0:
+            shape_ptr = g
+        else:
+            shape_ptr = geom
         for shape_idx in range(g.GetGeometryCount()):
             polygon = g.GetGeometryRef(shape_idx)
             for i in range(0, polygon.GetPointCount()):
                 pt = polygon.GetPoint(i)
-                #print(pt[0],pt[1])
                 if pt[0]>left and pt[0]<right and pt[1]<top and pt[1]>bottom:
                     pass
                 else:
@@ -112,9 +133,12 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
         int(color_image.shape[1])))
     poly_array_list = []
     for building in building_cluster:
-        name = building.GetField("name")
         geom = building.GetGeometryRef()
         g = geom.GetGeometryRef(0)
+        if g.GetPointCount()<=0:
+            shape_ptr = g
+        else:
+            shape_ptr = geom
         for shape_idx in range(g.GetGeometryCount()):
             polygon = g.GetGeometryRef(shape_idx)
             poly_point_list = []
@@ -127,9 +151,6 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
 
             #edge mask of the building cluster
             cv2.polylines(tmp_img,[poly_array],True,(255),thickness=2)
-            #cv2.imshow('image',tmp_img)
-            #cv2.imwrite('contour.jpg',tmp_img)
-            #cv2.waitKey(0)
             check_point_list = []
 
     # build a sparse set to fast process
@@ -167,7 +188,7 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
         print(max_value)
         print(offsetx, offsety)
         #do something to deal with the bad data
-        if max_value/float(len(check_point_list))<0.1:
+        if max_value/float(len(check_point_list))<0.05:
             offsetx = 0
             offsety = 0
 
@@ -185,9 +206,6 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
                 
             cv2.polylines(full_res_mask, [poly_array], True,\
                     draw_color[cluster_idx%len(draw_color)], thickness=12)
-            #cv2.fillPoly(full_res_mask,[poly_array],(0,0,255,80))
-            #cv2.imshow('image',full_res_mask)
-            #cv2.waitKey(0)
                 
 #print(nameList)
 ds.Destroy()

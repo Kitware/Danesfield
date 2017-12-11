@@ -48,13 +48,19 @@ def GetBuildingCluster(building_list, model, cluster_thres = 200):
 def BuildingSimilarity(building_1, building_2, model, cluster_thres = 200):
     geom_1 = building_1.GetGeometryRef()
     g_1 = geom_1.GetGeometryRef(0)
-    first_polygon = g_1.GetGeometryRef(0)
+    if g_1.GetPointCount() > 0:
+        first_polygon = g_1
+    else:
+        first_polygon = g_1.GetGeometryRef(0)
     pt_1 = first_polygon.GetPoint(0)
 
     geom_2 = building_2.GetGeometryRef()
     g_2 = geom_2.GetGeometryRef(0)
-    first_polygon = g_2.GetGeometryRef(0)
-    pt_2 = first_polygon.GetPoint(0)
+    if g_2.GetPointCount() > 0:
+        second_polygon = g_2
+    else:
+        second_polygon = g_2.GetGeometryRef(0)
+    pt_2 = second_polygon.GetPoint(0)
     
     similarity = np.sqrt(float((pt_1[0]-pt_2[0])*(pt_1[0]-pt_2[0])) + \
             float((pt_1[1]-pt_2[1])*(pt_1[1]-pt_2[1])))\
