@@ -87,10 +87,6 @@ def read_raytheon_RPC(rpc_path, img_file):
     if os.path.isfile(rpc_file) is False:
         rpc_file = rpc_path + 'GRA_' + file_no_ext + '_0.up.rpc'
         if os.path.isfile(rpc_file) is False:
-            rpc_file = rpc_path + file_no_ext + '.up.rpc'
-            if os.path.isfile(rpc_file) is False:
-                rpc_file = rpc_path + file_no_ext + '_0.up.rpc'
-                if os.path.isfile(rpc_file) is False:
                     return None
 
     with open(rpc_file, 'r') as f:
@@ -122,11 +118,6 @@ if (len(sys.argv)) == 5:
     print('Using update RPCs from: ' + corrected_rpc_dir)
 else:
     print('Not using updated RPCs')
-
-# Pad the crop by the following percentage in width and height
-# This value should be 1 >= padding_percentage > 0
-# Setting padding_percentage to 0 disables padding.
-padding_percentage = 0
 
 elevation_range = 100
 
@@ -189,21 +180,6 @@ if AOI == 'D4':
 
     ll_lon = -81.67062242425624
     ll_lat = 30.32997669492018
-
-# Apply the padding if the value of padding_percentage > 0
-if padding_percentage > 0:
-    ulon_pad = ((ur_lon - ul_lon)*padding_percentage)/2
-    llon_pad = ((lr_lon - ll_lon)*padding_percentage)/2
-    ul_lon = ul_lon - ulon_pad
-    ur_lon = ur_lon + ulon_pad
-    lr_lon = lr_lon + llon_pad
-    ll_lon = ll_lon - llon_pad
-    llat_pad = ((ll_lat - ul_lat)*padding_percentage)/2
-    rlat_pad = ((lr_lat - ur_lat)*padding_percentage)/2
-    ul_lat = ul_lat - llat_pad
-    ur_lat = ur_lat - rlat_pad
-    lr_lat = lr_lat + rlat_pad
-    ll_lat = ll_lat + llat_pad
 
 working_dst_dir = dst_root_dir
 
