@@ -44,7 +44,7 @@ def parse_raytheon_rpc_file(fp):
             if line.strip() == '20':
                 data = []
                 for i in range(20):
-                    data.append(fp.next())
+                    data.append(fp.readline())
                 if powers:
                     powers = False
                     exp_mat = numpy.array([d.split() for d in data],
@@ -62,16 +62,16 @@ def parse_raytheon_rpc_file(fp):
     rpc = RPCModel()
     for line in fp:
         if line.startswith('# uvOffset_'):
-            line = fp.next()
+            line = fp.readline()
             rpc.image_offset = numpy.array(line.split(), dtype='float64')
         if line.startswith('# uvScale_'):
-            line = fp.next()
+            line = fp.readline()
             rpc.image_scale = numpy.array(line.split(), dtype='float64')
         if line.startswith('# xyzOffset_'):
-            line = fp.next()
+            line = fp.readline()
             rpc.world_offset = numpy.array(line.split(), dtype='float64')
         if line.startswith('# xyzScale_'):
-            line = fp.next()
+            line = fp.readline()
             rpc.world_scale = numpy.array(line.split(), dtype='float64')
         if line.startswith('# u=sample'):
             rpc.coeff[0:2, :] = parse_rational_poly(fp)
@@ -84,6 +84,5 @@ def read_raytheon_rpc_file(filename):
     """Read a Raytheon RPC file
     """
     if os.path.isfile(filename):
-        print("Reading RPC from ", filename)
         with open(filename, 'r') as f:
             return parse_raytheon_rpc_file(f)
