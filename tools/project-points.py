@@ -53,6 +53,8 @@ if args.create:
         gcpProjection = sourceImage.GetGCPProjection()
         gcps = sourceImage.GetGCPs()
         options = []
+        # ensure that space will be reserved for geographic corner coordinates
+        # (in DMS) to be set later
         if (driver.ShortName == "NITF" and not projection):
             options.append("ICORDS=G")
         destImage = driver.Create(
