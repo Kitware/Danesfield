@@ -11,7 +11,6 @@ are not available on the Windows platform. For Windows 10 users, the Windows
 Subsystem for Linux (WSL) allows you to run Linux within Windows.
 This environment has been verified on Ubuntu 16.04 running within WSL.
 
-<<<<<<< deployment/conda/README.rst
 Install Conda
 =============
 Conda3 is required to setup the environment using Python 3.  Follow the URL
@@ -19,12 +18,7 @@ below to install miniconda3 for your platform.  Plase ensure that you install
 Conda3 (for Python3) and not Conda2 or Anaconda.
 
 https://conda.io/miniconda.html
-=======
-Install Conda3
-==============
-Plase ensure that you install Conda3 (for Python3) and not Conda2 or Anaconda
-from miniconda site https://conda.io/miniconda.html
->>>>>>> deployment/conda/README.rst
+
 
 Create Core3D Conda Environment
 ===============================
