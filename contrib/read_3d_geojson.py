@@ -32,7 +32,7 @@ draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--input_img', default='../data/Dayton.tiff', help='Input geotiff file')
-parser.add_argument('--input_geojson', default='../data/dayton_small.geojson', help='Input osm file')
+parser.add_argument('--input_geojson', default='../data/Jacksonville/building_small.geojson', help='Input osm file')
 parser.add_argument('--scale' , type=float, default=0.2, help='Scale factor. We cannot deal with the images with original resolution')
 parser.add_argument('--cluster_thres' , type=float, default=100, help='Distance for building clustering')
 parser.add_argument('--move_thres' , type=float, default=40, help='Distance for edge matching')
@@ -50,9 +50,9 @@ draw_flag = False
 index = 0
 building_list = []
 for feature in layer:
-    bottom = feature.GetField("BASEELEV_M")
-    base_bottom = feature.GetField("BASE_M")
-    top = feature.GetField("TOPELEV_M")
+    bottom = feature.GetField("BaseElev3d")
+    #base_bottom = feature.GetField("BASE_M")
+    top = feature.GetField("TopElev3d")
     #print(feature.GetField("ID"))
     geon = feature.GetGeometryRef()
     polygon = geon.GetGeometryRef(0)
@@ -61,7 +61,7 @@ for feature in layer:
     #array = TColgp_Array1OfPnt(1, num_point)
     for i in range(0, num_point):
         pt = polygon.GetPoint(i)
-        poly.Add(gp_Pnt((pt[0]+84.05)*200, (pt[1]-39.78)*200, (bottom-270)/360.0))
+        poly.Add(gp_Pnt((pt[0]+81.65)*200, (pt[1]-30.31)*200, (bottom)/360.0))
         #print(pt[0],pt[1])
     
     poly.Build()
@@ -71,9 +71,9 @@ for feature in layer:
 
     # the linear path
     print(bottom)
-    starting_point = gp_Pnt(0., 0., (bottom-270)/360.)
+    starting_point = gp_Pnt(0., 0., (bottom)/360.)
 
-    end_point = gp_Pnt(0., 0., (top-270)/360.)
+    end_point = gp_Pnt(0., 0., (top)/360.)
     vec = gp_Vec(starting_point, end_point)
     path = BRepBuilderAPI_MakeEdge(starting_point, end_point).Edge()
     index = index + 1

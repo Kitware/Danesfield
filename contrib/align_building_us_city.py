@@ -24,6 +24,7 @@ draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--input_img', default='../data/Jacksonville/Jacksonville.tiff', help='Input geotiff file')
 #parser.add_argument('--input_osm', default='../data/Jacksonville/BLD2/jacksonville_2d_bldgs_2.shp', help='Input osm file')
+#parser.add_argument('--input_osm', default='../data/Jacksonville/Jacksonville.osm', help='Input osm file')
 parser.add_argument('--input_osm', default='../data/Jacksonville/Jacksonville.osm', help='Input osm file')
 #parser.add_argument('--input_img', default='../data/Dayton.tiff', help='Input geotiff file')
 #parser.add_argument('--input_osm', default='../data/Dayton_map.osm', help='Input osm file')
@@ -111,8 +112,8 @@ for feature in layer:
             shape_ptr = g
         else:
             shape_ptr = geom
-        for shape_idx in range(g.GetGeometryCount()):
-            polygon = g.GetGeometryRef(shape_idx)
+        for shape_idx in range(shape_ptr.GetGeometryCount()):
+            polygon = shape_ptr.GetGeometryRef(shape_idx)
             for i in range(0, polygon.GetPointCount()):
                 pt = polygon.GetPoint(i)
                 if pt[0]>left and pt[0]<right and pt[1]<top and pt[1]>bottom:
@@ -139,8 +140,8 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
             shape_ptr = g
         else:
             shape_ptr = geom
-        for shape_idx in range(g.GetGeometryCount()):
-            polygon = g.GetGeometryRef(shape_idx)
+        for shape_idx in range(shape_ptr.GetGeometryCount()):
+            polygon = shape_ptr.GetGeometryRef(shape_idx)
             poly_point_list = []
             for i in range(0, polygon.GetPointCount()):
                 pt = polygon.GetPoint(i)
@@ -197,7 +198,11 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
     for building in building_cluster:
         geom = building.GetGeometryRef()
         g = geom.GetGeometryRef(0)
-        for shape_idx in range(g.GetGeometryCount()):
+        if g.GetPointCount()<=0:
+            shape_ptr = g
+        else:
+            shape_ptr = geom
+        for shape_idx in range(shape_ptr.GetGeometryCount()):
             poly_array = poly_array_list[index]
             index = index+1
             for i in range(len(poly_array)):
