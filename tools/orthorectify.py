@@ -3,11 +3,12 @@ from danesfield import rpc
 import argparse
 import gdal
 import numpy
+import sys
 
 parser = argparse.ArgumentParser(
     description='Orthorectify an image given the DSM')
 parser.add_argument("source_image", help="Source image file name")
-parser.add_argument("dsm", help="Digital elevation model (DSM) image file name")
+parser.add_argument("dsm", help="Digital surface model (DSM) image file name")
 parser.add_argument("destination_image", help="Orthorectified image file name")
 args = parser.parse_args()
 
@@ -85,7 +86,7 @@ else:
     print("Driver {} does not supports Create().".format(driver))
     sys.exit(1)
 
-    
+
 # project the points
 minZ = numpy.amin(arrayZ)
 maxZ = numpy.amax(arrayZ)
@@ -110,7 +111,8 @@ if (numOut > 0):
 
 print("Copying point colors ...")
 intImgPoints = intImgPoints[:, validIdx]
-destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[intImgPoints[1], intImgPoints[0]]
+destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
+    intImgPoints[1], intImgPoints[0]]
 
 print("Write destination image ...")
 band = destImage.GetRasterBand(1)
