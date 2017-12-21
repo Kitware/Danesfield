@@ -18,11 +18,7 @@ NODATA_VALUE = 10000
 sourceImage = gdal.Open(args.source_image, gdal.GA_ReadOnly)
 if not sourceImage:
     exit(1)
-band = sourceImage.GetRasterBand(1)
-sourceRaster = band.ReadAsArray(
-    xoff=0, yoff=0,
-    win_xsize=sourceImage.RasterXSize, win_ysize=sourceImage.RasterYSize)
-print("Source raster shape {}".format(sourceRaster.shape))
+sourceBand = sourceImage.GetRasterBand(1)
 # read the RPC from RPC Metadata in the image file
 print("Reading RPC Metadata from {}".format(args.source_image))
 rpcMetaData = sourceImage.GetMetadata('RPC')
@@ -58,10 +54,15 @@ if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
     # (in DMS) to be set later
     if (driver.ShortName == "NITF" and not projection):
         options.append("ICORDS=G")
+    # If I try to use AddBand with GTiff I get:
+    # Dataset does not support the AddBand() method.
+    # So I create all bands using the same type at the begining
     destImage = driver.Create(
         args.destination_image, xsize=dsm.RasterXSize,
-        ysize=dsm.RasterYSize, bands=1, eType=gdal.GDT_UInt16,
+        ysize=dsm.RasterYSize,
+        bands=sourceImage.RasterCount, eType=sourceBand.DataType,
         options=options)
+
     if (projection):
         # georeference through affine geotransform
         destImage.SetProjection(projection)
@@ -79,9 +80,6 @@ if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
         # not implemented: compute arrayX, arrayY, arrayZ
         print("Not implemented yet")
         sys.exit(1)
-    destRaster = numpy.full(
-        (dsm.RasterYSize, dsm.RasterXSize), NODATA_VALUE,
-        dtype=numpy.float32)
 else:
     print("Driver {} does not supports Create().".format(driver))
     sys.exit(1)
@@ -99,28 +97,37 @@ imgPoints = model.project(numpy.array([arrayX, arrayY, arrayZ]).transpose())
 intImgPoints = imgPoints.astype(numpy.int).transpose()
 
 # find indicies of points that fall inside the image bounds
+sourceRaster = sourceBand.ReadAsArray(
+    xoff=0, yoff=0,
+    win_xsize=sourceImage.RasterXSize, win_ysize=sourceImage.RasterYSize)
+print("Source raster shape {}".format(sourceRaster.shape))
 validIdx = numpy.logical_and.reduce((intImgPoints[1] < sourceRaster.shape[0],
                                      intImgPoints[1] >= 0,
                                      intImgPoints[0] < sourceRaster.shape[1],
                                      intImgPoints[0] >= 0))
+intImgPoints = intImgPoints[:, validIdx]
 
 # keep only the points that are in the image
 numOut = numpy.size(validIdx) - numpy.count_nonzero(validIdx)
 if (numOut > 0):
     print("Skipped {} points outside of image".format(numOut))
 
-print("Copying point colors ...")
-intImgPoints = intImgPoints[:, validIdx]
-destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
-    intImgPoints[1], intImgPoints[0]]
+for bandIndex in range(1, sourceImage.RasterCount + 1):
+    print("Processing band {} ...".format(bandIndex))
+    if bandIndex > 1:
+        sourceBand = sourceImage.GetRasterBand(bandIndex)
+        sourceRaster = sourceBand.ReadAsArray(
+            xoff=0, yoff=0, win_xsize=sourceImage.RasterXSize,
+            win_ysize=sourceImage.RasterYSize)
 
-print("Write destination image ...")
-band = destImage.GetRasterBand(1)
-band.SetNoDataValue(NODATA_VALUE)
-band.WriteArray(destRaster)
+    print("Copying colors ...")
+    destRaster = numpy.full(
+        (dsm.RasterYSize, dsm.RasterXSize), NODATA_VALUE,
+        dtype=sourceRaster.dtype)
+    destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
+        intImgPoints[1], intImgPoints[0]]
 
-# close files
-print("Close files ...")
-sourceImage = None
-dsm = None
-destImage = None
+    print("Write band ...")
+    destBand = destImage.GetRasterBand(bandIndex)
+    destBand.SetNoDataValue(NODATA_VALUE)
+    destBand.WriteArray(destRaster)

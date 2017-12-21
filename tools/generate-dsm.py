@@ -1,11 +1,10 @@
 import argparse
 import os
 import pdal
-import subprocess
-from subprocess import call
+import gdal
 
 parser = argparse.ArgumentParser(
-    description='Generate a Digital Surface Model (DSM) image from a point cloud')
+    description='Generate a Digital Surface Model (DSM) from a point cloud')
 parser.add_argument("source_points", help="Source points file name")
 parser.add_argument("destination_image", help="Destination image file name")
 parser.add_argument("--gsd", help="Ground sample distance")
@@ -37,7 +36,5 @@ pipeline.validate()  # check if our JSON and options were good
 count = pipeline.execute()
 
 print("Converting to EPSG:4326 ...")
-call_args = ["gdalwarp", "-t_srs", "EPSG:4326",
-             tempImage, args.destination_image]
-subprocess.call(call_args)
+gdal.Warp(args.destination_image, tempImage, dstSRS="EPSG:4326")
 os.remove(tempImage)
