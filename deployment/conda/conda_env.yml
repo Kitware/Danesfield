@@ -15,6 +15,7 @@ dependencies:
 - pdal
 - pyproj
 - scipy
+- vtk
 - six
 - requests
 - shapely
