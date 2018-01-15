@@ -13,6 +13,7 @@ channels:
 dependencies:
 - gdal
 - pdal
+- pyproj
 - six
 - requests
 - shapely

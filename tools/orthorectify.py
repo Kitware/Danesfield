@@ -2,6 +2,8 @@ from danesfield import rpc
 
 import argparse
 import gdal
+import osr
+import pyproj
 import numpy
 import sys
 
@@ -83,6 +85,14 @@ if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
 else:
     print("Driver {} does not supports Create().".format(driver))
     sys.exit(1)
+
+
+# convert coordinates to Long/Lat
+srs = osr.SpatialReference(wkt=projection)
+proj_srs = srs.ExportToProj4()
+inProj = pyproj.Proj(proj_srs)
+outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
+arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
 
 
 # project the points
