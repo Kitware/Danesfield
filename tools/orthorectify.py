@@ -12,6 +12,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument("source_image", help="Source image file name")
 parser.add_argument("dsm", help="Digital surface model (DSM) image file name")
 parser.add_argument("destination_image", help="Orthorectified image file name")
+parser.add_argument('-t', "--occlusion-thresh", type=float, default=1.0,
+                    help="Threshold on height difference for detecting "
+                    "and masking occlused regions (in meters)")
 args = parser.parse_args()
 
 NODATA_VALUE = 10000
@@ -131,22 +134,24 @@ if (numOut > 0):
     print("Skipped {} points outside of image".format(numOut))
 
 # use a height map to test for occlusion
-print("Mapping occluded points")
-valid_arrayZ = arrayZ[validIdx]
-# render a height map in the source image space
-height_map = numpy.full(sourceRaster.shape, -numpy.inf, dtype=numpy.float32)
-height_map[intImgPoints[1], intImgPoints[0]] = valid_arrayZ
+if (args.occlusion_thresh > 0):
+    print("Mapping occluded points")
+    valid_arrayZ = arrayZ[validIdx]
+    # render a height map in the source image space
+    height_map = numpy.full(sourceRaster.shape, -numpy.inf, dtype=numpy.float32)
+    height_map[intImgPoints[1], intImgPoints[0]] = valid_arrayZ
 
-# get a mask of points that locally are (approximately)
-# the highest point in the map
-is_max_height = height_map[intImgPoints[1], intImgPoints[0]] <= valid_arrayZ + 1
-num_occluded = numpy.size(is_max_height) - numpy.count_nonzero(is_max_height)
-print("Skipped {} occluded points".format(num_occluded))
+    # get a mask of points that locally are (approximately)
+    # the highest point in the map
+    is_max_height = height_map[intImgPoints[1], intImgPoints[0]] \
+                    <= valid_arrayZ + args.occlusion_thresh
+    num_occluded = numpy.size(is_max_height) - numpy.count_nonzero(is_max_height)
+    print("Skipped {} occluded points".format(num_occluded))
 
-# keep only non-occluded image points
-intImgPoints = intImgPoints[:, is_max_height]
-# disable occluded points in the valid pixel mask
-validIdx[numpy.nonzero(validIdx)[0][numpy.logical_not(is_max_height)]] = False
+    # keep only non-occluded image points
+    intImgPoints = intImgPoints[:, is_max_height]
+    # disable occluded points in the valid pixel mask
+    validIdx[numpy.nonzero(validIdx)[0][numpy.logical_not(is_max_height)]] = False
 
 for bandIndex in range(1, sourceImage.RasterCount + 1):
     print("Processing band {} ...".format(bandIndex))
