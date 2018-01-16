@@ -5,6 +5,7 @@ import gdal
 import osr
 import pyproj
 import numpy
+from scipy.ndimage import morphology
 import sys
 
 parser = argparse.ArgumentParser(
@@ -15,6 +16,9 @@ parser.add_argument("destination_image", help="Orthorectified image file name")
 parser.add_argument('-t', "--occlusion-thresh", type=float, default=1.0,
                     help="Threshold on height difference for detecting "
                     "and masking occlused regions (in meters)")
+parser.add_argument('-d', "--denoise-radius", type=int, default=1,
+                    help="Apply morphological operations with this radius "
+                    "to the DSM reduce speckled noise")
 args = parser.parse_args()
 
 NODATA_VALUE = 10000
@@ -38,6 +42,13 @@ dsmRaster = band.ReadAsArray(
     xoff=0, yoff=0,
     win_xsize=dsm.RasterXSize, win_ysize=dsm.RasterYSize)
 print("DSM raster shape {}".format(dsmRaster.shape))
+
+# apply morphology to denoise the DSM
+if (args.denoise_radius > 0):
+    r = 2 * args.denoise_radius + 1
+    morph_struct = numpy.ones((r,r), dtype=numpy.int)
+    dsmRaster = morphology.grey_opening(dsmRaster, structure=morph_struct)
+    dsmRaster = morphology.grey_closing(dsmRaster, structure=morph_struct)
 
 # create the rectified image
 driver = dsm.GetDriver()
