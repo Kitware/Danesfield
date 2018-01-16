@@ -94,6 +94,14 @@ inProj = pyproj.Proj(proj_srs)
 outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
 arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
 
+# Sort the points by height so that higher points project last
+print("Sorting by Height")
+heightIdx = numpy.argsort(arrayZ)
+arrayX = arrayX[heightIdx]
+arrayY = arrayY[heightIdx]
+arrayZ = arrayZ[heightIdx]
+lines = lines[heightIdx]
+pixels = pixels[heightIdx]
 
 # project the points
 minZ = numpy.amin(arrayZ)
@@ -121,6 +129,24 @@ intImgPoints = intImgPoints[:, validIdx]
 numOut = numpy.size(validIdx) - numpy.count_nonzero(validIdx)
 if (numOut > 0):
     print("Skipped {} points outside of image".format(numOut))
+
+# use a height map to test for occlusion
+print("Mapping occluded points")
+valid_arrayZ = arrayZ[validIdx]
+# render a height map in the source image space
+height_map = numpy.full(sourceRaster.shape, -numpy.inf, dtype=numpy.float32)
+height_map[intImgPoints[1], intImgPoints[0]] = valid_arrayZ
+
+# get a mask of points that locally are (approximately)
+# the highest point in the map
+is_max_height = height_map[intImgPoints[1], intImgPoints[0]] <= valid_arrayZ + 1
+num_occluded = numpy.size(is_max_height) - numpy.count_nonzero(is_max_height)
+print("Skipped {} occluded points".format(num_occluded))
+
+# keep only non-occluded image points
+intImgPoints = intImgPoints[:, is_max_height]
+# disable occluded points in the valid pixel mask
+validIdx[numpy.nonzero(validIdx)[0][numpy.logical_not(is_max_height)]] = False
 
 for bandIndex in range(1, sourceImage.RasterCount + 1):
     print("Processing band {} ...".format(bandIndex))
