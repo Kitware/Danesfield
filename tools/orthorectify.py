@@ -15,7 +15,7 @@ parser.add_argument("dsm", help="Digital surface model (DSM) image file name")
 parser.add_argument("destination_image", help="Orthorectified image file name")
 parser.add_argument('-t', "--occlusion-thresh", type=float, default=1.0,
                     help="Threshold on height difference for detecting "
-                    "and masking occlused regions (in meters)")
+                    "and masking occluded regions (in meters)")
 parser.add_argument('-d', "--denoise-radius", type=float, default=2,
                     help="Apply morphological operations with this radius "
                     "to the DSM reduce speckled noise")
