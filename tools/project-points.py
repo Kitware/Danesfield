@@ -17,12 +17,9 @@ parser.add_argument("--raytheon-rpc", type=str,
                     help="Raytheon RPC file name. If not provided, "
                     "the RPC is read from the source_image")
 parser.add_argument(
-    "--create", action='store_true',
-    help="Create an new image with a band height of type float."
-    " By default, this script copies the source image so "
-    "the height is quantized to int")
+    "--type", choices=["uint8", "uint16", "float32"],
+    help="Specify the type for the height band, default is float32.")
 args = parser.parse_args()
-MAX_VALUE = 65535
 
 # open the GDAL file
 sourceImage = gdal.Open(args.source_image, gdal.GA_ReadOnly)
@@ -42,53 +39,49 @@ else:
 driver = sourceImage.GetDriver()
 driverMetadata = driver.GetMetadata()
 destImage = None
-if args.create:
-    if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
-        print("Create destination image (height is float), "
-              "size:({}, {}) ...".format(sourceImage.RasterXSize,
-                                         sourceImage.RasterYSize))
-        # georeference information
-        projection = sourceImage.GetProjection()
-        transform = sourceImage.GetGeoTransform()
-        gcpProjection = sourceImage.GetGCPProjection()
-        gcps = sourceImage.GetGCPs()
-        options = []
-        # ensure that space will be reserved for geographic corner coordinates
-        # (in DMS) to be set later
-        if (driver.ShortName == "NITF" and not projection):
-            options.append("ICORDS=G")
-        destImage = driver.Create(
-            args.destination_image, xsize=sourceImage.RasterXSize,
-            ysize=sourceImage.RasterYSize, bands=1, eType=gdal.GDT_Float32,
-            options=options)
-        if (projection):
-            # georeference through affine geotransform
-            destImage.SetProjection(projection)
-            destImage.SetGeoTransform(transform)
-        else:
-            # georeference through GCPs
-            destImage.SetGCPs(gcps, gcpProjection)
-        raster = numpy.zeros(
-            (sourceImage.RasterYSize, sourceImage.RasterXSize),
-            dtype=numpy.float32)
+if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
+    print("Create destination image (height is {}), "
+          "size:({}, {}) ...".format("float32" if not args.type else args.type,
+                                     sourceImage.RasterXSize,
+                                     sourceImage.RasterYSize))
+    # georeference information
+    projection = sourceImage.GetProjection()
+    transform = sourceImage.GetGeoTransform()
+    gcpProjection = sourceImage.GetGCPProjection()
+    gcps = sourceImage.GetGCPs()
+    options = []
+    # ensure that space will be reserved for geographic corner coordinates
+    # (in DMS) to be set later
+    if (driver.ShortName == "NITF" and not projection):
+        options.append("ICORDS=G")
+    if (args.type == "uint8"):
+        eType = gdal.GDT_Byte
+        dtype = numpy.uint8
+        MAX_VALUE = 255
+    elif (args.type == "uint16"):
+        eType = gdal.GDT_UInt16
+        dtype = numpy.uint16
+        MAX_VALUE = 65535
     else:
-        print("Driver {} does not supports Create().".format(driver))
-        sys.exit(1)
+        eType = gdal.GDT_Float32
+        dtype = numpy.float32
+    destImage = driver.Create(
+        args.destination_image, xsize=sourceImage.RasterXSize,
+        ysize=sourceImage.RasterYSize, bands=1, eType=eType,
+        options=options)
+    if (projection):
+        # georeference through affine geotransform
+        destImage.SetProjection(projection)
+        destImage.SetGeoTransform(transform)
+    else:
+        # georeference through GCPs
+        destImage.SetGCPs(gcps, gcpProjection)
+    raster = numpy.zeros(
+        (sourceImage.RasterYSize, sourceImage.RasterXSize),
+        dtype=dtype)
 else:
-    if driverMetadata.get(gdal.DCAP_CREATECOPY) == "YES":
-        print("Copy source to destination image (height is int16), "
-              "size:({}, {}) ...".format(sourceImage.RasterXSize,
-                                         sourceImage.RasterYSize))
-        destImage = driver.CreateCopy(
-            args.destination_image, sourceImage, strict=0)
-        # create an emtpy image
-        raster = numpy.zeros(
-            (sourceImage.RasterYSize, sourceImage.RasterXSize),
-            dtype=numpy.uint16)
-    else:
-        print(
-            "Driver {} does not supports CreateCopy().".format(driver))
-        sys.exit(1)
+    print("Driver {} does not supports Create().".format(driver))
+    sys.exit(1)
 
 # read the pdal file and project the points
 json = u"""
@@ -143,16 +136,16 @@ numOut = numpy.size(validIdx) - numpy.count_nonzero(validIdx)
 if (numOut > 0):
     print("Skipped {} points outside of image".format(numOut))
 intImgPoints = intImgPoints[:, validIdx]
-if (args.create):
-    arrayZ = arrayZ[validIdx]
-    print("Rendering Image")
-    raster[intImgPoints[1], intImgPoints[0]] = arrayZ
-else:
+if (args.type == "uint16" or args.type == "uint8"):
     quantizedZ = ((arrayZ - minZ) * MAX_VALUE / (maxZ - minZ)).astype(
         numpy.int)
     quantizedZ = quantizedZ[validIdx]
     print("Rendering Image")
     raster[intImgPoints[1], intImgPoints[0]] = quantizedZ
+else:
+    arrayZ = arrayZ[validIdx]
+    print("Rendering Image")
+    raster[intImgPoints[1], intImgPoints[0]] = arrayZ
 
 # Write the image
 print("Write destination image ...")
