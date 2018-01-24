@@ -29,6 +29,9 @@ import gdalconst
 import gdalnumeric
 import gdal
 
+import ogr
+import osr
+
 
 def gdal_get_transform(src_image):
     geo_trans = src_image.GetGeoTransform()
@@ -188,7 +191,6 @@ for root, dirs, files in os.walk(src_root_dir):
         new_root = root.replace(src_root_dir, dst_root_dir)
         if not os.path.exists(new_root):
             os.makedirs(new_root)
-
         ext = os.path.splitext(file_)[-1].lower()
         if ext != ".ntf":
             continue
@@ -307,6 +309,24 @@ for root, dirs, files in os.walk(src_root_dir):
         gdalnumeric.CopyDatasetInfo(src_image, output_dataset,
                                     xoff=ul_x, yoff=ul_y)
 
+        # Add GCPs to dest
+        if src_image.GetGCPCount():
+            outgcps = []
+            gcps = src_image.GetGCPs()
+
+            for gcp in gcps:
+                if (gcp.Id == 'UpperLeft'):
+                    newGCP = gdal.GCP(ul_lon, ul_lat, 0, 0, 0, gcp.Info, gcp.Id)
+                elif (gcp.Id == 'UpperRight'):
+                    newGCP = gdal.GCP(ur_lon, ur_lat, 0, px_width, 0, gcp.Info, gcp.Id)
+                elif (gcp.Id == 'LowerRight'):
+                    newGCP = gdal.GCP(lr_lon, lr_lat, 0, px_width, px_height, gcp.Info, gcp.Id)
+                elif (gcp.Id == 'LowerLeft'):
+                    newGCP = gdal.GCP(ll_lon, ll_lat, 0, 0, px_height, gcp.Info, gcp.Id)
+
+                outgcps.append(newGCP)
+            output_dataset.SetGCPs(outgcps, gdal_get_projection(src_image))
+
         # End logging, print blank line for clarity
         print('')
         bands = src_image.RasterCount
@@ -336,4 +356,5 @@ for root, dirs, files in os.walk(src_root_dir):
 
             output_dataset.SetGeoTransform(geo_trans)
             output_dataset.SetProjection(gdal_get_projection(src_image))
+
             outfile = None
