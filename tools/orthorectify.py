@@ -21,9 +21,6 @@ parser.add_argument('-d', "--denoise-radius", type=float, default=2,
                     "to the DSM reduce speckled noise")
 args = parser.parse_args()
 
-NODATA_VALUE = 10000
-
-
 def circ_structure(n):
     """generate a circular binary mask of radius n for morphology
     """
@@ -53,7 +50,7 @@ dsmRaster = band.ReadAsArray(
 print("DSM raster shape {}".format(dsmRaster.shape))
 
 # apply morphology to denoise the DSM
-if (args.denoise_radius > 0):
+if (args.occlusion_thresh > 0 and args.denoise_radius > 0):
     morph_struct = circ_structure(args.denoise_radius)
     dsmRaster = morphology.grey_opening(dsmRaster, structure=morph_struct)
     dsmRaster = morphology.grey_closing(dsmRaster, structure=morph_struct)
@@ -117,13 +114,14 @@ outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
 arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
 
 # Sort the points by height so that higher points project last
-print("Sorting by Height")
-heightIdx = numpy.argsort(arrayZ)
-arrayX = arrayX[heightIdx]
-arrayY = arrayY[heightIdx]
-arrayZ = arrayZ[heightIdx]
-lines = lines[heightIdx]
-pixels = pixels[heightIdx]
+if (args.occlusion_thresh > 0):
+    print("Sorting by Height")
+    heightIdx = numpy.argsort(arrayZ)
+    arrayX = arrayX[heightIdx]
+    arrayY = arrayY[heightIdx]
+    arrayZ = arrayZ[heightIdx]
+    lines = lines[heightIdx]
+    pixels = pixels[heightIdx]
 
 # project the points
 minZ = numpy.amin(arrayZ)
@@ -181,13 +179,14 @@ for bandIndex in range(1, sourceImage.RasterCount + 1):
             win_ysize=sourceImage.RasterYSize)
 
     print("Copying colors ...")
+    nodata_value = sourceBand.GetNoDataValue()
     destRaster = numpy.full(
-        (dsm.RasterYSize, dsm.RasterXSize), NODATA_VALUE,
+        (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
         dtype=sourceRaster.dtype)
     destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
         intImgPoints[1], intImgPoints[0]]
 
     print("Write band ...")
     destBand = destImage.GetRasterBand(bandIndex)
-    destBand.SetNoDataValue(NODATA_VALUE)
+    destBand.SetNoDataValue(nodata_value)
     destBand.WriteArray(destRaster)
