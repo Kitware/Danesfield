@@ -95,7 +95,7 @@ for out_idx, in_idx in enumerate(rgb_bands, 1):
     # mask out pixels with no valid value
     in_no_data_val = in_band.GetNoDataValue()
     mask = in_data == in_no_data_val
-    valid_data = in_data[numpy.logical_not(mask)].flatten()
+    valid_data = in_data[numpy.logical_not(mask)]
 
     # robustly find a range for intensity scaling
     min_p = args.range_percentile
