@@ -50,7 +50,7 @@ dsmRaster = band.ReadAsArray(
 print("DSM raster shape {}".format(dsmRaster.shape))
 
 # apply morphology to denoise the DSM
-if (args.occlusion_thresh > 0 and args.denoise_radius > 0):
+if (args.denoise_radius > 0):
     morph_struct = circ_structure(args.denoise_radius)
     dsmRaster = morphology.grey_opening(dsmRaster, structure=morph_struct)
     dsmRaster = morphology.grey_closing(dsmRaster, structure=morph_struct)
