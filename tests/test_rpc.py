@@ -1,5 +1,7 @@
 from danesfield.rpc import RPCModel, rpc_from_gdal_dict
 
+import numpy
+
 # sample RPC metadata read by GDAL from the following 2016 MVS Benchmark image
 # 01SEP15WV031000015SEP01135603-P1BS-500497284040_01_P001_________AAE_0AAAAABPABP0.NTF
 rpc_md = {
@@ -70,6 +72,7 @@ def test_rpc_back_projection():
     img_pt = model.project(points[0])
     bp = model.back_project(img_pt, points[0][2])
     print("diff: ", bp - points[0])
+    assert numpy.max(numpy.abs(bp - points[0])) < 1e-16
 
 
 def test_rpc_multi_back_projection():
@@ -78,3 +81,4 @@ def test_rpc_multi_back_projection():
     print("Running multi-point back projection")
     bp = model.back_project(img_pts, [p[2] for p in points])
     print("diff: ", bp - points)
+    assert numpy.max(numpy.abs(bp - points)) < 1e-16
