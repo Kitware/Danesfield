@@ -39,6 +39,40 @@ class RPCModel(object):
         self.image_offset = numpy.zeros((1, 2), dtype=dtype)
         self.image_scale = numpy.ones((1, 2), dtype=dtype)
 
+    def compute_partial_deriv_coeffs(self):
+        """Compute the coefficients of the partial derivatives of the
+        polynomials in the RPC with respect to X and Y
+        """
+        self.dx_coeff = numpy.zeros((4, 20), dtype=self.coeff.dtype)
+        dx_ind = [1, 7, 4, 5, 14, 17, 10, 11, 12, 13]
+        self.dx_coeff[:, :10] = self.coeff[:, dx_ind]
+        self.dx_coeff[:, [1, 4, 5]] *= 2
+        self.dx_coeff[:, 7] *= 3
+
+        self.dy_coeff = numpy.zeros((4, 20), dtype=self.coeff.dtype)
+        dy_ind = [2, 4, 8, 6, 12, 10, 18, 14, 15, 16]
+        self.dy_coeff[:, :10] = self.coeff[:, dy_ind]
+        self.dy_coeff[:, [2, 4, 6]] *= 2
+        self.dy_coeff[:, 8] *= 3
+
+    def jacobian(self, point):
+        """Compute the Jacobian of the RPC at the given normalized world point
+
+        Currently this only computes the 2x2 Jacobian for X and Y parameters.
+        This funciton also returns the projected point in normalized coordinates
+        """
+        pv = self.power_vector(point)
+        polys = numpy.dot(self.coeff, pv)
+        dx_polys = numpy.dot(self.dx_coeff, pv)
+        dy_polys = numpy.dot(self.dy_coeff, pv)
+        J = numpy.empty((2,2), dtype=self.coeff.dtype)
+        J[0,0] = (polys[1]*dx_polys[0] - polys[0]*dx_polys[1]) / (polys[1]**2)
+        J[0,1] = (polys[1]*dy_polys[0] - polys[0]*dy_polys[1]) / (polys[1]**2)
+        J[1,0] = (polys[3]*dx_polys[2] - polys[2]*dx_polys[3]) / (polys[3]**2)
+        J[1,1] = (polys[3]*dy_polys[2] - polys[2]*dy_polys[3]) / (polys[3]**2)
+        norm_pt = numpy.array([polys[0] / polys[1], polys[2] / polys[3]])
+        return J, norm_pt
+
     @staticmethod
     def power_vector(point):
         """Compute the vector of polynomial terms
@@ -111,10 +145,20 @@ class RPCModel(object):
 
         init_pt = numpy.empty((len(lx), 3))
         init_pt[:,2] = h
+        self.compute_partial_deriv_coeffs()
         for i in range(len(lx)):
             B = numpy.stack((Bx[i], By[i]))
             l = numpy.stack((lx[i], ly[i]))
             init_pt[i,0:2] = numpy.linalg.solve(B,l)
+            nip = numpy.reshape(norm_img_pt, (-1,2))[i]
+            # Apply gradient descent until convergence
+            # typically this only takes 2 or 3 iterations
+            for k in range(10):
+                J, pt = self.jacobian(init_pt[i])
+                step = numpy.linalg.solve(J, nip - pt)
+                init_pt[i,0:2] += step
+                if numpy.max(numpy.abs(step)) < 1e-16:
+                    break
         return init_pt * self.world_scale + self.world_offset
 
 
