@@ -132,11 +132,13 @@ class RPCModel(object):
         solver to find the solution and is more expensive to compute than the
         forward projection
         """
+        # map the image point and elevation to normalized space
         norm_img_pt = (numpy.array(image_point) - self.image_offset) \
             / self.image_scale
         norm_elev = (numpy.array(elev) - self.world_offset[2]) \
             / self.world_scale[2]
 
+        # assign some short variable names
         x = norm_img_pt.transpose()[0]
         y = norm_img_pt.transpose()[1]
         h = norm_elev
@@ -146,7 +148,7 @@ class RPCModel(object):
         # a least squares solution to invert the mapping.
         # Note: the coefficients for initialization are computed in vetorized
         # fashion for all points, but the equations are solved in the loop
-        # below over for one point at a time.
+        # below for one point at a time.
         Ax = self.coeff[0, 1:3] - numpy.outer(x, self.coeff[1, 1:3])
         bx = (self.coeff[1, 0] + self.coeff[1, 3] * h) * x \
             - (self.coeff[0, 0] + self.coeff[0, 3] * h)
