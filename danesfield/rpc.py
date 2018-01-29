@@ -71,7 +71,7 @@ class RPCModel(object):
                             xyz, xxx, xyy, xzz, xxy, yyy, yzz, xxz, yyz, zzz])
 
     def project(self, point):
-        """Project a long, lat, alt point into image coordinates
+        """Project a long, lat, elev point into image coordinates
 
         This function can also project an (n,3) matrix where each row of the
         matrix is a point to project.  The result is an (n,2) matrix of image
@@ -81,6 +81,42 @@ class RPCModel(object):
         polys = numpy.dot(self.coeff, self.power_vector(norm_pt))
         img_pt = numpy.array([polys[0] / polys[1], polys[2] / polys[3]])
         return img_pt.transpose() * self.image_scale + self.image_offset
+
+    def back_project(self, image_point, elev):
+        """Back project an image point with known elevation to long, lat
+
+        This is the inverse of the project() function assuming that the
+        elevation to project to is known.  This function requires an iterative
+        solver to find the solution and is more expensive to compute than the
+        forward projection
+        """
+        norm_img_pt = (numpy.array(image_point) - self.image_offset) \
+                    / self.image_scale
+        norm_elev = (numpy.array(elev) - self.world_offset[2]) \
+                  /  self.world_scale[2]
+
+        x = norm_img_pt.transpose()[0]
+        y = norm_img_pt.transpose()[1]
+        h = norm_elev
+
+        # Use a first order approximate to the RPC to solve for an initial guess
+        Bx = self.coeff[0,1:3] - numpy.outer(x, self.coeff[1,1:3])
+        lx = x * (self.coeff[1,0] + self.coeff[1,3] * h) \
+               - (self.coeff[0,0] + self.coeff[0,3] * h)
+        lx = numpy.reshape(lx, (-1))
+        By = self.coeff[2,1:3] - numpy.outer(y, self.coeff[3,1:3])
+        ly = y * (self.coeff[3,0] + self.coeff[3,3] * h) \
+               - (self.coeff[2,0] + self.coeff[2,3] * h)
+        ly = numpy.reshape(ly, (-1))
+
+        init_pt = numpy.empty((len(lx), 3))
+        init_pt[:,2] = h
+        for i in range(len(lx)):
+            B = numpy.stack((Bx[i], By[i]))
+            l = numpy.stack((lx[i], ly[i]))
+            init_pt[i,0:2] = numpy.linalg.solve(B,l)
+        return init_pt * self.world_scale + self.world_offset
+
 
 
 def rpc_from_gdal_dict(md_dict):
