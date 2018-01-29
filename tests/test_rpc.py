@@ -64,11 +64,13 @@ def test_rpc_multi_projection():
     model = rpc_from_gdal_dict(rpc_md)
     print(model.project(points))
 
+
 def test_rpc_back_projection():
     model = rpc_from_gdal_dict(rpc_md)
     img_pt = model.project(points[0])
     bp = model.back_project(img_pt, points[0][2])
     print("diff: ", bp - points[0])
+
 
 def test_rpc_multi_back_projection():
     model = rpc_from_gdal_dict(rpc_md)
