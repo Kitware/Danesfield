@@ -43,15 +43,13 @@ class RPCModel(object):
         """Compute the coefficients of the partial derivatives of the
         polynomials in the RPC with respect to X and Y
         """
-        self.dx_coeff = numpy.zeros((4, 20), dtype=self.coeff.dtype)
         dx_ind = [1, 7, 4, 5, 14, 17, 10, 11, 12, 13]
-        self.dx_coeff[:, :10] = self.coeff[:, dx_ind]
+        self.dx_coeff = self.coeff[:, dx_ind]
         self.dx_coeff[:, [1, 4, 5]] *= 2
         self.dx_coeff[:, 7] *= 3
 
-        self.dy_coeff = numpy.zeros((4, 20), dtype=self.coeff.dtype)
         dy_ind = [2, 4, 8, 6, 12, 10, 18, 14, 15, 16]
-        self.dy_coeff[:, :10] = self.coeff[:, dy_ind]
+        self.dy_coeff = self.coeff[:, dy_ind]
         self.dy_coeff[:, [2, 4, 6]] *= 2
         self.dy_coeff[:, 8] *= 3
 
@@ -63,8 +61,8 @@ class RPCModel(object):
         """
         pv = self.power_vector(point)
         polys = numpy.dot(self.coeff, pv)
-        dx_polys = numpy.dot(self.dx_coeff, pv)
-        dy_polys = numpy.dot(self.dy_coeff, pv)
+        dx_polys = numpy.dot(self.dx_coeff, pv[:10])
+        dy_polys = numpy.dot(self.dy_coeff, pv[:10])
         J = numpy.empty((2,2), dtype=self.coeff.dtype)
         J[0,0] = (polys[1]*dx_polys[0] - polys[0]*dx_polys[1]) / (polys[1]**2)
         J[0,1] = (polys[1]*dy_polys[0] - polys[0]*dy_polys[1]) / (polys[1]**2)
