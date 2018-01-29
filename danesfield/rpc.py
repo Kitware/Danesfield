@@ -43,6 +43,10 @@ class RPCModel(object):
         """Compute the coefficients of the partial derivatives of the
         polynomials in the RPC with respect to X and Y
         """
+        # Since these are polynomials, the partial derivatives end up
+        # being another polynomial with a subset of permuted coeffiecients.
+        # Coefficients from higher order powers also need to be multipled
+        # by the exponent.
         dx_ind = [1, 7, 4, 5, 14, 17, 10, 11, 12, 13]
         self.dx_coeff = self.coeff[:, dx_ind]
         self.dx_coeff[:, [1, 4, 5]] *= 2
@@ -60,14 +64,19 @@ class RPCModel(object):
         This funciton also returns the projected point in normalized coordinates
         """
         pv = self.power_vector(point)
+        # evaluate the polynomials
         polys = numpy.dot(self.coeff, pv)
         dx_polys = numpy.dot(self.dx_coeff, pv[:10])
         dy_polys = numpy.dot(self.dy_coeff, pv[:10])
+
         J = numpy.empty((2,2), dtype=self.coeff.dtype)
+        # use the quotient rule to evaluate the partial derivatives
         J[0,0] = (polys[1]*dx_polys[0] - polys[0]*dx_polys[1]) / (polys[1]**2)
         J[0,1] = (polys[1]*dy_polys[0] - polys[0]*dy_polys[1]) / (polys[1]**2)
         J[1,0] = (polys[3]*dx_polys[2] - polys[2]*dx_polys[3]) / (polys[3]**2)
         J[1,1] = (polys[3]*dy_polys[2] - polys[2]*dy_polys[3]) / (polys[3]**2)
+
+        # also evaluate the projected point in normalized coordinates
         norm_pt = numpy.array([polys[0] / polys[1], polys[2] / polys[3]])
         return J, norm_pt
 
@@ -141,23 +150,33 @@ class RPCModel(object):
                - (self.coeff[2,0] + self.coeff[2,3] * h)
         ly = numpy.reshape(ly, (-1))
 
-        init_pt = numpy.empty((len(lx), 3))
-        init_pt[:,2] = h
+
+        # make sure the partial derivatives are up to date
         self.compute_partial_deriv_coeffs()
+
+        # allocate a matrix for the solution
+        soln = numpy.empty((len(lx), 3))
+        # copy in the known heights
+        soln[:,2] = h
+        # iterate over each point to solve
         for i in range(len(lx)):
             B = numpy.stack((Bx[i], By[i]))
             l = numpy.stack((lx[i], ly[i]))
-            init_pt[i,0:2] = numpy.linalg.solve(B,l)
+            # compute the first-order initial solution
+            soln[i,0:2] = numpy.linalg.solve(B,l)
+            # get the true normalized image point in the correct shape
             nip = numpy.reshape(norm_img_pt, (-1,2))[i]
             # Apply gradient descent until convergence
             # typically this only takes 2 or 3 iterations
             for k in range(10):
-                J, pt = self.jacobian(init_pt[i])
+                # evaluate the jacobian and projection at the current solution
+                J, pt = self.jacobian(soln[i])
+                # solve for the next incremental step
                 step = numpy.linalg.solve(J, nip - pt)
-                init_pt[i,0:2] += step
+                soln[i,0:2] += step
                 if numpy.max(numpy.abs(step)) < 1e-16:
                     break
-        return init_pt * self.world_scale + self.world_offset
+        return soln * self.world_scale + self.world_offset
 
 
 
