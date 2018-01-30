@@ -61,7 +61,7 @@ projection = msi_image.GetProjection()
 transform = msi_image.GetGeoTransform()
 gcpProjection = msi_image.GetGCPProjection()
 gcps = msi_image.GetGCPs()
-options = ["PHOTOMETRIC=RGB"]
+options = ["PHOTOMETRIC=RGB", "COMPRESS=DEFLATE"]
 # ensure that space will be reserved for geographic corner coordinates
 # (in DMS) to be set later
 if (driver.ShortName == "NITF" and not projection):

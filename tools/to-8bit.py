@@ -36,10 +36,11 @@ projection = source_image.GetProjection()
 transform = source_image.GetGeoTransform()
 gcpProjection = source_image.GetGCPProjection()
 gcps = source_image.GetGCPs()
+options = ["COMPRESS=DEFLATE"]
 # ensure that space will be reserved for geographic corner coordinates
 # (in DMS) to be set later
 if (driver.ShortName == "NITF" and not projection):
-    options = ["ICORDS=G"]
+    options.append("ICORDS=G")
 dest_image = driver.Create(args.destination_image,
                            xsize=source_image.RasterXSize,
                            ysize=source_image.RasterYSize,
