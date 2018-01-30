@@ -1,9 +1,10 @@
-###################################
-Setup Core3D development environent
-###################################
+####################################
+Setup Core3D Development Environment
+####################################
 
 This document describes how to setup a development environment for the
-Core3D using Conda. Please follow the instructions step-by-step.
+CORE3D Danesfield project using Conda. Please follow the instructions
+step-by-step.
 
 Currently, the environment is tested only on Mac OS and Linux and not on
 Windows. The environment may not work on Windows because some binary packages
@@ -14,7 +15,7 @@ This environment has been verified on Ubuntu 16.04 running within WSL.
 Install Conda
 =============
 Conda3 is required to setup the environment using Python 3.  Follow the URL
-below to install miniconda3 for your platform.  Plase ensure that you install
+below to install miniconda3 for your platform.  Please ensure that you install
 Conda3 (for Python3) and not Conda2 or Anaconda.
 
 https://conda.io/miniconda.html
@@ -33,13 +34,13 @@ Create Core3D Conda Environment
    source activate core3d-dev
    pip install -e .
 
-To deactivate the core3d-dev environent, run:
+To deactivate the core3d-dev environment, run:
 
 .. code-block:: bash
 
    source deactivate
 
-To remove the core3d-dev environent, run:
+To remove the core3d-dev environment, run:
 
 .. code-block:: bash
 
@@ -48,7 +49,7 @@ To remove the core3d-dev environent, run:
 
 
 ###################################
-Test Core3D development environent
+Test Core3D Development Environment
 ###################################
 
 Invoke pytest and flake8 at the root level of the repository
@@ -57,17 +58,3 @@ Invoke pytest and flake8 at the root level of the repository
 
    pytest (should pass all tests under tests sub directory)
    flake8 . (should pass all style checks)
-
-#####################
-Some Useful Resources
-#####################
-
-GDAL/OGR cookbook: https://pcjericks.github.io/py-gdalogr-cookbook/
-
-Workshop: Raster and vector processing with GDAL: http://download.osgeo.org/gdal/workshop/foss4ge2015/workshop_gdal.pdf
-
-
-
-
-
-
