@@ -34,20 +34,34 @@ if driver_metadata.get(gdal.DCAP_CREATE) != "YES":
     print("Driver {} does not supports Create().".format(driver))
     sys.exit(1)
 
-# Guess which band indices are RGB based on the number of bands
 num_bands = msi_image.RasterCount
-if num_bands == 8:
-    # for 8-band MSI from WV3 and WV2 the RGB bands have these indices
-    rgb_bands = [5, 3, 2]
-elif num_bands == 4:
-    # assume the bands are B,G,R,N (where N is near infrared)
-    rgb_bands = [3, 2, 1]
-elif num_bands == 3:
-    # assume that we have already converted to RGB
-    rgb_bands = [1, 2, 3]
+rgb_bands = [0, 0, 0]
+for b in range(1, num_bands+1):
+    label = msi_image.GetRasterBand(b).GetRasterColorInterpretation()
+    if label == gdal.GCI_RedBand:
+        rgb_bands[0] = b
+    elif label == gdal.GCI_GreenBand:
+        rgb_bands[1] = b
+    elif label == gdal.GCI_BlueBand:
+        rgb_bands[2] = b
+
+if not numpy.all(rgb_bands):
+    # Guess which band indices are RGB based on the number of bands
+    if num_bands == 8:
+        # for 8-band MSI from WV3 and WV2 the RGB bands have these indices
+        rgb_bands = [5, 3, 2]
+    elif num_bands == 4:
+        # assume the bands are B,G,R,N (where N is near infrared)
+        rgb_bands = [3, 2, 1]
+    elif num_bands == 3:
+        # assume that we have already converted to RGB
+        rgb_bands = [1, 2, 3]
+    else:
+        print("Unknown RGB channels in {}-band image".format(num_bands))
+        sys.exit(1)
+    print("Assuming RGB labels on bands {}".format(rgb_bands))
 else:
-    print("This tool does not support images with {} bands".format(num_bands))
-    sys.exit(1)
+    print("Found RGB labels on bands {}".format(rgb_bands))
 
 # Set the output data type, either match the input or use byte (uint8)
 if args.byte:
