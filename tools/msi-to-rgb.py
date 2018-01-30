@@ -85,7 +85,7 @@ for out_idx, in_idx in enumerate(rgb_bands, 1):
     in_band = msi_image.GetRasterBand(in_idx)
     out_band = rgb_image.GetRasterBand(out_idx)
     # if not stretching to byte range, just copy the data
-    if not args.byte:
+    if not args.byte or in_band.DataType == gdal.GDT_Byte:
         out_band.WriteArray(in_band.ReadAsArray())
         out_band.SetNoDataValue(in_band.GetNoDataValue())
         continue
