@@ -10,6 +10,9 @@ parser.add_argument("rgb_image", help="Destination RGB image file name")
 parser.add_argument('-b', "--byte", action="store_true",
                     help="Enable this option to stretch intensity range and "
                          "convert to a byte image")
+parser.add_argument('-a', "--alpha", action="store_true",
+                    help="Create an alpha channel for an RGBA image instead "
+                         "of using zero as a special no-value marker")
 parser.add_argument('-p', "--range-percentile", default=0.1, type=float,
                     help="The percent of largest and smallest intensities to "
                          "ignore when computing range for intensity scaling")
@@ -62,13 +65,17 @@ transform = msi_image.GetGeoTransform()
 gcpProjection = msi_image.GetGCPProjection()
 gcps = msi_image.GetGCPs()
 options = ["PHOTOMETRIC=RGB", "COMPRESS=DEFLATE"]
+num_out_bands = 3
+if args.alpha:
+    options.append("ALPHA=YES")
+    num_out_bands = 4
 # ensure that space will be reserved for geographic corner coordinates
 # (in DMS) to be set later
 if (driver.ShortName == "NITF" and not projection):
     options.append("ICORDS=G")
 rgb_image = driver.Create(args.rgb_image, xsize=msi_image.RasterXSize,
-                          ysize=msi_image.RasterYSize, bands=3, eType=eType,
-                          options=options)
+                          ysize=msi_image.RasterYSize, bands=num_out_bands,
+                          eType=eType, options=options)
 
 # Copy over georeference information
 if (projection):
@@ -82,21 +89,32 @@ else:
 # Copy the image data
 band_names = ["red", "green", "blue"]
 band_types = [gdal.GCI_RedBand, gdal.GCI_GreenBand, gdal.GCI_BlueBand]
+alpha = None
+dtype = numpy.uint8
 for out_idx, in_idx in enumerate(rgb_bands, 1):
     in_band = msi_image.GetRasterBand(in_idx)
     out_band = rgb_image.GetRasterBand(out_idx)
     out_band.SetRasterColorInterpretation(band_types[out_idx-1])
-    # if not stretching to byte range, just copy the data
-    if not args.byte or in_band.DataType == gdal.GDT_Byte:
-        out_band.WriteArray(in_band.ReadAsArray())
-        out_band.SetNoDataValue(in_band.GetNoDataValue())
-        continue
 
     in_data = in_band.ReadAsArray()
     # mask out pixels with no valid value
     in_no_data_val = in_band.GetNoDataValue()
     mask = in_data == in_no_data_val
-    valid_data = in_data[numpy.logical_not(mask)]
+    valid = numpy.logical_not(mask)
+    if args.alpha:
+        if alpha is None:
+            alpha = numpy.logical_and(alpha, valid)
+        else:
+            alpha = valid
+
+    # if not stretching to byte range, just copy the data
+    if not args.byte or in_band.DataType == gdal.GDT_Byte:
+        out_band.WriteArray(in_data)
+        out_band.SetNoDataValue(in_band.GetNoDataValue())
+        dtype = in_data.dtype
+        continue
+
+    valid_data = in_data[valid]
 
     # robustly find a range for intensity scaling
     min_p = args.range_percentile
@@ -106,12 +124,28 @@ for out_idx, in_idx in enumerate(rgb_bands, 1):
     print("{} band detect range: [{}, {}]".format(band_names[out_idx-1],
                                                   min_val, max_val))
 
-    # clip and scale the data to fit the range 1-255 and cast to byte
+    # clip and scale the data to fit the range and cast to byte
     in_data = in_data.clip(min_val, max_val)
-    scale = 254.0 / float(max_val - min_val)
-    in_data = (in_data - min_val) * scale + 1
+    if args.alpha:
+        # if using an alpha channel, use the full 8-bit range
+        scale = 255.0 / float(max_val - min_val)
+        in_data = (in_data - min_val) * scale
+    else:
+        scale = 254.0 / float(max_val - min_val)
+        in_data = (in_data - min_val) * scale + 1
+        out_band.SetNoDataValue(0)
     out_data = in_data.astype(numpy.uint8)
     # set the masked out invalid pixels to 0
     out_data[mask] = 0
-    out_band.SetNoDataValue(0)
     out_band.WriteArray(out_data)
+    dtype = out_data.dtype
+
+if args.alpha:
+    out_band = rgb_image.GetRasterBand(4)
+    out_band.SetRasterColorInterpretation(gdal.GCI_AlphaBand)
+    alpha = alpha.astype(dtype)
+    if dtype == numpy.uint8:
+        alpha *= 255
+    elif dtype == numpy.uint16:
+        alpha *= 65535
+    out_band.WriteArray(alpha)
