@@ -124,7 +124,8 @@ for out_idx, in_idx in enumerate(rgb_bands, 1):
     # if not stretching to byte range, just copy the data
     if not args.byte or in_band.DataType == gdal.GDT_Byte:
         out_band.WriteArray(in_data)
-        out_band.SetNoDataValue(in_band.GetNoDataValue())
+        if in_no_data_val is not None:
+            out_band.SetNoDataValue(in_no_data_val)
         dtype = in_data.dtype
         continue
 
@@ -140,11 +141,12 @@ for out_idx, in_idx in enumerate(rgb_bands, 1):
 
     # clip and scale the data to fit the range and cast to byte
     in_data = in_data.clip(min_val, max_val)
-    if args.alpha:
-        # if using an alpha channel, use the full 8-bit range
+    if args.alpha or (in_no_data_val is None):
+        # use the full 8-bit range
         scale = 255.0 / float(max_val - min_val)
         in_data = (in_data - min_val) * scale
     else:
+        # use 1-255 and reserve 0 as a no data flag
         scale = 254.0 / float(max_val - min_val)
         in_data = (in_data - min_val) * scale + 1
         out_band.SetNoDataValue(0)
