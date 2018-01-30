@@ -81,9 +81,11 @@ else:
 
 # Copy the image data
 band_names = ["red", "green", "blue"]
+band_types = [gdal.GCI_RedBand, gdal.GCI_GreenBand, gdal.GCI_BlueBand]
 for out_idx, in_idx in enumerate(rgb_bands, 1):
     in_band = msi_image.GetRasterBand(in_idx)
     out_band = rgb_image.GetRasterBand(out_idx)
+    out_band.SetRasterColorInterpretation(band_types[out_idx-1])
     # if not stretching to byte range, just copy the data
     if not args.byte or in_band.DataType == gdal.GDT_Byte:
         out_band.WriteArray(in_band.ReadAsArray())
