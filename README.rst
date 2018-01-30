@@ -20,17 +20,17 @@ dependencies on geospatial and computer vision libraries.  Provided with this
 repository are instructions for configuring a development environment with
 Conda.  Conda provides a consistent development environment with a known
 configuration of dependencies versions.  Follow the directions in
-deployment/conda/README.rst to setup this environment.
+`<deployment/conda/README.rst>`_ to setup this environment.
 
 Project Layout
 ==============
 
 The Dansefield project is organized as follows:
 
- * `<danesfield>`_ This directory is where the danesfield algorithmic modules
-   live.
- * `<tools>`_ This directory contains command line tools to execute the
-   Danesfield algorithms.
+- `<danesfield>`_ This directory is where the danesfield algorithmic modules
+  live.
+- `<tools>`_ This directory contains command line tools to execute the
+  Danesfield algorithms.
 
 
 Some Useful Resources
