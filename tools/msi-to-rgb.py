@@ -57,21 +57,20 @@ print("Create destination image (format {}), "
       "size:({}, {}) ...".format(gdal.GetDataTypeName(eType),
                                  msi_image.RasterXSize,
                                  msi_image.RasterYSize))
+projection = msi_image.GetProjection()
+transform = msi_image.GetGeoTransform()
+gcpProjection = msi_image.GetGCPProjection()
+gcps = msi_image.GetGCPs()
 options = ["PHOTOMETRIC=RGB"]
+# ensure that space will be reserved for geographic corner coordinates
+# (in DMS) to be set later
+if (driver.ShortName == "NITF" and not projection):
+    options.append("ICORDS=G")
 rgb_image = driver.Create(args.rgb_image, xsize=msi_image.RasterXSize,
                           ysize=msi_image.RasterYSize, bands=3, eType=eType,
                           options=options)
 
 # Copy over georeference information
-projection = msi_image.GetProjection()
-transform = msi_image.GetGeoTransform()
-gcpProjection = msi_image.GetGCPProjection()
-gcps = msi_image.GetGCPs()
-# ensure that space will be reserved for geographic corner coordinates
-# (in DMS) to be set later
-if (driver.ShortName == "NITF" and not projection):
-    options.append("ICORDS=G")
-
 if (projection):
     # georeference through affine geotransform
     rgb_image.SetProjection(projection)
