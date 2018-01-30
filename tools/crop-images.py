@@ -48,24 +48,6 @@ def gdal_get_projection(src_image):
     return projection
 
 
-def world_to_pixel_poly(model, poly):
-    """
-    Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
-    the pixel location of a geospatial coordinate
-    """
-    first_point = True
-    for p in range(poly.shape[0]):
-        point = poly[p]
-        proj_point = model.project(point)
-        if first_point is True:
-            pixel_poly = np.array(proj_point)
-            first_point = False
-        else:
-            pixel_poly = np.vstack([pixel_poly, proj_point])
-
-    return pixel_poly
-
-
 def world_to_pixel(geoMatrix, x, y):
     """
     Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
@@ -236,7 +218,8 @@ for root, dirs, files in os.walk(src_root_dir):
                 model = updated_rpc
                 rpc_md = rpc.rpc_to_gdal_dict(updated_rpc)
 
-        pixel_poly = world_to_pixel_poly(model, poly)
+        # Project the world point locations into the image
+        pixel_poly = model.project(poly)
 
         ul_x, ul_y = map(int, pixel_poly.min(0))
         lr_x, lr_y = map(int, pixel_poly.max(0))
