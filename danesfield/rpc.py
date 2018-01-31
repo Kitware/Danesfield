@@ -21,6 +21,7 @@
 
 import numpy
 
+
 class RPCModel(object):
     """Represents a Rational Polynomial Camera (RPC) model
     """
@@ -38,6 +39,47 @@ class RPCModel(object):
         self.world_scale = numpy.ones((1, 3), dtype=dtype)
         self.image_offset = numpy.zeros((1, 2), dtype=dtype)
         self.image_scale = numpy.ones((1, 2), dtype=dtype)
+
+    def compute_partial_deriv_coeffs(self):
+        """Compute the coefficients of the partial derivatives of the
+        polynomials in the RPC with respect to X and Y
+        """
+        # Since these are polynomials, the partial derivatives end up
+        # being another polynomial with a subset of permuted coeffiecients.
+        # Coefficients from higher order powers also need to be multipled
+        # by the exponent.
+        dx_ind = [1, 7, 4, 5, 14, 17, 10, 11, 12, 13]
+        self.dx_coeff = self.coeff[:, dx_ind]
+        self.dx_coeff[:, [1, 4, 5]] *= 2
+        self.dx_coeff[:, 7] *= 3
+
+        dy_ind = [2, 4, 8, 6, 12, 10, 18, 14, 15, 16]
+        self.dy_coeff = self.coeff[:, dy_ind]
+        self.dy_coeff[:, [2, 4, 6]] *= 2
+        self.dy_coeff[:, 8] *= 3
+
+    def jacobian(self, point):
+        """Compute the Jacobian of the RPC at the given normalized world point
+
+        Currently this only computes the 2x2 Jacobian for X and Y parameters.
+        This function also returns the normalized projected point
+        """
+        pv = self.power_vector(point)
+        # evaluate the polynomials
+        polys = numpy.dot(self.coeff, pv)
+        dx_polys = numpy.dot(self.dx_coeff, pv[:10])
+        dy_polys = numpy.dot(self.dy_coeff, pv[:10])
+
+        J = numpy.empty((2, 2), dtype=self.coeff.dtype)
+        # use the quotient rule to evaluate the partial derivatives
+        J[0, 0] = (polys[1]*dx_polys[0] - polys[0]*dx_polys[1]) / (polys[1]**2)
+        J[0, 1] = (polys[1]*dy_polys[0] - polys[0]*dy_polys[1]) / (polys[1]**2)
+        J[1, 0] = (polys[3]*dx_polys[2] - polys[2]*dx_polys[3]) / (polys[3]**2)
+        J[1, 1] = (polys[3]*dy_polys[2] - polys[2]*dy_polys[3]) / (polys[3]**2)
+
+        # also evaluate the projected point in normalized coordinates
+        norm_pt = numpy.array([polys[0] / polys[1], polys[2] / polys[3]])
+        return J, norm_pt
 
     @staticmethod
     def power_vector(point):
@@ -71,7 +113,7 @@ class RPCModel(object):
                             xyz, xxx, xyy, xzz, xxy, yyy, yzz, xxz, yyz, zzz])
 
     def project(self, point):
-        """Project a long, lat, alt point into image coordinates
+        """Project a long, lat, elev point into image coordinates
 
         This function can also project an (n,3) matrix where each row of the
         matrix is a point to project.  The result is an (n,2) matrix of image
@@ -81,6 +123,67 @@ class RPCModel(object):
         polys = numpy.dot(self.coeff, self.power_vector(norm_pt))
         img_pt = numpy.array([polys[0] / polys[1], polys[2] / polys[3]])
         return img_pt.transpose() * self.image_scale + self.image_offset
+
+    def back_project(self, image_point, elev):
+        """Back project an image point with known elevation to long, lat
+
+        This is the inverse of the project() function assuming that the
+        elevation to project to is known.  This function requires an iterative
+        solver to find the solution and is more expensive to compute than the
+        forward projection
+        """
+        # map the image point and elevation to normalized space
+        norm_img_pt = (numpy.array(image_point) - self.image_offset) \
+            / self.image_scale
+        norm_elev = (numpy.array(elev) - self.world_offset[2]) \
+            / self.world_scale[2]
+
+        # assign some short variable names
+        x = norm_img_pt.transpose()[0]
+        y = norm_img_pt.transpose()[1]
+        h = norm_elev
+
+        # Use a first order approximation to the RPC to initialize.
+        # This sets all non-linear terms of the RPC to zero and then forms
+        # a least squares solution to invert the mapping.
+        # Note: the coefficients for initialization are computed in vetorized
+        # fashion for all points, but the equations are solved in the loop
+        # below for one point at a time.
+        Ax = self.coeff[0, 1:3] - numpy.outer(x, self.coeff[1, 1:3])
+        bx = (self.coeff[1, 0] + self.coeff[1, 3] * h) * x \
+            - (self.coeff[0, 0] + self.coeff[0, 3] * h)
+        bx = numpy.reshape(bx, (-1))
+        Ay = self.coeff[2, 1:3] - numpy.outer(y, self.coeff[3, 1:3])
+        by = (self.coeff[3, 0] + self.coeff[3, 3] * h) * y \
+            - (self.coeff[2, 0] + self.coeff[2, 3] * h)
+        by = numpy.reshape(by, (-1))
+
+        # make sure the partial derivatives are up to date
+        self.compute_partial_deriv_coeffs()
+
+        # allocate a matrix for the solution
+        soln = numpy.empty((len(bx), 3))
+        # copy in the known heights
+        soln[:, 2] = h
+        # iterate over each point to solve
+        for i in range(len(bx)):
+            A = numpy.stack((Ax[i], Ay[i]))
+            b = numpy.stack((bx[i], by[i]))
+            # compute the first-order initial solution
+            soln[i, 0:2] = numpy.linalg.solve(A, b)
+            # get the true normalized image point in the correct shape
+            nip = numpy.reshape(norm_img_pt, (-1, 2))[i]
+            # Apply gradient descent until convergence
+            # typically this only takes 2 or 3 iterations
+            for k in range(10):
+                # evaluate the jacobian and projection at the current solution
+                J, pt = self.jacobian(soln[i])
+                # solve for the next incremental step
+                step = numpy.linalg.solve(J, nip - pt)
+                soln[i, 0:2] += step
+                if numpy.max(numpy.abs(step)) < 1e-16:
+                    break
+        return soln * self.world_scale + self.world_offset
 
 
 def rpc_from_gdal_dict(md_dict):
