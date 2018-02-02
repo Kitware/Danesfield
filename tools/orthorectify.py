@@ -142,14 +142,28 @@ print("Projecting Points")
 imgPoints = model.project(numpy.array([arrayX, arrayY, arrayZ]).transpose())
 intImgPoints = imgPoints.astype(numpy.int).transpose()
 
+# coumpute the bound of the relevant AOI in the source image
+print("Source Image size: ", [sourceImage.RasterXSize, sourceImage.RasterYSize])
+minPoint = numpy.maximum([0, 0], numpy.min(intImgPoints, 1))
+print("AOI min: ",minPoint)
+maxPoint = numpy.minimum(numpy.max(intImgPoints, 1),
+                         [sourceImage.RasterXSize,
+                          sourceImage.RasterYSize])
+print("AOI max: ",maxPoint)
+cropSize = maxPoint - minPoint
+if numpy.any(cropSize < 1):
+    print("DSM does not intersect source image")
+    exit(1)
+
+# shift the projected image point to the cropped AOI space
+intImgPoints[0] -= minPoint[0]
+intImgPoints[1] -= minPoint[1]
+
 # find indicies of points that fall inside the image bounds
-sourceRaster = sourceBand.ReadAsArray(
-    xoff=0, yoff=0,
-    win_xsize=sourceImage.RasterXSize, win_ysize=sourceImage.RasterYSize)
-print("Source raster shape {}".format(sourceRaster.shape))
-validIdx = numpy.logical_and.reduce((intImgPoints[1] < sourceRaster.shape[0],
+print("Source raster shape {}".format(cropSize))
+validIdx = numpy.logical_and.reduce((intImgPoints[1] < cropSize[1],
                                      intImgPoints[1] >= 0,
-                                     intImgPoints[0] < sourceRaster.shape[1],
+                                     intImgPoints[0] < cropSize[0],
                                      intImgPoints[0] >= 0))
 intImgPoints = intImgPoints[:, validIdx]
 
@@ -163,7 +177,7 @@ if (args.occlusion_thresh > 0):
     print("Mapping occluded points")
     valid_arrayZ = arrayZ[validIdx]
     # render a height map in the source image space
-    height_map = numpy.full(sourceRaster.shape, -numpy.inf, dtype=numpy.float32)
+    height_map = numpy.full(cropSize[::-1], -numpy.inf, dtype=numpy.float32)
     height_map[intImgPoints[1], intImgPoints[0]] = valid_arrayZ
 
     # get a mask of points that locally are (approximately)
@@ -180,11 +194,10 @@ if (args.occlusion_thresh > 0):
 
 for bandIndex in range(1, sourceImage.RasterCount + 1):
     print("Processing band {} ...".format(bandIndex))
-    if bandIndex > 1:
-        sourceBand = sourceImage.GetRasterBand(bandIndex)
-        sourceRaster = sourceBand.ReadAsArray(
-            xoff=0, yoff=0, win_xsize=sourceImage.RasterXSize,
-            win_ysize=sourceImage.RasterYSize)
+    sourceBand = sourceImage.GetRasterBand(bandIndex)
+    sourceRaster = sourceBand.ReadAsArray(
+        xoff=int(minPoint[0]), yoff=int(minPoint[1]),
+        win_xsize=int(cropSize[0]), win_ysize=int(cropSize[1]))
 
     print("Copying colors ...")
     nodata_value = sourceBand.GetNoDataValue()
