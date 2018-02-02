@@ -47,6 +47,7 @@ band = dsm.GetRasterBand(1)
 dsmRaster = band.ReadAsArray(
     xoff=0, yoff=0,
     win_xsize=dsm.RasterXSize, win_ysize=dsm.RasterYSize)
+dsm_nodata_value = band.GetNoDataValue()
 print("DSM raster shape {}".format(dsmRaster.shape))
 
 # apply morphology to denoise the DSM
@@ -95,6 +96,13 @@ if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
         arrayX = transform[0] + pixels * transform[1] + lines * transform[2]
         arrayY = transform[3] + pixels * transform[4] + lines * transform[5]
         arrayZ = dsmRaster[lines, pixels]
+        validIdx = arrayZ != dsm_nodata_value
+        pixels = pixels[validIdx]
+        lines = lines[validIdx]
+        arrayX = arrayX[validIdx]
+        arrayY = arrayY[validIdx]
+        arrayZ = arrayZ[validIdx]
+
     else:
         # georeference through GCPs
         destImage.SetGCPs(gcps, gcpProjection)
