@@ -201,6 +201,10 @@ for bandIndex in range(1, sourceImage.RasterCount + 1):
 
     print("Copying colors ...")
     nodata_value = sourceBand.GetNoDataValue()
+    # for now use zero as a no-data value if one is not specified
+    # it would probably be better to add a mask (alpha) band instead
+    if nodata_value is None:
+        nodata_value = 0
     destRaster = numpy.full(
         (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
         dtype=sourceRaster.dtype)
