@@ -1,4 +1,5 @@
 from danesfield import rpc
+from danesfield import raytheon_rpc
 
 import argparse
 import gdal
@@ -19,6 +20,9 @@ parser.add_argument('-t', "--occlusion-thresh", type=float, default=1.0,
 parser.add_argument('-d', "--denoise-radius", type=float, default=2,
                     help="Apply morphological operations with this radius "
                     "to the DSM reduce speckled noise")
+parser.add_argument("--raytheon-rpc", type=str,
+                    help="Raytheon RPC file name. If not provided, "
+                    "the RPC is read from the source_image")
 args = parser.parse_args()
 
 def circ_structure(n):
@@ -34,10 +38,16 @@ sourceImage = gdal.Open(args.source_image, gdal.GA_ReadOnly)
 if not sourceImage:
     exit(1)
 sourceBand = sourceImage.GetRasterBand(1)
-# read the RPC from RPC Metadata in the image file
-print("Reading RPC Metadata from {}".format(args.source_image))
-rpcMetaData = sourceImage.GetMetadata('RPC')
-model = rpc.rpc_from_gdal_dict(rpcMetaData)
+
+if (args.raytheon_rpc):
+    # read the RPC from raytheon file
+    print("Reading RPC from Raytheon file: {}".format(args.raytheon_rpc))
+    model = raytheon_rpc.read_raytheon_rpc_file(args.raytheon_rpc)
+else:
+    # read the RPC from RPC Metadata in the image file
+    print("Reading RPC Metadata from {}".format(args.source_image))
+    rpcMetaData = sourceImage.GetMetadata('RPC')
+    model = rpc.rpc_from_gdal_dict(rpcMetaData)
 
 # open the DSM
 dsm = gdal.Open(args.dsm, gdal.GA_ReadOnly)
