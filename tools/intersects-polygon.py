@@ -85,7 +85,7 @@ elif (len(args.polygon) == 1):
         cols = polygonImage.RasterXSize
         rows = polygonImage.RasterYSize
         ext=GetExtent(gt,cols,rows)
-        
+
         src_srs=osr.SpatialReference()
         src_srs.ImportFromWkt(polygonImage.GetProjection())
         tgt_srs = src_srs.CloneGeogCS()
