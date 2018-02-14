@@ -239,6 +239,9 @@ for root, dirs, files in os.walk(src_root_dir):
         line_off = float(line_off) - ul_y
         rpc_md['LINE_OFF'] = str(line_off)
 
+        model.image_offset[0] -= ul_x
+        model.image_offset[1] -= ul_y
+
         # Calculate the pixel size of the new image
         # Constrain the width and height to the bounds of the image
         px_width = int(lr_x - ul_x + 1)
@@ -255,6 +258,16 @@ for root, dirs, files in os.walk(src_root_dir):
         if px_width < 0 or px_height < 0:
             print('AOI out of range, skipping\n')
             continue
+
+        corners = [[0, 0], [px_width, 0], [px_width, px_height], [0, px_height]]
+        corner_names = ['UpperLeft', 'UpperRight', 'LowerRight', 'LowerLeft']
+        world_corners = model.back_project(corners, elevation)
+
+        corner_gcps = []
+        for (p, l), (x, y, h), n in zip(corners, world_corners, corner_names):
+            corner_gcps.append(gdal.GCP(x, y, h, p, l, "", n))
+        print(corner_gcps)
+
 
         # Load the source data as a gdalnumeric array
         clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
@@ -289,26 +302,13 @@ for root, dirs, files in os.walk(src_root_dir):
 
         # Rewrite the rpc_md that we modified above.
         output_dataset.SetMetadata(rpc_md, 'RPC')
-        gdalnumeric.CopyDatasetInfo(src_image, output_dataset,
-                                    xoff=ul_x, yoff=ul_y)
+        #gdalnumeric.CopyDatasetInfo(src_image, output_dataset,
+        #                            xoff=ul_x, yoff=ul_y)
 
         # Add GCPs to dest
-        if src_image.GetGCPCount():
-            outgcps = []
-            gcps = src_image.GetGCPs()
-
-            for gcp in gcps:
-                if (gcp.Id == 'UpperLeft'):
-                    newGCP = gdal.GCP(ul_lon, ul_lat, 0, 0, 0, gcp.Info, gcp.Id)
-                elif (gcp.Id == 'UpperRight'):
-                    newGCP = gdal.GCP(ur_lon, ur_lat, 0, px_width, 0, gcp.Info, gcp.Id)
-                elif (gcp.Id == 'LowerRight'):
-                    newGCP = gdal.GCP(lr_lon, lr_lat, 0, px_width, px_height, gcp.Info, gcp.Id)
-                elif (gcp.Id == 'LowerLeft'):
-                    newGCP = gdal.GCP(ll_lon, ll_lat, 0, 0, px_height, gcp.Info, gcp.Id)
-
-                outgcps.append(newGCP)
-            output_dataset.SetGCPs(outgcps, gdal_get_projection(src_image))
+        #output_dataset.SetGCPs(corner_gcps, gdal_get_projection(src_image))
+        output_dataset.SetGeoTransform(gdal.GCPsToGeoTransform(corner_gcps))
+        output_dataset.SetProjection(gdal_get_projection(src_image))
 
         # End logging, print blank line for clarity
         print('')
@@ -333,11 +333,11 @@ for root, dirs, files in os.walk(src_root_dir):
             # This change seems to happen in GDAL with python 3
 
             # Create a new geomatrix for the image
-            geo_trans = list(geo_trans)
-            geo_trans[0] = min_x
-            geo_trans[3] = max_y
+         #   geo_trans = list(geo_trans)
+         #   geo_trans[0] = min_x
+         #   geo_trans[3] = max_y
 
-            output_dataset.SetGeoTransform(geo_trans)
-            output_dataset.SetProjection(gdal_get_projection(src_image))
+         #   output_dataset.SetGeoTransform(geo_trans)
+         #   output_dataset.SetProjection(gdal_get_projection(src_image))
 
             outfile = None
