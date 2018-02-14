@@ -32,7 +32,7 @@ lut.SetHueRange(0.6, 0)
 lut.SetSaturationRange(1.0, 0)
 lut.SetValueRange(0.5, 1.0)
 
-# Read the data: after processing a height field results (i.e., terrain)
+# Read the terrain data
 dtmReader = vtk.vtkGDALRasterReader()
 dtmReader.SetFileName(args.dtm)
 dtmReader.Update()
@@ -81,47 +81,88 @@ segmentationReader.Update()
 segmentation = segmentationReader.GetOutput()
 
 # Extract polygons
-discrete = vtk.vtkDiscreteFlyingEdges2D()
-discrete.SetInputData(segmentation)
-discrete.SetValue(0,args.label)
-discrete.Update()
-#print("DFE: {0}".format(discrete.GetOutput()))
+contours = vtk.vtkDiscreteFlyingEdges2D()
+#contours = vtk.vtkMarchingSquares()
+contours.SetInputData(segmentation)
+contours.SetValue(0,args.label)
+contours.Update()
+#print("DFE: {0}".format(contours.GetOutput()))
+
+# # combine lines into a polyline
+# stripperContours = vtk.vtkStripper()
+# stripperContours.SetInputConnection(contours.GetOutputPort())
+
+# # decimate polylines
+# decimateContours = vtk.vtkDecimatePolylineFilter()
+# decimateContours.SetTargetReduction(0.1)
+# decimateContours.SetInputConnection(stripperContours.GetOutputPort())
+# decimateContours.Update()
 
 # Create polygons
 # Create polgons
 polyLoops = vtk.vtkContourLoopExtraction()
-polyLoops.SetInputConnection(discrete.GetOutputPort())
+polyLoops.SetInputConnection(contours.GetOutputPort())
+
+polyLoopsWriter = vtk.vtkXMLPolyDataWriter()
+polyLoopsWriter.SetFileName("loops.vtp")
+polyLoopsWriter.SetInputConnection(polyLoops.GetOutputPort())
+polyLoopsWriter.Update()
+
+
+# Read the DSM
+dsmReader = vtk.vtkGDALRasterReader()
+dsmReader.SetFileName(args.dsm)
+dsmReader.Update()
+
+fit = vtk.vtkFitToHeightMapFilter()
+fit.SetInputConnection(polyLoops.GetOutputPort())
+fit.SetHeightMapConnection(dsmReader.GetOutputPort())
+fit.UseHeightMapOffsetOn()
 
 # Extrude polygon down to surface
 extrude = vtk.vtkTrimmedExtrusionFilter()
 #extrude.SetInputData(polygons)
-extrude.SetInputConnection(polyLoops.GetOutputPort())
+extrude.SetInputConnection(fit.GetOutputPort())
 extrude.SetTrimSurfaceConnection(warp.GetOutputPort())
 extrude.SetExtrusionDirection(0,0,1)
 extrude.CappingOn()
 
+extrudeWriter = vtk.vtkXMLPolyDataWriter()
+extrudeWriter.SetFileName(args.destination)
+extrudeWriter.SetInputConnection(extrude.GetOutputPort())
+extrudeWriter.Update()
+
+trisExtrude = vtk.vtkTriangleFilter()
+trisExtrude.SetInputConnection(extrude.GetOutputPort())
+
+
 mapper = vtk.vtkPolyDataMapper()
-mapper.SetInputConnection(extrude.GetOutputPort())
+mapper.SetInputConnection(trisExtrude.GetOutputPort())
 mapper.ScalarVisibilityOff()
 
 actor = vtk.vtkActor()
 actor.SetMapper(mapper)
 
-# Show generating polygons
-polyMapper = vtk.vtkPolyDataMapper()
-polyMapper.SetInputConnection(polyLoops.GetOutputPort())
-polyMapper.ScalarVisibilityOff()
+# # Show generating polygons
+# # triangle
+# trisPolyLoops = vtk.vtkTriangleFilter()
+# trisPolyLoops.SetInputConnection(polyLoops.GetOutputPort())
 
-# Offset slightly to avoid zbuffer issues
-polyActor = vtk.vtkActor()
-polyActor.SetMapper(polyMapper)
-polyActor.GetProperty().SetColor(1,0,0)
-polyActor.AddPosition(0,0,-5)
+
+# polyMapper = vtk.vtkPolyDataMapper()
+# polyMapper.SetInputConnection(trisPolyLoops.GetOutputPort())
+# polyMapper.ScalarVisibilityOff()
+
+# # Offset slightly to avoid zbuffer issues
+# polyActor = vtk.vtkActor()
+# polyActor.SetMapper(polyMapper)
+# polyActor.GetProperty().SetColor(1,0,0)
+# polyActor.AddPosition(0,0,-5)
 
 # Render it
 ren.AddActor(dtmActor)
 ren.AddActor(actor)
-ren.AddActor(polyActor)
+#ren.AddActor(polyActor)
 
 ren.GetActiveCamera().SetPosition( 560752, 5110002, 2110)
 ren.GetActiveCamera().SetFocalPoint( 560750, 5110000, 2100)
