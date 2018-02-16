@@ -88,25 +88,40 @@ contours.SetValue(0,args.label)
 contours.Update()
 #print("DFE: {0}".format(contours.GetOutput()))
 
-# # combine lines into a polyline
-# stripperContours = vtk.vtkStripper()
-# stripperContours.SetInputConnection(contours.GetOutputPort())
+contoursWriter = vtk.vtkXMLPolyDataWriter()
+contoursWriter.SetFileName("contours.vtp")
+contoursWriter.SetInputConnection(contours.GetOutputPort())
+contoursWriter.Update()
 
-# # decimate polylines
-# decimateContours = vtk.vtkDecimatePolylineFilter()
-# decimateContours.SetTargetReduction(0.1)
-# decimateContours.SetInputConnection(stripperContours.GetOutputPort())
-# decimateContours.Update()
+# combine lines into a polyline
+stripperContours = vtk.vtkStripper()
+stripperContours.SetInputConnection(contours.GetOutputPort())
+stripperContours.SetMaximumLength(3000)
 
-# Create polygons
-# Create polgons
-polyLoops = vtk.vtkContourLoopExtraction()
-polyLoops.SetInputConnection(contours.GetOutputPort())
+stripperWriter = vtk.vtkXMLPolyDataWriter()
+stripperWriter.SetFileName("stripper.vtp")
+stripperWriter.SetInputConnection(stripperContours.GetOutputPort())
+stripperWriter.Update()
 
-polyLoopsWriter = vtk.vtkXMLPolyDataWriter()
-polyLoopsWriter.SetFileName("loops.vtp")
-polyLoopsWriter.SetInputConnection(polyLoops.GetOutputPort())
-polyLoopsWriter.Update()
+# decimate polylines
+decimateContours = vtk.vtkDecimatePolylineFilter()
+decimateContours.SetMaximumError(0.01)
+decimateContours.SetInputConnection(stripperContours.GetOutputPort())
+decimateContours.Update()
+
+decimateWriter = vtk.vtkXMLPolyDataWriter()
+decimateWriter.SetFileName("decimate.vtp")
+decimateWriter.SetInputConnection(decimateContours.GetOutputPort())
+decimateWriter.Update()
+
+# Create loops
+loops = vtk.vtkContourLoopExtraction()
+loops.SetInputConnection(contours.GetOutputPort())
+
+loopsWriter = vtk.vtkXMLPolyDataWriter()
+loopsWriter.SetFileName("loops.vtp")
+loopsWriter.SetInputConnection(loops.GetOutputPort())
+loopsWriter.Update()
 
 
 # Read the DSM
@@ -115,7 +130,7 @@ dsmReader.SetFileName(args.dsm)
 dsmReader.Update()
 
 fit = vtk.vtkFitToHeightMapFilter()
-fit.SetInputConnection(polyLoops.GetOutputPort())
+fit.SetInputConnection(loops.GetOutputPort())
 fit.SetHeightMapConnection(dsmReader.GetOutputPort())
 fit.UseHeightMapOffsetOn()
 
@@ -143,26 +158,9 @@ mapper.ScalarVisibilityOff()
 actor = vtk.vtkActor()
 actor.SetMapper(mapper)
 
-# # Show generating polygons
-# # triangle
-# trisPolyLoops = vtk.vtkTriangleFilter()
-# trisPolyLoops.SetInputConnection(polyLoops.GetOutputPort())
-
-
-# polyMapper = vtk.vtkPolyDataMapper()
-# polyMapper.SetInputConnection(trisPolyLoops.GetOutputPort())
-# polyMapper.ScalarVisibilityOff()
-
-# # Offset slightly to avoid zbuffer issues
-# polyActor = vtk.vtkActor()
-# polyActor.SetMapper(polyMapper)
-# polyActor.GetProperty().SetColor(1,0,0)
-# polyActor.AddPosition(0,0,-5)
-
 # Render it
 ren.AddActor(dtmActor)
 ren.AddActor(actor)
-#ren.AddActor(polyActor)
 
 ren.GetActiveCamera().SetPosition( 560752, 5110002, 2110)
 ren.GetActiveCamera().SetFocalPoint( 560750, 5110000, 2100)
