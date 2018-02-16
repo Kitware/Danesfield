@@ -88,31 +88,16 @@ contours.SetValue(0,args.label)
 contours.Update()
 #print("DFE: {0}".format(contours.GetOutput()))
 
-contoursWriter = vtk.vtkXMLPolyDataWriter()
-contoursWriter.SetFileName("contours.vtp")
-contoursWriter.SetInputConnection(contours.GetOutputPort())
-contoursWriter.Update()
-
 # combine lines into a polyline
 stripperContours = vtk.vtkStripper()
 stripperContours.SetInputConnection(contours.GetOutputPort())
 stripperContours.SetMaximumLength(3000)
-
-stripperWriter = vtk.vtkXMLPolyDataWriter()
-stripperWriter.SetFileName("stripper.vtp")
-stripperWriter.SetInputConnection(stripperContours.GetOutputPort())
-stripperWriter.Update()
 
 # decimate polylines
 decimateContours = vtk.vtkDecimatePolylineFilter()
 decimateContours.SetMaximumError(0.01)
 decimateContours.SetInputConnection(stripperContours.GetOutputPort())
 decimateContours.Update()
-
-decimateWriter = vtk.vtkXMLPolyDataWriter()
-decimateWriter.SetFileName("decimate.vtp")
-decimateWriter.SetInputConnection(decimateContours.GetOutputPort())
-decimateWriter.Update()
 
 # join points at the same possition in different polylines
 cleanPolylines = vtk.vtkCleanPolyData()
@@ -121,11 +106,6 @@ cleanPolylines.SetInputConnection(decimateContours.GetOutputPort())
 # Create loops
 loops = vtk.vtkContourLoopExtraction()
 loops.SetInputConnection(cleanPolylines.GetOutputPort())
-
-loopsWriter = vtk.vtkXMLPolyDataWriter()
-loopsWriter.SetFileName("loops.vtp")
-loopsWriter.SetInputConnection(loops.GetOutputPort())
-loopsWriter.Update()
 
 # Read the DSM
 dsmReader = vtk.vtkGDALRasterReader()
@@ -152,7 +132,6 @@ extrudeWriter.Update()
 
 trisExtrude = vtk.vtkTriangleFilter()
 trisExtrude.SetInputConnection(extrude.GetOutputPort())
-
 
 mapper = vtk.vtkPolyDataMapper()
 mapper.SetInputConnection(trisExtrude.GetOutputPort())
