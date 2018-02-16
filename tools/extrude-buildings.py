@@ -114,15 +114,18 @@ decimateWriter.SetFileName("decimate.vtp")
 decimateWriter.SetInputConnection(decimateContours.GetOutputPort())
 decimateWriter.Update()
 
+# join points at the same possition in different polylines
+cleanPolylines = vtk.vtkCleanPolyData()
+cleanPolylines.SetInputConnection(decimateContours.GetOutputPort())
+
 # Create loops
 loops = vtk.vtkContourLoopExtraction()
-loops.SetInputConnection(contours.GetOutputPort())
+loops.SetInputConnection(cleanPolylines.GetOutputPort())
 
 loopsWriter = vtk.vtkXMLPolyDataWriter()
 loopsWriter.SetFileName("loops.vtp")
 loopsWriter.SetInputConnection(loops.GetOutputPort())
 loopsWriter.Update()
-
 
 # Read the DSM
 dsmReader = vtk.vtkGDALRasterReader()
