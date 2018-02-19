@@ -9,9 +9,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument("segmentation", help="Image with labeled buildings")
 parser.add_argument("dsm", help="Digital surface model (DSM)")
 parser.add_argument("dtm", help="Digital terain model (DTM)")
-parser.add_argument("destination", help="Extruded buildings")
-parser.add_argument('-l', "--label", type=int, default=6,
-                    help="Label value used for buildings")
+parser.add_argument("destination", help="Extoruded buildings")
+parser.add_argument('-l', "--label", type=int, default=6, nargs="+",
+                    help="Label value(s) used for buildings outlines")
 args = parser.parse_args()
 
 #!/usr/bin/env python
@@ -26,7 +26,6 @@ iren = vtk.vtkRenderWindowInteractor()
 iren.SetRenderWindow(renWin)
 
 # Create pipeline. Load terrain data.
-#
 lut = vtk.vtkLookupTable()
 lut.SetHueRange(0.6, 0)
 lut.SetSaturationRange(1.0, 0)
@@ -84,7 +83,10 @@ segmentation = segmentationReader.GetOutput()
 contours = vtk.vtkDiscreteFlyingEdges2D()
 #contours = vtk.vtkMarchingSquares()
 contours.SetInputData(segmentation)
-contours.SetValue(0,args.label)
+contours.SetNumberOfContours(len(args.label))
+print("labels: {}".format(len(args.label)))
+for i in range(len(args.label)):
+    contours.SetValue(i, args.label[i])
 contours.Update()
 #print("DFE: {0}".format(contours.GetOutput()))
 
