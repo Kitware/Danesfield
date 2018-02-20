@@ -10,8 +10,12 @@ parser.add_argument("segmentation", help="Image with labeled buildings")
 parser.add_argument("dsm", help="Digital surface model (DSM)")
 parser.add_argument("dtm", help="Digital terain model (DTM)")
 parser.add_argument("destination", help="Extoruded buildings")
-parser.add_argument('-l', "--label", type=int, default=6, nargs="+",
+parser.add_argument('-l', "--label", type=int, default=[6], nargs="+",
                     help="Label value(s) used for buildings outlines")
+parser.add_argument("--no_decimation", action="store_true",
+                    help="Do not decimate the contours")
+parser.add_argument("--debug", action="store_true",
+                    help="Save intermediate results")
 args = parser.parse_args()
 
 #!/usr/bin/env python
@@ -84,30 +88,52 @@ contours = vtk.vtkDiscreteFlyingEdges2D()
 #contours = vtk.vtkMarchingSquares()
 contours.SetInputData(segmentation)
 contours.SetNumberOfContours(len(args.label))
-print("labels: {}".format(len(args.label)))
 for i in range(len(args.label)):
     contours.SetValue(i, args.label[i])
 contours.Update()
 #print("DFE: {0}".format(contours.GetOutput()))
 
-# combine lines into a polyline
-stripperContours = vtk.vtkStripper()
-stripperContours.SetInputConnection(contours.GetOutputPort())
-stripperContours.SetMaximumLength(3000)
+if (args.debug):
+    contoursWriter = vtk.vtkXMLPolyDataWriter()
+    contoursWriter.SetFileName("contours.vtp")
+    contoursWriter.SetInputConnection(contours.GetOutputPort())
+    contoursWriter.Update()
 
-# decimate polylines
-decimateContours = vtk.vtkDecimatePolylineFilter()
-decimateContours.SetMaximumError(0.01)
-decimateContours.SetInputConnection(stripperContours.GetOutputPort())
-decimateContours.Update()
+if (not args.no_decimation):
+    # combine lines into a polyline
+    stripperContours = vtk.vtkStripper()
+    stripperContours.SetInputConnection(contours.GetOutputPort())
+    stripperContours.SetMaximumLength(3000)
 
-# join points at the same possition in different polylines
-cleanPolylines = vtk.vtkCleanPolyData()
-cleanPolylines.SetInputConnection(decimateContours.GetOutputPort())
+    if (args.debug):
+        stripperWriter = vtk.vtkXMLPolyDataWriter()
+        stripperWriter.SetFileName("stripper.vtp")
+        stripperWriter.SetInputConnection(stripperContours.GetOutputPort())
+        stripperWriter.Update()
+
+    # decimate polylines
+    decimateContours = vtk.vtkDecimatePolylineFilter()
+    decimateContours.SetMaximumError(0.01)
+    decimateContours.SetInputConnection(stripperContours.GetOutputPort())
+
+    if (args.debug):
+        decimateWriter = vtk.vtkXMLPolyDataWriter()
+        decimateWriter.SetFileName("decimate.vtp")
+        decimateWriter.SetInputConnection(decimateContours.GetOutputPort())
+        decimateWriter.Update()
+
+    contours = decimateContours
+
 
 # Create loops
 loops = vtk.vtkContourLoopExtraction()
-loops.SetInputConnection(cleanPolylines.GetOutputPort())
+loops.SetInputConnection(contours.GetOutputPort())
+
+if (args.debug):
+    loopsWriter = vtk.vtkXMLPolyDataWriter()
+    loopsWriter.SetFileName("loops.vtp")
+    loopsWriter.SetInputConnection(loops.GetOutputPort())
+    loopsWriter.Update()
 
 # Read the DSM
 dsmReader = vtk.vtkGDALRasterReader()
