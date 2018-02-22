@@ -163,7 +163,6 @@ print("AOI max: ",maxPoint)
 cropSize = maxPoint - minPoint
 if numpy.any(cropSize < 1):
     print("DSM does not intersect source image")
-    exit(1)
 
 # shift the projected image point to the cropped AOI space
 intImgPoints[0] -= minPoint[0]
@@ -205,21 +204,29 @@ if (args.occlusion_thresh > 0):
 for bandIndex in range(1, sourceImage.RasterCount + 1):
     print("Processing band {} ...".format(bandIndex))
     sourceBand = sourceImage.GetRasterBand(bandIndex)
-    sourceRaster = sourceBand.ReadAsArray(
-        xoff=int(minPoint[0]), yoff=int(minPoint[1]),
-        win_xsize=int(cropSize[0]), win_ysize=int(cropSize[1]))
-
-    print("Copying colors ...")
     nodata_value = sourceBand.GetNoDataValue()
     # for now use zero as a no-data value if one is not specified
     # it would probably be better to add a mask (alpha) band instead
     if nodata_value is None:
         nodata_value = 0
-    destRaster = numpy.full(
-        (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
-        dtype=sourceRaster.dtype)
-    destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
-        intImgPoints[1], intImgPoints[0]]
+    if numpy.any(cropSize < 1):
+        # read one value for data type
+        sourceRaster = sourceBand.ReadAsArray(
+            xoff=0, yoff=0, win_xsize=1, win_ysize=1)
+        destRaster = numpy.full(
+            (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
+            dtype=sourceRaster.dtype)
+    else:
+        sourceRaster = sourceBand.ReadAsArray(
+            xoff=int(minPoint[0]), yoff=int(minPoint[1]),
+            win_xsize=int(cropSize[0]), win_ysize=int(cropSize[1]))
+
+        print("Copying colors ...")
+        destRaster = numpy.full(
+            (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
+            dtype=sourceRaster.dtype)
+        destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
+            intImgPoints[1], intImgPoints[0]]
 
     print("Write band ...")
     destBand = destImage.GetRasterBand(bandIndex)
