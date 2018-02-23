@@ -80,17 +80,19 @@ dtmActor.SetMapper(dtmMapper)
 # Read the segmentation of buildings
 segmentationReader = vtk.vtkGDALRasterReader()
 segmentationReader.SetFileName(args.segmentation)
-segmentationReader.Update()
-segmentation = segmentationReader.GetOutput()
+if (args.debug):
+    segmentationReader.Update()
+    segmentation = segmentationReader.GetOutput()
+    sb = segmentation.GetBounds()
+    print("segmentation bounds: \t{}".format(sb))
 
 # Extract polygons
 contours = vtk.vtkDiscreteFlyingEdges2D()
 #contours = vtk.vtkMarchingSquares()
-contours.SetInputData(segmentation)
+contours.SetInputConnection(segmentationReader.GetOutputPort())
 contours.SetNumberOfContours(len(args.label))
 for i in range(len(args.label)):
     contours.SetValue(i, args.label[i])
-contours.Update()
 #print("DFE: {0}".format(contours.GetOutput()))
 
 if (args.debug):
@@ -98,6 +100,9 @@ if (args.debug):
     contoursWriter.SetFileName("contours.vtp")
     contoursWriter.SetInputConnection(contours.GetOutputPort())
     contoursWriter.Update()
+    contoursData = contours.GetOutput()
+    cb = contoursData.GetBounds()
+    print("contours bounds: \t{}".format(cb))
 
 if (not args.no_decimation):
     # combine lines into a polyline
