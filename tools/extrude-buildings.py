@@ -81,7 +81,11 @@ dtmActor.SetMapper(dtmMapper)
 segmentationReader = vtk.vtkGDALRasterReader()
 segmentationReader.SetFileName(args.segmentation)
 if (args.debug):
-    segmentationReader.Update()
+    segmentationWriter = vtk.vtkXMLImageDataWriter()
+    segmentationWriter.SetFileName("segmentation.vti")
+    segmentationWriter.SetInputConnection(segmentationReader.GetOutputPort())
+    segmentationWriter.Update()
+
     segmentation = segmentationReader.GetOutput()
     sb = segmentation.GetBounds()
     print("segmentation bounds: \t{}".format(sb))
