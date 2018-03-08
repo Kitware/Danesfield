@@ -153,6 +153,7 @@ fit = vtk.vtkFitToHeightMapFilter()
 fit.SetInputConnection(loops.GetOutputPort())
 fit.SetHeightMapConnection(dsmReader.GetOutputPort())
 fit.UseHeightMapOffsetOn()
+fit.SetFittingStrategyToPointMaximumHeight()
 
 # Extrude polygon down to surface
 extrude = vtk.vtkTrimmedExtrusionFilter()
