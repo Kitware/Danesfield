@@ -1,39 +1,29 @@
 import argparse
+import numpy
 import sys
 import vtk
+from vtk.numpy_interface import dataset_adapter as dsa
 
 # Demonstrate generation of extruded objects from a segmentation map, where
 # the extrusion is trimmed by a terrain surface.
 parser = argparse.ArgumentParser(
-    description='Generate extruded given the DSM')
+    description='Generate extruded buildings given a segmentation map, DSM and DTM')
 parser.add_argument("segmentation", help="Image with labeled buildings")
 parser.add_argument("dsm", help="Digital surface model (DSM)")
 parser.add_argument("dtm", help="Digital terain model (DTM)")
-parser.add_argument("destination", help="Extoruded buildings")
-parser.add_argument('-l', "--label", type=int, default=[6], nargs="+",
-                    help="Label value(s) used for buildings outlines")
+parser.add_argument("destination", help="Extruded buildings polygonal file (.vtp)")
+parser.add_argument('-l', "--label", type=int, nargs="*",
+                    help="Label value(s) used for buildings outlines."
+                         "If not specified, all values are used.")
 parser.add_argument("--no_decimation", action="store_true",
                     help="Do not decimate the contours")
+parser.add_argument("--no_render", action="store_true",
+                    help="Do not render")
 parser.add_argument("--debug", action="store_true",
                     help="Save intermediate results")
 args = parser.parse_args()
 
 #!/usr/bin/env python
-
-# Create the RenderWindow, Renderer
-#
-ren = vtk.vtkRenderer()
-renWin = vtk.vtkRenderWindow()
-renWin.AddRenderer( ren )
-
-iren = vtk.vtkRenderWindowInteractor()
-iren.SetRenderWindow(renWin)
-
-# Create pipeline. Load terrain data.
-lut = vtk.vtkLookupTable()
-lut.SetHueRange(0.6, 0)
-lut.SetSaturationRange(1.0, 0)
-lut.SetValueRange(0.5, 1.0)
 
 # Read the terrain data
 dtmReader = vtk.vtkGDALRasterReader()
@@ -68,18 +58,17 @@ warp.UseNormalOn()
 warp.SetNormal(0, 0, 1)
 warp.Update()
 
-# Show the terrain
-dtmMapper = vtk.vtkPolyDataMapper()
-dtmMapper.SetInputConnection(warp.GetOutputPort())
-dtmMapper.SetScalarRange(lo, hi)
-dtmMapper.SetLookupTable(lut)
-
-dtmActor = vtk.vtkActor()
-dtmActor.SetMapper(dtmMapper)
-
 # Read the segmentation of buildings
 segmentationReader = vtk.vtkGDALRasterReader()
 segmentationReader.SetFileName(args.segmentation)
+segmentationReader.Update()
+segmentation = segmentationReader.GetOutput()
+scalarName = segmentation.GetPointData().GetScalars().GetName()
+segmentationNp = dsa.WrapDataObject(segmentation)
+scalars = segmentationNp.PointData[scalarName]
+labels = numpy.unique(scalars)
+print("All labels: {}".format(labels))
+
 if (args.debug):
     segmentationWriter = vtk.vtkXMLImageDataWriter()
     segmentationWriter.SetFileName("segmentation.vti")
@@ -94,9 +83,11 @@ if (args.debug):
 contours = vtk.vtkDiscreteFlyingEdges2D()
 #contours = vtk.vtkMarchingSquares()
 contours.SetInputConnection(segmentationReader.GetOutputPort())
-contours.SetNumberOfContours(len(args.label))
-for i in range(len(args.label)):
-    contours.SetValue(i, args.label[i])
+if (args.label):
+    labels = args.label
+contours.SetNumberOfContours(len(labels))
+for i in range(len(labels)):
+    contours.SetValue(i, labels[i])
 #print("DFE: {0}".format(contours.GetOutput()))
 
 if (args.debug):
@@ -168,36 +159,49 @@ extrudeWriter.SetFileName(args.destination)
 extrudeWriter.SetInputConnection(extrude.GetOutputPort())
 extrudeWriter.Update()
 
-trisExtrude = vtk.vtkTriangleFilter()
-trisExtrude.SetInputConnection(extrude.GetOutputPort())
+if (not args.no_render):
+    # Create the RenderWindow, Renderer
+    #
+    ren = vtk.vtkRenderer()
+    renWin = vtk.vtkRenderWindow()
+    renWin.AddRenderer( ren )
 
-mapper = vtk.vtkPolyDataMapper()
-mapper.SetInputConnection(trisExtrude.GetOutputPort())
-mapper.ScalarVisibilityOff()
+    iren = vtk.vtkRenderWindowInteractor()
+    iren.SetRenderWindow(renWin)
 
-actor = vtk.vtkActor()
-actor.SetMapper(mapper)
+    # Create pipeline. Load terrain data.
+    lut = vtk.vtkLookupTable()
+    lut.SetHueRange(0.6, 0)
+    lut.SetSaturationRange(1.0, 0)
+    lut.SetValueRange(0.5, 1.0)
 
-# Render it
-ren.AddActor(dtmActor)
-ren.AddActor(actor)
 
-ren.GetActiveCamera().SetPosition( 560752, 5110002, 2110)
-ren.GetActiveCamera().SetFocalPoint( 560750, 5110000, 2100)
-ren.ResetCamera()
-ren.GetActiveCamera().SetClippingRange(269.775, 34560.4)
-ren.GetActiveCamera().SetFocalPoint(562026, 5.1135e+006, -400.794)
-ren.GetActiveCamera().SetPosition(556898, 5.10151e+006, 7906.19)
-ren.ResetCamera()
+    # Show the terrain
+    dtmMapper = vtk.vtkPolyDataMapper()
+    dtmMapper.SetInputConnection(warp.GetOutputPort())
+    dtmMapper.SetScalarRange(lo, hi)
+    dtmMapper.SetLookupTable(lut)
 
-# added these unused default arguments so that the prototype
-# matches as required in python.
-def reportCamera (a=0,b=0,__vtk__temp0=0,__vtk__temp1=0):
-    print("Camera: {}".format(ren.GetActiveCamera()))
+    dtmActor = vtk.vtkActor()
+    dtmActor.SetMapper(dtmMapper)
 
-picker = vtk.vtkCellPicker()
-picker.AddObserver("EndPickEvent",reportCamera)
-iren.SetPicker(picker)
+    # show the buildings
+    trisExtrude = vtk.vtkTriangleFilter()
+    trisExtrude.SetInputConnection(extrude.GetOutputPort())
 
-renWin.Render()
-iren.Start()
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(trisExtrude.GetOutputPort())
+    mapper.ScalarVisibilityOff()
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+
+    # Render it
+    ren.AddActor(dtmActor)
+    ren.AddActor(actor)
+
+    ren.GetActiveCamera().Elevation(-60)
+    ren.ResetCamera()
+
+    renWin.Render()
+    iren.Start()
