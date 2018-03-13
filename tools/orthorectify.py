@@ -1,4 +1,5 @@
 from danesfield import rpc
+from danesfield import raytheon_rpc
 
 import argparse
 import gdal
@@ -19,6 +20,9 @@ parser.add_argument('-t', "--occlusion-thresh", type=float, default=1.0,
 parser.add_argument('-d', "--denoise-radius", type=float, default=2,
                     help="Apply morphological operations with this radius "
                     "to the DSM reduce speckled noise")
+parser.add_argument("--raytheon-rpc", type=str,
+                    help="Raytheon RPC file name. If not provided, "
+                    "the RPC is read from the source_image")
 args = parser.parse_args()
 
 def circ_structure(n):
@@ -34,10 +38,16 @@ sourceImage = gdal.Open(args.source_image, gdal.GA_ReadOnly)
 if not sourceImage:
     exit(1)
 sourceBand = sourceImage.GetRasterBand(1)
-# read the RPC from RPC Metadata in the image file
-print("Reading RPC Metadata from {}".format(args.source_image))
-rpcMetaData = sourceImage.GetMetadata('RPC')
-model = rpc.rpc_from_gdal_dict(rpcMetaData)
+
+if (args.raytheon_rpc):
+    # read the RPC from raytheon file
+    print("Reading RPC from Raytheon file: {}".format(args.raytheon_rpc))
+    model = raytheon_rpc.read_raytheon_rpc_file(args.raytheon_rpc)
+else:
+    # read the RPC from RPC Metadata in the image file
+    print("Reading RPC Metadata from {}".format(args.source_image))
+    rpcMetaData = sourceImage.GetMetadata('RPC')
+    model = rpc.rpc_from_gdal_dict(rpcMetaData)
 
 # open the DSM
 dsm = gdal.Open(args.dsm, gdal.GA_ReadOnly)
@@ -153,7 +163,6 @@ print("AOI max: ",maxPoint)
 cropSize = maxPoint - minPoint
 if numpy.any(cropSize < 1):
     print("DSM does not intersect source image")
-    exit(1)
 
 # shift the projected image point to the cropped AOI space
 intImgPoints[0] -= minPoint[0]
@@ -195,21 +204,29 @@ if (args.occlusion_thresh > 0):
 for bandIndex in range(1, sourceImage.RasterCount + 1):
     print("Processing band {} ...".format(bandIndex))
     sourceBand = sourceImage.GetRasterBand(bandIndex)
-    sourceRaster = sourceBand.ReadAsArray(
-        xoff=int(minPoint[0]), yoff=int(minPoint[1]),
-        win_xsize=int(cropSize[0]), win_ysize=int(cropSize[1]))
-
-    print("Copying colors ...")
     nodata_value = sourceBand.GetNoDataValue()
     # for now use zero as a no-data value if one is not specified
     # it would probably be better to add a mask (alpha) band instead
     if nodata_value is None:
         nodata_value = 0
-    destRaster = numpy.full(
-        (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
-        dtype=sourceRaster.dtype)
-    destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
-        intImgPoints[1], intImgPoints[0]]
+    if numpy.any(cropSize < 1):
+        # read one value for data type
+        sourceRaster = sourceBand.ReadAsArray(
+            xoff=0, yoff=0, win_xsize=1, win_ysize=1)
+        destRaster = numpy.full(
+            (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
+            dtype=sourceRaster.dtype)
+    else:
+        sourceRaster = sourceBand.ReadAsArray(
+            xoff=int(minPoint[0]), yoff=int(minPoint[1]),
+            win_xsize=int(cropSize[0]), win_ysize=int(cropSize[1]))
+
+        print("Copying colors ...")
+        destRaster = numpy.full(
+            (dsm.RasterYSize, dsm.RasterXSize), nodata_value,
+            dtype=sourceRaster.dtype)
+        destRaster[lines[validIdx], pixels[validIdx]] = sourceRaster[
+            intImgPoints[1], intImgPoints[0]]
 
     print("Write band ...")
     destBand = destImage.GetRasterBand(bandIndex)
