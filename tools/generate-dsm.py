@@ -20,8 +20,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-s", "--source_points", nargs="+", help="Source points file[s]")
 parser.add_argument("destination_image", help="Destination image file name")
 parser.add_argument("--bounds", nargs=4, type=float, action="store",
-                    help="Destination image bounds: minX, maxX, minY, maxY. "
-                         "If not specified, it is computed from source points files")
+                    help="Destination image bounds (using the coordinate system "
+                         "of the source_points file): minX, maxX, minY, maxY. "
+                         "If not specified, it is computed from source_points files")
 parser.add_argument("--gsd", help="Ground sample distance")
 args = parser.parse_args()
 
@@ -31,17 +32,17 @@ if (not args.gsd):
     print("Using gsd = 0.25 m")
 
 if(not args.source_points):
-    print("error: we require at least one source_points file")
+    print("error: At least one source_points file required")
     exit(1)
 if (args.bounds):
     minX, maxX, minY, maxY = args.bounds
 else:
     print("Computing the bounding box for {} point cloud files ...".format(
         len(args.source_points)))
-    minX = numpy.finfo(numpy.float64).max
-    maxX = numpy.finfo(numpy.float64).min
-    minY = numpy.finfo(numpy.float64).max
-    maxY = numpy.finfo(numpy.float64).min
+    minX = numpy.inf
+    maxX = - numpy.inf
+    minY = numpy.inf
+    maxY = - numpy.inf
     pdal_info_template=["pdal", "info", "--stats", "--dimensions", "X,Y"]
     for i,s in enumerate(args.source_points):
         pdal_info_args=pdal_info_template + [s]
@@ -74,9 +75,7 @@ jsonTemplate = """
   ]
 }"""
 print("Generating DSM ...")
-all_sources = "".join("\"" + str(e) + "\"" + ",\n" for e in args.source_points)
-# remove the last ",\n"
-all_sources = all_sources[:-2]
+all_sources = ",\n".join("\"" + str(e) + "\"" for e in args.source_points)
 json = jsonTemplate % (all_sources, args.gsd, tempImage,
                        minX, maxX, minY, maxY)
 pdal_pipeline_args = ["pdal", "pipeline", "--stream", "--stdin"]
