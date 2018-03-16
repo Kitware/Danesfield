@@ -83,6 +83,8 @@ gcps = msi_image.GetGCPs()
 options = ["PHOTOMETRIC=RGB", "COMPRESS=DEFLATE"]
 if (args.big):
     options.append("BIGTIFF=YES")
+else:
+    options.append("BIGTIFF=IF_SAFER")
 num_out_bands = 3
 if args.alpha:
     options.append("ALPHA=YES")
