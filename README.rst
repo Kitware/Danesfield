@@ -25,13 +25,27 @@ configuration of dependencies versions.  Follow the directions in
 Project Layout
 ==============
 
-The Dansefield project is organized as follows:
+The Danesfield project is organized as follows:
 
 - `<danesfield>`_ This directory is where the danesfield algorithmic modules
   live.
 - `<tools>`_ This directory contains command line tools to execute the
   Danesfield algorithms.
 
+Metrics
+=======
+
+JHU/APL provides metrics software to evaluate the results of CORE3D algorithms.
+The Danesfield development environment includes this software. To run the metric
+analysis:
+
+1. Create a config file, based on the `example
+   <https://github.com/pubgeo/core3d-metrics/tree/master/aoi-example>`_, that
+   specifies the paths to the reference and test input files.
+2. Run ``core3d-metrics -c <config file>.config``
+3. View the results in ``<config file>_metrics.json``.
+
+See `<https://github.com/pubgeo/core3d-metrics>`_ for more information.
 
 Some Useful Resources
 =====================

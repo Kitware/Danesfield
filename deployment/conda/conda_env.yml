@@ -11,6 +11,7 @@ channels:
 - defaults
 
 dependencies:
+- pubgeo-core3d-metrics
 - gdal
 - pdal
 - pyproj
