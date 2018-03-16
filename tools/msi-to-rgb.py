@@ -16,6 +16,8 @@ parser.add_argument('-a', "--alpha", action="store_true",
 parser.add_argument('-p', "--range-percentile", default=0.1, type=float,
                     help="The percent of largest and smallest intensities to "
                          "ignore when computing range for intensity scaling")
+parser.add_argument("--big", action="store_true",
+                    help="Needed when the rgb_image is bigger than 4GB")
 args = parser.parse_args()
 
 if args.range_percentile < 0.0 or args.range_percentile >= 50.0:
@@ -79,6 +81,8 @@ transform = msi_image.GetGeoTransform()
 gcpProjection = msi_image.GetGCPProjection()
 gcps = msi_image.GetGCPs()
 options = ["PHOTOMETRIC=RGB", "COMPRESS=DEFLATE"]
+if (args.big):
+    options.append("BIGTIFF=YES")
 num_out_bands = 3
 if args.alpha:
     options.append("ALPHA=YES")
