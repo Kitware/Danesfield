@@ -166,6 +166,12 @@ fit.SetHeightMapConnection(dsmC2p.GetOutputPort())
 fit.UseHeightMapOffsetOn()
 fit.SetFittingStrategyToPointMaximumHeight()
 
+if (args.debug):
+    fitWriter = vtk.vtkXMLPolyDataWriter()
+    fitWriter.SetFileName("fit.vtp")
+    fitWriter.SetInputConnection(fit.GetOutputPort())
+    fitWriter.Update()
+
 # Extrude polygon down to surface
 extrude = vtk.vtkTrimmedExtrusionFilter()
 #extrude.SetInputData(polygons)
