@@ -17,19 +17,20 @@ parser.add_argument("--render_png", action="store_true",
                     help="Do not save the DSM, render into a PNG instead.")
 parser.add_argument("--buildings_only", action="store_true",
                     help="Do not use the DTM, use only the buildings.")
+parser.add_argument("--debug", action="store_true",
+                    help="Save intermediate results")
 args = parser.parse_args()
 
 # open the DTM
 dtm = gdal.Open(args.dtm, gdal.GA_ReadOnly)
 if not dtm:
+    print("Error: Failed to open DTM {}".format(args.dtm))
     sys.exit(1)
 
 dtmDriver = dtm.GetDriver()
 dtmDriverMetadata = dtmDriver.GetMetadata()
 dsm = None
 dtmBounds = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-flipX = False
-flipY = False
 if dtmDriverMetadata.get(gdal.DCAP_CREATE) == "YES":
     print("Create destination image "
           "size:({}, {}) ...".format(dtm.RasterXSize,
@@ -118,38 +119,6 @@ renWin.SetSize(dtm.RasterXSize, dtm.RasterYSize)
 renWin.SetMultiSamples(0)
 renWin.AddRenderer( ren )
 
-# Show the terrain. This is not really neccessary but
-# this is how we get best allignment.
-print("Converting the DTM into a surface ...")
-# read the DTM as a VTK object
-dtmReader = vtk.vtkGDALRasterReader()
-dtmReader.SetFileName(args.dtm)
-dtmReader.Update()
-dtmVtk = dtmReader.GetOutput()
-
-# Convert the terrain into a polydata.
-surface = vtk.vtkImageDataGeometryFilter()
-surface.SetInputDataObject(dtmVtk)
-
-# Make sure the polygons are planar, so need to use triangles.
-tris = vtk.vtkTriangleFilter()
-tris.SetInputConnection(surface.GetOutputPort())
-
-# Warp the surface by scalar values
-warp = vtk.vtkWarpScalar()
-warp.SetInputConnection(tris.GetOutputPort())
-warp.SetScaleFactor(1)
-warp.UseNormalOn()
-warp.SetNormal(0, 0, 1)
-warp.Update()
-dsmScalarRange = warp.GetOutput().GetPointData().GetScalars().GetRange()
-
-dtmMapper = vtk.vtkPolyDataMapper()
-dtmMapper.SetInputConnection(warp.GetOutputPort())
-dtmActor = vtk.vtkActor()
-dtmActor.SetMapper(dtmMapper)
-ren.AddActor(dtmActor)
-
 # show the buildings
 trisBuildingsFilter = vtk.vtkTriangleFilter()
 trisBuildingsFilter.SetInputDataObject(polyBuildingsVtk)
@@ -162,11 +131,11 @@ p2cBuildings.PassPointDataOn()
 p2cBuildings.Update()
 buildingsScalarRange = p2cBuildings.GetOutput().GetCellData().GetScalars().GetRange()
 
-
-polyWriter = vtk.vtkXMLPolyDataWriter()
-polyWriter.SetFileName("p2c.vtp")
-polyWriter.SetInputConnection(p2cBuildings.GetOutputPort())
-polyWriter.Write()
+if (args.debug):
+    polyWriter = vtk.vtkXMLPolyDataWriter()
+    polyWriter.SetFileName("p2c.vtp")
+    polyWriter.SetInputConnection(p2cBuildings.GetOutputPort())
+    polyWriter.Write()
 
 buildingsMapper = vtk.vtkPolyDataMapper()
 buildingsMapper.SetInputDataObject(p2cBuildings.GetOutput())
@@ -175,19 +144,49 @@ buildingsActor = vtk.vtkActor()
 buildingsActor.SetMapper(buildingsMapper)
 ren.AddActor(buildingsActor)
 
-ren.ResetCamera()
-camera = ren.GetActiveCamera()
-camera.ParallelProjectionOn()
-camera.SetParallelScale((dtmBounds[3] - dtmBounds[2])/2)
-#camera.SetFocalPoint([(dtmBounds[0] + dtmBounds[1])/2, (dtmBounds[3] + dtmBounds[2])/2, 0])
-
 if (args.render_png):
     print("Render into a PNG ...")
+    # Show the terrain.
+    print("Converting the DTM into a surface ...")
+    # read the DTM as a VTK object
+    dtmReader = vtk.vtkGDALRasterReader()
+    dtmReader.SetFileName(args.dtm)
+    dtmReader.Update()
+    dtmVtk = dtmReader.GetOutput()
+
+    # Convert the terrain into a polydata.
+    surface = vtk.vtkImageDataGeometryFilter()
+    surface.SetInputDataObject(dtmVtk)
+
+    # Make sure the polygons are planar, so need to use triangles.
+    tris = vtk.vtkTriangleFilter()
+    tris.SetInputConnection(surface.GetOutputPort())
+
+    # Warp the surface by scalar values
+    warp = vtk.vtkWarpScalar()
+    warp.SetInputConnection(tris.GetOutputPort())
+    warp.SetScaleFactor(1)
+    warp.UseNormalOn()
+    warp.SetNormal(0, 0, 1)
+    warp.Update()
+    dsmScalarRange = warp.GetOutput().GetPointData().GetScalars().GetRange()
+
+    dtmMapper = vtk.vtkPolyDataMapper()
+    dtmMapper.SetInputConnection(warp.GetOutputPort())
+    dtmActor = vtk.vtkActor()
+    dtmActor.SetMapper(dtmMapper)
+    ren.AddActor(dtmActor)
+
+    ren.ResetCamera()
+    camera = ren.GetActiveCamera()
+    camera.ParallelProjectionOn()
+    camera.SetParallelScale((dtmBounds[3] - dtmBounds[2])/2)
+
     if (args.buildings_only):
         scalarRange = buildingsScalarRange
     else:
         scalarRange = [min(dsmScalarRange[0], buildingsScalarRange[0]),
-                       max(dsmScalarRange[0], buildingsScalarRange[0])]
+                       max(dsmScalarRange[1], buildingsScalarRange[1])]
     lut = vtk.vtkColorTransferFunction()
     lut.AddRGBPoint(scalarRange[0], 0.23, 0.30, 0.75)
     lut.AddRGBPoint((scalarRange[0] + scalarRange[1]) / 2, 0.86, 0.86, 0.86)
@@ -212,6 +211,14 @@ if (args.render_png):
     writerPng.Write();
 else:
     print("Render into a floating point buffer ...")
+
+    ren.ResetCamera()
+    camera = ren.GetActiveCamera()
+    camera.ParallelProjectionOn()
+    camera.SetParallelScale((dtmBounds[3] - dtmBounds[2])/2)
+    camera.SetFocalPoint([(dtmBounds[0] + dtmBounds[1]) / 2,
+                          (dtmBounds[3] + dtmBounds[2]) / 2,
+                          (buildingsScalarRange[0] + buildingsScalarRange[1]) / 2])
     valuePass = vtk.vtkValuePass()
     valuePass.SetRenderingMode(vtk.vtkValuePass.FLOATING_POINT)
     valuePass.SetInputComponentToProcess(0)
@@ -228,7 +235,7 @@ else:
     ren.SetPass(cameraPass)
     # We have to render the points first, otherwise we get a segfault.
     renWin.Render()
-    ren.RemoveActor(dtmActor)
+    #ren.RemoveActor(dtmActor)
     valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, "Elevation");
     renWin.Render()
     elevationFlatVtk = valuePass.GetFloatImageDataArray(ren)
@@ -242,7 +249,7 @@ else:
         elevationFlat, dtmRaster.shape[::-1], "F")
     # changes from cols, rows to rows,cols.
     elevation = numpy.transpose(elevationTranspose)
-    # not sure why is this needed
+    # numpy rows increase as you go down, Y for VTK images increases as you go up
     elevation = numpy.flip(elevation, 0)
     if (args.buildings_only):
         dsmElevation = elevation
