@@ -1,0 +1,13 @@
+Material output labels:
+0 - Unclassified
+1 - Asphalt
+2 - Concrete/stone
+3 - Glass
+4 - Tree
+5 - Non-tree vegetation
+6 - Metal
+7 - Red ceramic
+8 - Soil
+9 - Solar panel
+10 - Water
+11 - Polymer
