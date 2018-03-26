@@ -30,7 +30,7 @@ if not dtm:
 dtmDriver = dtm.GetDriver()
 dtmDriverMetadata = dtmDriver.GetMetadata()
 dsm = None
-dtmBounds = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+dtmBounds = [0.0, 0.0, 0.0, 0.0]
 if dtmDriverMetadata.get(gdal.DCAP_CREATE) == "YES":
     print("Create destination image "
           "size:({}, {}) ...".format(dtm.RasterXSize,
@@ -55,26 +55,24 @@ if dtmDriverMetadata.get(gdal.DCAP_CREATE) == "YES":
         # georeference through affine geotransform
         dsm.SetProjection(projection)
         dsm.SetGeoTransform(transform)
-        corners = [[0, 0], [0, dtm.RasterYSize],
-                   [dtm.RasterXSize, dtm.RasterYSize], [dtm.RasterXSize, 0]]
-        geoCorners = numpy.zeros((4,2))
-        for i, corner in enumerate(corners):
-            geoCorners[i] = [
-                transform[0] + corner[0] * transform[1] +\
-                corner[1] * transform[2],
-                transform[3] + corner[0] * transform[4] +\
-                corner[1] * transform[5]]
-        dtmBounds[0] = numpy.min(geoCorners[:,0])
-        dtmBounds[1] = numpy.max(geoCorners[:,0])
-        dtmBounds[2] = numpy.min(geoCorners[:,1])
-        dtmBounds[3] = numpy.max(geoCorners[:,1])
     else:
         # georeference through GCPs
         dsm.SetGCPs(gcps, gcpProjection)
-        # compute dtmBounds before
-        # ...
-        print("Error: we need to compute DTM bounds from GCPs")
-        sys.exit(1)
+        gdal.GCPsToGeoTransform(gcps, transform)
+    corners = [[0, 0], [0, dtm.RasterYSize],
+               [dtm.RasterXSize, dtm.RasterYSize], [dtm.RasterXSize, 0]]
+    geoCorners = numpy.zeros((4,2))
+    for i, corner in enumerate(corners):
+        geoCorners[i] = [
+            transform[0] + corner[0] * transform[1] +\
+            corner[1] * transform[2],
+            transform[3] + corner[0] * transform[4] +\
+            corner[1] * transform[5]]
+    dtmBounds[0] = numpy.min(geoCorners[:,0])
+    dtmBounds[1] = numpy.max(geoCorners[:,0])
+    dtmBounds[2] = numpy.min(geoCorners[:,1])
+    dtmBounds[3] = numpy.max(geoCorners[:,1])
+
     print("Reading the DTM {} size: ({}, {})\n"
           "\tbounds: ({}, {}), ({}, {})...".format(
         args.dtm, dtm.RasterXSize, dtm.RasterYSize, dtmBounds[0], dtmBounds[1],
@@ -206,9 +204,9 @@ if (args.render_png):
     windowToImageFilter.Update()
 
     writerPng = vtk.vtkPNGWriter()
-    writerPng.SetFileName(args.dsm + ".png");
+    writerPng.SetFileName(args.dsm + ".png")
     writerPng.SetInputConnection(windowToImageFilter.GetOutputPort())
-    writerPng.Write();
+    writerPng.Write()
 else:
     print("Render into a floating point buffer ...")
 
@@ -216,16 +214,20 @@ else:
     camera = ren.GetActiveCamera()
     camera.ParallelProjectionOn()
     camera.SetParallelScale((dtmBounds[3] - dtmBounds[2])/2)
-    camera.SetFocalPoint([(dtmBounds[0] + dtmBounds[1]) / 2,
-                          (dtmBounds[3] + dtmBounds[2]) / 2,
-                          (buildingsScalarRange[0] + buildingsScalarRange[1]) / 2])
+    distance = camera.GetDistance()
+    focalPoint = [(dtmBounds[0] + dtmBounds[1]) * 0.5,
+                  (dtmBounds[3] + dtmBounds[2]) * 0.5,
+                  (buildingsScalarRange[0] + buildingsScalarRange[1]) * 0.5]
+    position = [focalPoint[0], focalPoint[1], focalPoint[2] + distance]
+    camera.SetFocalPoint(focalPoint)
+    camera.SetPosition(position)
+
     valuePass = vtk.vtkValuePass()
     valuePass.SetRenderingMode(vtk.vtkValuePass.FLOATING_POINT)
-    valuePass.SetInputComponentToProcess(0)
     # use the default scalar for point data
-    valuePass.SetInputComponentToProcess(0);
+    valuePass.SetInputComponentToProcess(0)
     valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_POINT_FIELD_DATA,
-                                     "Elevation");
+                                     "Elevation")
     passes = vtk.vtkRenderPassCollection()
     passes.AddItem(valuePass)
     sequence = vtk.vtkSequencePass()
@@ -236,7 +238,7 @@ else:
     # We have to render the points first, otherwise we get a segfault.
     renWin.Render()
     #ren.RemoveActor(dtmActor)
-    valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, "Elevation");
+    valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, "Elevation")
     renWin.Render()
     elevationFlatVtk = valuePass.GetFloatImageDataArray(ren)
     valuePass.ReleaseGraphicsResources(renWin)
