@@ -26,25 +26,29 @@ args = parser.parse_args()
 #!/usr/bin/env python
 
 # Read the terrain data
+print("Reading and warping the DTM ...")
 dtmReader = vtk.vtkGDALRasterReader()
 dtmReader.SetFileName(args.dtm)
-dtmReader.Update()
+
+dtmC2p = vtk.vtkCellDataToPointData()
+dtmC2p.SetInputConnection(dtmReader.GetOutputPort())
+dtmC2p.Update()
 
 # Range of terrain data
-lo = dtmReader.GetOutput().GetScalarRange()[0]
-hi = dtmReader.GetOutput().GetScalarRange()[1]
-bds = dtmReader.GetOutput().GetBounds()
+lo = dtmC2p.GetOutput().GetScalarRange()[0]
+hi = dtmC2p.GetOutput().GetScalarRange()[1]
+bds = dtmC2p.GetOutput().GetBounds()
 #print("Bounds: {0}".format(bds))
-extent = dtmReader.GetOutput().GetExtent()
+extent = dtmC2p.GetOutput().GetExtent()
 #print("Extent: {0}".format(extent))
-origin = dtmReader.GetOutput().GetOrigin()
+origin = dtmC2p.GetOutput().GetOrigin()
 #print("Origin: {0}".format(origin))
-spacing = dtmReader.GetOutput().GetSpacing()
+spacing = dtmC2p.GetOutput().GetSpacing()
 #print("Spacing: {0}".format(spacing))
 
 # Convert the terrain into a polydata.
 surface = vtk.vtkImageDataGeometryFilter()
-surface.SetInputConnection(dtmReader.GetOutputPort())
+surface.SetInputConnection(dtmC2p.GetOutputPort())
 
 # Make sure the polygons are planar, so need to use triangles.
 tris = vtk.vtkTriangleFilter()
@@ -58,33 +62,42 @@ warp.UseNormalOn()
 warp.SetNormal(0, 0, 1)
 warp.Update()
 
-# Read the segmentation of buildings
+# Read the segmentation of buildings. Original data in GDAL is cell data.
+# Point data is interpolated.
+print("Reading the segmentation ...")
 segmentationReader = vtk.vtkGDALRasterReader()
 segmentationReader.SetFileName(args.segmentation)
-segmentationReader.Update()
-segmentation = segmentationReader.GetOutput()
-scalarName = segmentation.GetPointData().GetScalars().GetName()
-segmentationNp = dsa.WrapDataObject(segmentation)
-scalars = segmentationNp.PointData[scalarName]
-labels = numpy.unique(scalars)
-print("All labels: {}".format(labels))
+
+segmentationC2p = vtk.vtkCellDataToPointData()
+segmentationC2p.SetInputConnection(segmentationReader.GetOutputPort())
+segmentationC2p.PassCellDataOn()
+segmentationC2p.Update()
+segmentation = segmentationC2p.GetOutput()
 
 if (args.debug):
     segmentationWriter = vtk.vtkXMLImageDataWriter()
     segmentationWriter.SetFileName("segmentation.vti")
-    segmentationWriter.SetInputConnection(segmentationReader.GetOutputPort())
+    segmentationWriter.SetInputConnection(segmentationC2p.GetOutputPort())
     segmentationWriter.Update()
 
-    segmentation = segmentationReader.GetOutput()
+    segmentation = segmentationC2p.GetOutput()
     sb = segmentation.GetBounds()
     print("segmentation bounds: \t{}".format(sb))
 
 # Extract polygons
 contours = vtk.vtkDiscreteFlyingEdges2D()
 #contours = vtk.vtkMarchingSquares()
-contours.SetInputConnection(segmentationReader.GetOutputPort())
+contours.SetInputConnection(segmentationC2p.GetOutputPort())
 if (args.label):
     labels = args.label
+if (args.debug):
+    scalarName = segmentation.GetCellData().GetScalars().GetName()
+    segmentationNp = dsa.WrapDataObject(segmentation)
+    scalars = segmentationNp.CellData[scalarName]
+    allLabels = numpy.unique(scalars)
+    print("Contouring on labels: {} of {}".format(labels, allLabels))
+else:
+    print("Contouring on labels: {}".format(labels))
 contours.SetNumberOfContours(len(labels))
 for i in range(len(labels)):
     contours.SetValue(i, labels[i])
@@ -100,6 +113,7 @@ if (args.debug):
     print("contours bounds: \t{}".format(cb))
 
 if (not args.no_decimation):
+    print("Decimating the contours ...")
     # combine lines into a polyline
     stripperContours = vtk.vtkStripper()
     stripperContours.SetInputConnection(contours.GetOutputPort())
@@ -126,6 +140,7 @@ if (not args.no_decimation):
 
 
 # Create loops
+print("Creating the loops ...")
 loops = vtk.vtkContourLoopExtraction()
 loops.SetInputConnection(contours.GetOutputPort())
 
@@ -136,13 +151,18 @@ if (args.debug):
     loopsWriter.Update()
 
 # Read the DSM
+print("Reading the DSM ...")
 dsmReader = vtk.vtkGDALRasterReader()
 dsmReader.SetFileName(args.dsm)
-dsmReader.Update()
 
+dsmC2p = vtk.vtkCellDataToPointData()
+dsmC2p.SetInputConnection(dsmReader.GetOutputPort())
+dsmC2p.Update()
+
+print("Extruding the buildings ...")
 fit = vtk.vtkFitToHeightMapFilter()
 fit.SetInputConnection(loops.GetOutputPort())
-fit.SetHeightMapConnection(dsmReader.GetOutputPort())
+fit.SetHeightMapConnection(dsmC2p.GetOutputPort())
 fit.UseHeightMapOffsetOn()
 fit.SetFittingStrategyToPointMaximumHeight()
 
