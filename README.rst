@@ -35,17 +35,25 @@ The Danesfield project is organized as follows:
 Metrics
 =======
 
-JHU/APL provides metrics software to evaluate the results of CORE3D algorithms.
-The Danesfield development environment includes this software. To run the metric
-analysis:
+JHU/APL provides the `core3d-metrics
+<https://github.com/pubgeo/core3d-metrics>`_ software to evaluate the results of
+CORE3D algorithms. The Danesfield development environment includes this
+software. The easiest way to configure and run the metrics software is through a
+convenience script:
 
-1. Create a config file, based on the `example
-   <https://github.com/pubgeo/core3d-metrics/tree/master/aoi-example>`_, that
-   specifies the paths to the reference and test input files.
-2. Run ``core3d-metrics -c <config file>.config``
-3. View the results in ``<config file>_metrics.json``.
+1. Run ``tools/run-metrics.py`` with the following arguments:
 
-See `<https://github.com/pubgeo/core3d-metrics>`_ for more information.
+   --ref-dir DIR        directory containing reference images
+   --ref-prefix PREFIX  reference image filename prefix (e.g. 'AOI-D2' for
+                        images like 'AOI-D2-DSM.tif')
+   --dsm FILE           test DSM file
+   --cls FILE           test CLS file
+
+   The script generates a config file based on the arguments, preprocesses the
+   test images, and runs core3d-metrics. The output is written to a
+   ``metrics-<timestamp>`` directory.
+
+2. View the results in the ``<name>_metrics.json`` file in the output directory.
 
 Some Useful Resources
 =====================
