@@ -68,7 +68,7 @@ for idx in range(1, num_bands + 1):
     mask = in_data == in_no_data_val
     valid_data = in_data[numpy.logical_not(mask)]
 
-    if (not valid_data.size == 0):
+    if valid_data.size > 0:
         # robustly find a range for intensity scaling
         min_p = args.range_percentile
         max_p = 100.0 - min_p
