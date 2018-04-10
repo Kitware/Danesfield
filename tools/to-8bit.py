@@ -68,17 +68,18 @@ for idx in range(1, num_bands + 1):
     mask = in_data == in_no_data_val
     valid_data = in_data[numpy.logical_not(mask)]
 
-    # robustly find a range for intensity scaling
-    min_p = args.range_percentile
-    max_p = 100.0 - min_p
-    min_val = numpy.percentile(valid_data, min_p)
-    max_val = numpy.percentile(valid_data, max_p)
-    print("band {} detected range: [{}, {}]".format(idx, min_val, max_val))
+    if (not valid_data.size == 0):
+        # robustly find a range for intensity scaling
+        min_p = args.range_percentile
+        max_p = 100.0 - min_p
+        min_val = numpy.percentile(valid_data, min_p)
+        max_val = numpy.percentile(valid_data, max_p)
+        print("band {} detected range: [{}, {}]".format(idx, min_val, max_val))
 
-    # clip and scale the data to fit the range 1-255 and cast to byte
-    in_data = in_data.clip(min_val, max_val)
-    scale = 254.0 / float(max_val - min_val)
-    in_data = (in_data - min_val) * scale + 1
+        # clip and scale the data to fit the range 1-255 and cast to byte
+        in_data = in_data.clip(min_val, max_val)
+        scale = 254.0 / float(max_val - min_val)
+        in_data = (in_data - min_val) * scale + 1
     out_data = in_data.astype(numpy.uint8)
     # set the masked out invalid pixels to 0
     out_data[mask] = 0
