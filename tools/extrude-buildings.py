@@ -14,7 +14,7 @@ parser.add_argument("dtm", help="Digital terain model (DTM)")
 parser.add_argument("destination", help="Extruded buildings polygonal file (.vtp)")
 parser.add_argument('-l', "--label", type=int, nargs="*",
                     help="Label value(s) used for buildings outlines."
-                         "If not specified, all values are used.")
+                         "If not specified, [6, 17] (buildings, roads) are used.")
 parser.add_argument("--no_decimation", action="store_true",
                     help="Do not decimate the contours")
 parser.add_argument("--no_render", action="store_true",
@@ -88,6 +88,12 @@ if (args.debug):
 contours = vtk.vtkDiscreteFlyingEdges2D()
 #contours = vtk.vtkMarchingSquares()
 contours.SetInputConnection(segmentationC2p.GetOutputPort())
+# default labels
+# 2 -- no building
+# 6 -- building
+# 17 -- road or highway
+# 65 -- don't score
+labels = [6, 17]
 if (args.label):
     labels = args.label
 if (args.debug):
