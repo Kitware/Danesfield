@@ -92,7 +92,7 @@ if (os.path.isfile(args.buildings)):
     polyBuildingsVtk = polyReader.GetOutput()
 else:
     # assume a folder with OBJ files
-    buildingsFiles = glob.glob(args.buildings + "*.obj")
+    buildingsFiles = glob.glob(args.buildings + "/*.obj")
     append = vtk.vtkAppendPolyData()
     for i, buildingsFileName in enumerate(buildingsFiles):
         objReader = vtk.vtkOBJReader()
