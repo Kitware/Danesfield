@@ -15,6 +15,8 @@ parser.add_argument("dtm", help="Digital terain model (DTM)")
 parser.add_argument("dsm", help="Resulting digital surface model (DSM)")
 parser.add_argument("--render_png", action="store_true",
                     help="Do not save the DSM, render into a PNG instead.")
+parser.add_argument("--render_cls", action="store_true",
+                    help="Render a buildings mask: render buildings label (6), background (2) and no DTM.")
 parser.add_argument("--buildings_only", action="store_true",
                     help="Do not use the DTM, use only the buildings.")
 parser.add_argument("--debug", action="store_true",
@@ -45,8 +47,10 @@ if dtmDriverMetadata.get(gdal.DCAP_CREATE) == "YES":
     # (in DMS) to be set later
     if (dtmDriver.ShortName == "NITF" and not projection):
         options.append("ICORDS=G")
-    eType = gdal.GDT_Float32
-    dtype = numpy.float32
+    if args.render_cls:
+        eType = gdal.GDT_Byte
+    else:
+        eType = gdal.GDT_Float32
     dsm = dtmDriver.Create(
         args.dsm, xsize=dtm.RasterXSize,
         ysize=dtm.RasterYSize, bands=1, eType=eType,
@@ -73,11 +77,18 @@ if dtmDriverMetadata.get(gdal.DCAP_CREATE) == "YES":
     dtmBounds[2] = numpy.min(geoCorners[:,1])
     dtmBounds[3] = numpy.max(geoCorners[:,1])
 
-    print("Reading the DTM {} size: ({}, {})\n"
-          "\tbounds: ({}, {}), ({}, {})...".format(
-        args.dtm, dtm.RasterXSize, dtm.RasterYSize, dtmBounds[0], dtmBounds[1],
-        dtmBounds[2], dtmBounds[3]))
-    dtmRaster = dtm.GetRasterBand(1).ReadAsArray()
+    if args.render_cls:
+        # label for no building
+        dtmRaster = numpy.full([dtm.RasterYSize, dtm.RasterXSize], 2)
+        nodata = 0
+    else:
+        print("Reading the DTM {} size: ({}, {})\n"
+            "\tbounds: ({}, {}), ({}, {})...".format(
+            args.dtm, dtm.RasterXSize, dtm.RasterYSize, dtmBounds[0], dtmBounds[1],
+            dtmBounds[2], dtmBounds[3]))
+        dtmRaster = dtm.GetRasterBand(1).ReadAsArray()
+        nodata = dtm.GetRasterBand(1).GetNoDataValue()
+    print("Nodata: {}".format(nodata))
 else:
     print("Driver {} does not supports Create().".format(dtmDriver))
     sys.exit(1)
@@ -101,12 +112,15 @@ else:
     append.Update()
     polyBuildingsVtk = append.GetOutput()
 
+arrayName = "Elevation"
 polyBuildings = dsa.WrapDataObject(polyBuildingsVtk)
 polyElevation = polyBuildings.Points[:, 2]
+if args.render_cls:
+    # label for buildings
+    polyElevation[:] = 6
 polyElevationVtk = numpy_support.numpy_to_vtk(polyElevation)
-polyElevationVtk.SetName("Elevation")
+polyElevationVtk.SetName(arrayName)
 polyBuildings.PointData.SetScalars(polyElevationVtk)
-
 
 # Create the RenderWindow, Renderer
 #
@@ -227,7 +241,7 @@ else:
     # use the default scalar for point data
     valuePass.SetInputComponentToProcess(0)
     valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_POINT_FIELD_DATA,
-                                     "Elevation")
+                                     arrayName)
     passes = vtk.vtkRenderPassCollection()
     passes.AddItem(valuePass)
     sequence = vtk.vtkSequencePass()
@@ -238,7 +252,7 @@ else:
     # We have to render the points first, otherwise we get a segfault.
     renWin.Render()
     #ren.RemoveActor(dtmActor)
-    valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, "Elevation")
+    valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, arrayName)
     renWin.Render()
     elevationFlatVtk = valuePass.GetFloatImageDataArray(ren)
     valuePass.ReleaseGraphicsResources(renWin)
@@ -248,14 +262,15 @@ else:
     # VTK X,Y corresponds to numpy cols,rows. VTK stores arrays
     # in Fortran order.
     elevationTranspose = numpy.reshape(
-        elevationFlat, dtmRaster.shape[::-1], "F")
+        elevationFlat, [dtm.RasterXSize, dtm.RasterYSize], "F")
     # changes from cols, rows to rows,cols.
     elevation = numpy.transpose(elevationTranspose)
     # numpy rows increase as you go down, Y for VTK images increases as you go up
     elevation = numpy.flip(elevation, 0)
-    if (args.buildings_only):
+    if args.buildings_only:
         dsmElevation = elevation
     else:
         # elevation has nans in places other than buildings
         dsmElevation = numpy.fmax(dtmRaster, elevation)
     dsm.GetRasterBand(1).WriteArray(dsmElevation)
+    dsm.GetRasterBand(1).SetNoDataValue(nodata)
