@@ -118,12 +118,6 @@ polyElevation = polyBuildings.Points[:, 2]
 if args.render_cls:
     # label for buildings
     polyElevation[:] = 6
-# This should work as well, but it does not.
-# if args.render_cls:
-#     # label for buildings
-#     polyElevation = numpy.full([polyBuildingsVtk.GetNumberOfPoints()], 6.0, dtype=numpy.float32)
-# else:
-#     polyElevation = polyBuildings.Points[:, 2]
 polyElevationVtk = numpy_support.numpy_to_vtk(polyElevation)
 polyElevationVtk.SetName(arrayName)
 polyBuildings.PointData.SetScalars(polyElevationVtk)
