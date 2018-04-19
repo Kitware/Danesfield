@@ -35,7 +35,7 @@ def upsample(dtm, out):
     out[1::2, 1::2] = dtm[s0,s1]
 
 
-def recursive_fit_dtm(dtm, dsm, step=1, level=0):
+def recursive_fit_dtm(dtm, dsm, step=1, level=0, nodata_val=-9999):
     """
     Recursive function to apply multi-scale DTM fitting
     """
@@ -45,7 +45,7 @@ def recursive_fit_dtm(dtm, dsm, step=1, level=0):
         sm_dtm = downsample(dtm)
         sm_dsm = downsample(dsm)
         # Recursively apply DTM fitting to the downsampled image
-        sm_dtm, max_level = recursive_fit_dtm(sm_dtm, sm_dsm, step, level+1)
+        sm_dtm, max_level = recursive_fit_dtm(sm_dtm, sm_dsm, step, level+1, nodata_val)
         # Upsample the DTM back to the original resolution
         upsample(sm_dtm, dtm)
         print("level {} of {}".format(level,max_level))
@@ -54,14 +54,14 @@ def recursive_fit_dtm(dtm, dsm, step=1, level=0):
         # Decrease the number of iterations as well
         num_iter = max(1, int(100 / (2 ** (max_level - level))))
         # Apply iterations of cloth draping simulation to smooth out the result
-        return drape_cloth(dtm, dsm, step, num_iter), max_level
+        return drape_cloth(dtm, dsm, step, num_iter, nodata_val), max_level
 
     print("reached min size {}".format(dtm.shape))
     # Apply cloth draping at the coarsest level (base case)
-    return drape_cloth(dtm, dsm, step, 100), level 
+    return drape_cloth(dtm, dsm, step, 100, nodata_val), level
 
 
-def drape_cloth(dtm, dsm, step=1, num_iter=10):
+def drape_cloth(dtm, dsm, step=1, num_iter=10, nodata_val=-9999):
     """
     Compute inverted 2.5D cloth draping simulation iterations
     """
@@ -69,16 +69,17 @@ def drape_cloth(dtm, dsm, step=1, num_iter=10):
     for i in range(num_iter):
         print(".", end='', flush=True)
         # raise the DTM by step (inverted gravity)
-        dtm += step
+        valid = dsm != nodata_val
+        dtm[valid] += step
         for i in range(10):
             # handle DSM intersections, snap back to below DSM
-            numpy.minimum(dtm, dsm, out=dtm)
+            numpy.minimum(dtm, dsm, out=dtm, where=valid)
             # apply spring tension forces (blur the DTM)
             dtm = ndimage.uniform_filter(dtm, size=3)
     # print newline after progress bar
     print("")
     # one final intersection check
-    numpy.minimum(dtm, dsm, out=dtm)
+    numpy.minimum(dtm, dsm, out=dtm, where=valid)
     return dtm
 
 
@@ -92,14 +93,11 @@ def fit_dtm(dsm, nodata_val):
     valid_data = dsm[dsm != nodata_val]
     minv = numpy.min(valid_data)
     maxv = numpy.max(valid_data)
-    # replace no-data values in the DSM with the max height,
-    # so all pixels now have a valid value
-    dsm[dsm == nodata_val] = maxv
     # compute the step size that covers the range in 100 steps
     step = (maxv - minv) / 100
     # initialize the DTM values to the minimum DSM height
     dtm = numpy.full(dsm.shape, minv, dsm.dtype)
-    return recursive_fit_dtm(dtm, dsm, step)[0]
+    return recursive_fit_dtm(dtm, dsm, step, nodata_val=nodata_val)[0]
 
 
 def main(args):
