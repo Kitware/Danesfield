@@ -35,7 +35,8 @@ def upsample(dtm, out):
     out[1::2, 1::2] = dtm[s0,s1]
 
 
-def recursive_fit_dtm(dtm, dsm, step=1, level=0, nodata_val=-9999):
+def recursive_fit_dtm(dtm, dsm, step=1, level=0,
+                      nodata_val=-9999, num_iter=100):
     """
     Recursive function to apply multi-scale DTM fitting
     """
@@ -45,20 +46,21 @@ def recursive_fit_dtm(dtm, dsm, step=1, level=0, nodata_val=-9999):
         sm_dtm = downsample(dtm)
         sm_dsm = downsample(dsm)
         # Recursively apply DTM fitting to the downsampled image
-        sm_dtm, max_level = recursive_fit_dtm(sm_dtm, sm_dsm, step, level+1, nodata_val)
+        sm_dtm, max_level = recursive_fit_dtm(sm_dtm, sm_dsm, step, level+1,
+                                              nodata_val, num_iter)
         # Upsample the DTM back to the original resolution
         upsample(sm_dtm, dtm)
         print("level {} of {}".format(level,max_level))
         # Decrease the step size exponentially when moving back down the pyramid
         step = step / (2 * 2 ** (max_level - level))
         # Decrease the number of iterations as well
-        num_iter = max(1, int(100 / (2 ** (max_level - level))))
+        num_iter = max(1, int(num_iter / (2 ** (max_level - level))))
         # Apply iterations of cloth draping simulation to smooth out the result
         return drape_cloth(dtm, dsm, step, num_iter, nodata_val), max_level
 
     print("reached min size {}".format(dtm.shape))
     # Apply cloth draping at the coarsest level (base case)
-    return drape_cloth(dtm, dsm, step, 100, nodata_val), level
+    return drape_cloth(dtm, dsm, step, num_iter, nodata_val), level
 
 
 def drape_cloth(dtm, dsm, step=1, num_iter=10, nodata_val=-9999):
@@ -83,7 +85,7 @@ def drape_cloth(dtm, dsm, step=1, num_iter=10, nodata_val=-9999):
     return dtm
 
 
-def fit_dtm(dsm, nodata_val):
+def fit_dtm(dsm, nodata_val, num_iter):
     """
     Fit a Digital Terrain Model (DTM) to the provided Digital Surface Model (DSM)
     """
@@ -93,11 +95,12 @@ def fit_dtm(dsm, nodata_val):
     valid_data = dsm[dsm != nodata_val]
     minv = numpy.min(valid_data)
     maxv = numpy.max(valid_data)
-    # compute the step size that covers the range in 100 steps
-    step = (maxv - minv) / 100
+    # compute the step size that covers the range in num_iter steps
+    step = (maxv - minv) / num_iter
     # initialize the DTM values to the minimum DSM height
     dtm = numpy.full(dsm.shape, minv, dsm.dtype)
-    return recursive_fit_dtm(dtm, dsm, step, nodata_val=nodata_val)[0]
+    return recursive_fit_dtm(dtm, dsm, step, nodata_val=nodata_val,
+                             num_iter=num_iter)[0]
 
 
 def main(args):
@@ -108,8 +111,8 @@ def main(args):
                         help="Digital surface model (DSM) image file name")
     parser.add_argument("destination_dtm",
                         help="Digital terrain model (DTM) image file name")
-    parser.add_argument('-t', "--thresh", type=float, default=1.0,
-                        help="Threshold")
+    parser.add_argument('-n', "--num-iterations", type=int, default=100,
+                        help="Base number of iteration at the coarsest scale")
     args = parser.parse_args()
 
     # open the DSM
@@ -153,8 +156,7 @@ def main(args):
         print("Driver {} does not supports Create().".format(driver))
         sys.exit(1)
 
-    dtm = fit_dtm(dtm, band.GetNoDataValue())
-    #dtm[dtm < 2.0] = band.GetNoDataValue()
+    dtm = fit_dtm(dtm, band.GetNoDataValue(), args.num_iterations)
 
     destBand = destImage.GetRasterBand(1)
     destBand.SetNoDataValue(band.GetNoDataValue())
