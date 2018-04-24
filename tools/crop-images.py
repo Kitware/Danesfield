@@ -29,6 +29,9 @@ import gdalconst
 import gdalnumeric
 import gdal
 
+import ogr
+import osr
+
 
 def gdal_get_transform(src_image):
     geo_trans = src_image.GetGeoTransform()
@@ -43,24 +46,6 @@ def gdal_get_projection(src_image):
     if projection == '':
         projection = src_image.GetGCPProjection()
     return projection
-
-
-def world_to_pixel_poly(model, poly):
-    """
-    Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
-    the pixel location of a geospatial coordinate
-    """
-    first_point = True
-    for p in range(poly.shape[0]):
-        point = poly[p]
-        proj_point = model.project(point)
-        if first_point is True:
-            pixel_poly = np.array(proj_point)
-            first_point = False
-        else:
-            pixel_poly = np.vstack([pixel_poly, proj_point])
-
-    return pixel_poly
 
 
 def world_to_pixel(geoMatrix, x, y):
@@ -188,7 +173,6 @@ for root, dirs, files in os.walk(src_root_dir):
         new_root = root.replace(src_root_dir, dst_root_dir)
         if not os.path.exists(new_root):
             os.makedirs(new_root)
-
         ext = os.path.splitext(file_)[-1].lower()
         if ext != ".ntf":
             continue
@@ -234,7 +218,8 @@ for root, dirs, files in os.walk(src_root_dir):
                 model = updated_rpc
                 rpc_md = rpc.rpc_to_gdal_dict(updated_rpc)
 
-        pixel_poly = world_to_pixel_poly(model, poly)
+        # Project the world point locations into the image
+        pixel_poly = model.project(poly)
 
         ul_x, ul_y = map(int, pixel_poly.min(0))
         lr_x, lr_y = map(int, pixel_poly.max(0))
@@ -254,6 +239,9 @@ for root, dirs, files in os.walk(src_root_dir):
         line_off = float(line_off) - ul_y
         rpc_md['LINE_OFF'] = str(line_off)
 
+        model.image_offset[0] -= ul_x
+        model.image_offset[1] -= ul_y
+
         # Calculate the pixel size of the new image
         # Constrain the width and height to the bounds of the image
         px_width = int(lr_x - ul_x + 1)
@@ -270,6 +258,14 @@ for root, dirs, files in os.walk(src_root_dir):
         if px_width < 0 or px_height < 0:
             print('AOI out of range, skipping\n')
             continue
+
+        corners = [[0, 0], [px_width, 0], [px_width, px_height], [0, px_height]]
+        corner_names = ['UpperLeft', 'UpperRight', 'LowerRight', 'LowerLeft']
+        world_corners = model.back_project(corners, elevation)
+
+        corner_gcps = []
+        for (p, l), (x, y, h), n in zip(corners, world_corners, corner_names):
+            corner_gcps.append(gdal.GCP(x, y, h, p, l, "", n))
 
         # Load the source data as a gdalnumeric array
         clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
@@ -304,8 +300,8 @@ for root, dirs, files in os.walk(src_root_dir):
 
         # Rewrite the rpc_md that we modified above.
         output_dataset.SetMetadata(rpc_md, 'RPC')
-        gdalnumeric.CopyDatasetInfo(src_image, output_dataset,
-                                    xoff=ul_x, yoff=ul_y)
+        output_dataset.SetGeoTransform(gdal.GCPsToGeoTransform(corner_gcps))
+        output_dataset.SetProjection(gdal_get_projection(src_image))
 
         # End logging, print blank line for clarity
         print('')
@@ -325,15 +321,4 @@ for root, dirs, files in os.walk(src_root_dir):
             outfile = output_driver.CreateCopy(
                 dst_img_file, output_dataset, False)
 
-            # We need to write this data out
-            # after the CreateCopy call or it's lost
-            # This change seems to happen in GDAL with python 3
-
-            # Create a new geomatrix for the image
-            geo_trans = list(geo_trans)
-            geo_trans[0] = min_x
-            geo_trans[3] = max_y
-
-            output_dataset.SetGeoTransform(geo_trans)
-            output_dataset.SetProjection(gdal_get_projection(src_image))
             outfile = None
