@@ -6,6 +6,7 @@ import numpy
 import scipy.ndimage as ndimage
 import sys
 
+
 def downsample(dtm):
     """
     Simple 2X downsampling, take every other pixel
@@ -30,9 +31,9 @@ def upsample(dtm, out):
 
     # copy in duplicate values for blocks of 2x2 pixels
     out[::2, ::2] = dtm
-    out[1::2, ::2] = dtm[s0,:]
-    out[::2, 1::2] = dtm[:,s1]
-    out[1::2, 1::2] = dtm[s0,s1]
+    out[1::2, ::2] = dtm[s0, :]
+    out[::2, 1::2] = dtm[:, s1]
+    out[1::2, 1::2] = dtm[s0, s1]
 
 
 def recursive_fit_dtm(dtm, dsm, step=1, level=0,
@@ -50,7 +51,7 @@ def recursive_fit_dtm(dtm, dsm, step=1, level=0,
                                               nodata_val, num_iter)
         # Upsample the DTM back to the original resolution
         upsample(sm_dtm, dtm)
-        print("level {} of {}".format(level,max_level))
+        print("level {} of {}".format(level, max_level))
         # Decrease the step size exponentially when moving back down the pyramid
         step = step / (2 * 2 ** (max_level - level))
         # Decrease the number of iterations as well
@@ -124,11 +125,9 @@ def main(args):
     dsmRaster = band.ReadAsArray(
         xoff=0, yoff=0,
         win_xsize=dsm.RasterXSize, win_ysize=dsm.RasterYSize)
-    dsm_nodata_value = band.GetNoDataValue()
     print("DSM raster shape {}".format(dsmRaster.shape))
 
     dtm = dsmRaster
-
 
     # create the DTM image
     driver = dsm.GetDriver()
@@ -137,19 +136,10 @@ def main(args):
     if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
         print("Create destination DTM of "
               "size:({}, {}) ...".format(dsm.RasterXSize, dsm.RasterYSize))
-        options = []
-        # ensure that space will be reserved for geographic corner coordinates
-        # (in DMS) to be set later
-        if (driver.ShortName == "NITF" and not projection):
-            options.append("ICORDS=G")
-        # If I try to use AddBand with GTiff I get:
-        # Dataset does not support the AddBand() method.
-        # So I create all bands using the same type at the begining
         destImage = driver.Create(
             args.destination_dtm, xsize=dtm.shape[1],
             ysize=dtm.shape[0],
-            bands=dsm.RasterCount, eType=band.DataType,
-            options=options)
+            bands=dsm.RasterCount, eType=band.DataType)
 
         gdalnumeric.CopyDatasetInfo(dsm, destImage)
     else:
