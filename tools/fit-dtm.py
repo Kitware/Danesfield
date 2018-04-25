@@ -18,6 +18,9 @@ def main(args):
                         help="Digital terrain model (DTM) image file name")
     parser.add_argument('-n', "--num-iterations", type=int, default=100,
                         help="Base number of iteration at the coarsest scale")
+    parser.add_argument('-t', "--tension", type=int, default=10,
+                        help="Number of inner smoothing iterations, "
+                             "greater values increase surface tension.")
     args = parser.parse_args()
 
     # open the DSM
@@ -50,7 +53,9 @@ def main(args):
         print("Driver {} does not supports Create().".format(driver))
         sys.exit(1)
 
-    estimator = danesfield.dtm.DTMEstimator(band.GetNoDataValue(), args.num_iterations)
+    estimator = danesfield.dtm.DTMEstimator(band.GetNoDataValue(),
+                                            args.num_iterations,
+                                            args.tension)
     dtm = estimator.fit_dtm(dtm)
 
     destBand = destImage.GetRasterBand(1)
