@@ -7,6 +7,7 @@ name: core3d-dev
 
 channels:
 - kitware-geospatial
+- pytorch
 - conda-forge
 - defaults
 
@@ -25,4 +26,4 @@ dependencies:
 - geojson
 - flake8
 - pytest
-
+- pytorch=0.3.*
