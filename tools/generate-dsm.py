@@ -6,6 +6,15 @@ import os
 import pdal
 import subprocess
 
+
+def getTempFilename(filename):
+    """Get a temporary filename in the same directory as the specified filename."""
+    path, basename = os.path.split(filename)
+    name, ext = os.path.splitext(basename)
+    name += '_temp'
+    return os.path.join(path, name + ext)
+
+
 def getMinMax(json_string):
     j = json.loads(json_string)
     j = j["stats"]["statistic"]
@@ -26,7 +35,6 @@ parser.add_argument("--bounds", nargs=4, type=float, action="store",
 parser.add_argument("--gsd", help="Ground sample distance")
 args = parser.parse_args()
 
-tempImage = "_" + args.destination_image
 if (not args.gsd):
     args.gsd = 0.25
     print("Using gsd = 0.25 m")
@@ -75,6 +83,7 @@ jsonTemplate = """
   ]
 }"""
 print("Generating DSM ...")
+tempImage = getTempFilename(args.destination_image)
 all_sources = ",\n".join("\"" + str(e) + "\"" for e in args.source_points)
 json = jsonTemplate % (all_sources, args.gsd, tempImage,
                        minX, maxX, minY, maxY)
