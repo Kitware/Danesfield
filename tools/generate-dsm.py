@@ -3,8 +3,8 @@ import gdal
 import json
 import numpy
 import os
-import pdal
 import subprocess
+import sys
 
 
 def getTempFilename(filename):
@@ -24,6 +24,7 @@ def getMinMax(json_string):
     maxY = j[1]["maximum"]
     return minX, maxX, minY, maxY
 
+
 parser = argparse.ArgumentParser(
     description='Generate a Digital Surface Model (DSM) from a point cloud')
 parser.add_argument("-s", "--source_points", nargs="+", help="Source points file[s]")
@@ -35,14 +36,14 @@ parser.add_argument("--bounds", nargs=4, type=float, action="store",
 parser.add_argument("--gsd", help="Ground sample distance")
 args = parser.parse_args()
 
-if (not args.gsd):
+if not args.gsd:
     args.gsd = 0.25
     print("Using gsd = 0.25 m")
 
-if(not args.source_points):
+if not args.source_points:
     print("error: At least one source_points file required")
-    exit(1)
-if (args.bounds):
+    sys.exit(1)
+if args.bounds:
     minX, maxX, minY, maxY = args.bounds
 else:
     print("Computing the bounding box for {} point cloud files ...".format(
@@ -51,20 +52,20 @@ else:
     maxX = - numpy.inf
     minY = numpy.inf
     maxY = - numpy.inf
-    pdal_info_template=["pdal", "info", "--stats", "--dimensions", "X,Y"]
-    for i,s in enumerate(args.source_points):
-        pdal_info_args=pdal_info_template + [s]
+    pdal_info_template = ["pdal", "info", "--stats", "--dimensions", "X,Y"]
+    for i, s in enumerate(args.source_points):
+        pdal_info_args = pdal_info_template + [s]
         out = subprocess.check_output(pdal_info_args)
         tempMinX, tempMaxX, tempMinY, tempMaxY = getMinMax(out)
-        if (tempMinX < minX):
+        if tempMinX < minX:
             minX = tempMinX
-        if (tempMaxX > maxX):
+        if tempMaxX > maxX:
             maxX = tempMaxX
-        if (tempMinY < minY):
+        if tempMinY < minY:
             minY = tempMinY
-        if (tempMaxY > maxY):
+        if tempMaxY > maxY:
             maxY = tempMaxY
-        if (i % 10 == 0):
+        if i % 10 == 0:
             print("Iteration {}".format(i))
 print("Bounds ({}, {}, {}, {})".format(minX, maxX, minY, maxY))
 
@@ -85,10 +86,10 @@ jsonTemplate = """
 print("Generating DSM ...")
 tempImage = getTempFilename(args.destination_image)
 all_sources = ",\n".join("\"" + str(e) + "\"" for e in args.source_points)
-json = jsonTemplate % (all_sources, args.gsd, tempImage,
-                       minX, maxX, minY, maxY)
+pipeline = jsonTemplate % (all_sources, args.gsd, tempImage,
+                           minX, maxX, minY, maxY)
 pdal_pipeline_args = ["pdal", "pipeline", "--stream", "--stdin"]
-subprocess.run(pdal_pipeline_args, input=json.encode())
+subprocess.run(pdal_pipeline_args, input=pipeline.encode())
 
 
 print("Converting to EPSG:4326 ...")
