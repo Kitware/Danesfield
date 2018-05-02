@@ -11,7 +11,65 @@ import numpy as np
 import cv2
 import pdb
 import sys
-import Utils
+
+#project a vector point to image
+def ProjectPoint(model, pt):
+    #simplest projection model
+    px = int((pt[0]-model['corners'][0])/model['project_model'][1]*model['scale'])
+    py = int((pt[1]-model['corners'][1])/model['project_model'][5]*model['scale'])
+    return [px,py]
+
+#build building cluster
+def GetBuildingCluster(building_list, model, cluster_thres = 200):
+    building_cluster_list = []
+    #go through all the buildings
+    for building in building_list:
+        #nothing in the list
+        if len(building_cluster_list) == 0:
+            building_cluster_list.append([building])
+        else:
+            max_index = -1
+            max_similarity = 0
+            #check all the buildings in the list, find one cluster with highest similarity.
+            for cluster_idx, building_cluster in enumerate(building_cluster_list):
+                for exist_building in building_cluster:
+                    similarity = BuildingSimilarity(building, exist_building, model, cluster_thres)
+                    if similarity > max_similarity:
+                        max_index = cluster_idx
+                        max_similarity = similarity
+            #find one good cluster
+            if max_index>=0 and max_similarity>0.1:
+                building_cluster_list[max_index].append(building)
+            else:
+                building_cluster_list.append([building])
+
+    return building_cluster_list
+
+#Calculate the similarity between two buildings base on location.
+#only based on the first point of the building
+#It's a very simple method. It can be improved in the future
+def BuildingSimilarity(building_1, building_2, model, cluster_thres = 200):
+    geom_1 = building_1.GetGeometryRef()
+    g_1 = geom_1.GetGeometryRef(0)
+    if g_1.GetPointCount() > 0:
+        first_polygon = g_1
+    else:
+        first_polygon = g_1.GetGeometryRef(0)
+    pt_1 = first_polygon.GetPoint(0)
+
+    geom_2 = building_2.GetGeometryRef()
+    g_2 = geom_2.GetGeometryRef(0)
+    if g_2.GetPointCount() > 0:
+        second_polygon = g_2
+    else:
+        second_polygon = g_2.GetGeometryRef(0)
+    pt_2 = second_polygon.GetPoint(0)
+
+    similarity = np.sqrt(float((pt_1[0]-pt_2[0])*(pt_1[0]-pt_2[0])) + \
+            float((pt_1[1]-pt_2[1])*(pt_1[1]-pt_2[1])))\
+            /model['project_model'][1]*model['scale']/cluster_thres
+    return max(1-similarity,0)
+
 
 def totalMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
     img_height = edge_img.shape[0]
@@ -30,6 +88,53 @@ def totalMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
             dx, dy, total_value, max_value))
     return total_value
 
+def clipVectorFile(vectorFile, corners):
+    ds = ogr.Open(vectorFile)
+    if ds.GetLayerCount()<=1:
+        layer = ds.GetLayerByIndex(0)
+    else:
+        layer = ds.GetLayerByIndex(3)
+    nameList = []
+
+    building_list = []
+    for feature in layer:
+        building_flag = False
+        try:
+            tmp_field = feature.GetField("building")
+            if tmp_field != None:
+                building_flag = True
+            else:
+                building_flag = False
+        except:
+            building_flag = True
+
+        if building_flag:
+            flag = True
+            geom = feature.GetGeometryRef()
+            shape_ptr = None
+            g = geom.GetGeometryRef(0)
+            #pdb.set_trace()
+            #print(g.GetPointCount())
+            if g.GetPointCount()<=0:#for osm data
+                shape_ptr = g
+            else:#for us city data
+                shape_ptr = geom
+            for shape_idx in range(shape_ptr.GetGeometryCount()):
+                polygon = shape_ptr.GetGeometryRef(shape_idx)
+                for i in range(0, polygon.GetPointCount()):
+                    pt = polygon.GetPoint(i)
+                    if pt[0]>corners[0] and pt[0]<corners[1] and \
+                       pt[1]>corners[2] and pt[1]<corners[3]:
+                        pass
+                    else:
+                        flag = False
+                        break
+                if not flag:
+                    break
+            if flag:
+                building_list.append(feature)
+    ds = None
+    return building_list
 
 
 draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
@@ -94,54 +199,11 @@ model['project_model'] = gt
 model['scale'] = scale
 
 print("Clipping buildings to source_img ...")
-ds = ogr.Open(args.input_osm)
-if ds.GetLayerCount()<=1:
-    layer = ds.GetLayerByIndex(0)
-else:
-    layer = ds.GetLayerByIndex(3)
-nameList = []
-
-building_list = []
-for feature in layer:
-    building_flag = False
-    try:
-        tmp_field = feature.GetField("building")
-        if tmp_field != None:
-            building_flag = True
-        else:
-            building_flag = False
-    except:
-        building_flag = True
-
-    if building_flag:
-        flag = True
-        geom = feature.GetGeometryRef()
-        shape_ptr = None
-        g = geom.GetGeometryRef(0)
-        #pdb.set_trace()
-        #print(g.GetPointCount())
-        if g.GetPointCount()<=0:#for osm data
-            shape_ptr = g
-        else:#for us city data
-            shape_ptr = geom
-        for shape_idx in range(shape_ptr.GetGeometryCount()):
-            polygon = shape_ptr.GetGeometryRef(shape_idx)
-            for i in range(0, polygon.GetPointCount()):
-                pt = polygon.GetPoint(i)
-                if pt[0]>left and pt[0]<right and pt[1]<top and pt[1]>bottom:
-                    pass
-                else:
-                    flag = False
-                    break
-            if not flag:
-                break
-        if flag:
-            building_list.append(feature)
-ds = None
+building_list = clipVectorFile(args.input_osm, [left, right, bottom, top])
 
 if args.clusters:
     print("Clustering ...")
-    building_cluster_list = Utils.GetBuildingCluster(building_list, model)
+    building_cluster_list = GetBuildingCluster(building_list, model)
     print("Got {} clusters".format(len(building_cluster_list)))
 else:
     building_cluster_list = []
@@ -166,7 +228,7 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
             poly_point_list = []
             for i in range(0, polygon.GetPointCount()):
                 pt = polygon.GetPoint(i)
-                poly_point_list.append(Utils.ProjectPoint(model,pt))
+                poly_point_list.append(ProjectPoint(model,pt))
             poly_array = np.array(poly_point_list)
             poly_array = poly_array.reshape((-1,1,2))
             poly_array_list.append(poly_array)
