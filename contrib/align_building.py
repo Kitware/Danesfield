@@ -6,10 +6,13 @@ Email: xu.zhang@columbia.edu.cn
 """
 
 import argparse
-import gdal, ogr, os, osr
-import numpy as np
 import cv2
+import gdal
+import numpy as np
+import ogr
+import os
 import pdb
+import subprocess
 import sys
 
 #project a vector point to image
@@ -71,7 +74,7 @@ def BuildingSimilarity(building_1, building_2, model, cluster_thres = 200):
     return max(1-similarity,0)
 
 
-def totalMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
+def computeMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
     img_height = edge_img.shape[0]
     img_width = edge_img.shape[1]
 
@@ -88,9 +91,30 @@ def totalMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
             dx, dy, total_value, max_value))
     return total_value
 
-def clipVectorFile(vectorFile, corners):
-    ds = ogr.Open(vectorFile)
-    if ds.GetLayerCount()<=1:
+def readAndClipVectorFile(inputVector, inputLayer, corners):
+    print("Clipping {} to source_img: {} ...".format(inputVector, corners))
+    # clip the shape file first
+    basename=os.path.basename(inputVector)
+    basenameNoExt = os.path.splitext(basename)[0]
+    destinationVectorFile = basenameNoExt + "_spat.shp"
+    ogr2ogr_args = ["ogr2ogr", "-spat",
+                    str(corners[0]), str(corners[1]), str(corners[2]), str(corners[3]),
+                    "-select", "name,building", "-where", "building is not null",
+                    destinationVectorFile, inputVector]
+    if inputLayer:
+        ogr2ogr_args.append(inputLayer)
+    print("Execute: {}".format(ogr2ogr_args))
+    subprocess.run(ogr2ogr_args)
+    inputVector = destinationVectorFile
+    inputLayer = os.path.splitext(inputVector)[0]
+
+    ds = ogr.Open(inputVector)
+    if inputLayer:
+        layer = ds.GetLayer(inputLayer)
+        if not layer:
+            print("Invalid layer: {}".format(inputLayer))
+            sys.exit(10)
+    elif ds.GetLayerCount()<=1:
         layer = ds.GetLayerByIndex(0)
     else:
         layer = ds.GetLayerByIndex(3)
@@ -110,19 +134,15 @@ def clipVectorFile(vectorFile, corners):
 
         if building_flag:
             flag = True
-            geom = feature.GetGeometryRef()
-            shape_ptr = None
-            g = geom.GetGeometryRef(0)
-            #pdb.set_trace()
-            #print(g.GetPointCount())
-            if g.GetPointCount()<=0:#for osm data
-                shape_ptr = g
+            multipoly = feature.GetGeometryRef()
+            if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:#for osm data
+                poly = multipoly.GetGeometryRef(0)
             else:#for us city data
-                shape_ptr = geom
-            for shape_idx in range(shape_ptr.GetGeometryCount()):
-                polygon = shape_ptr.GetGeometryRef(shape_idx)
-                for i in range(0, polygon.GetPointCount()):
-                    pt = polygon.GetPoint(i)
+                poly = multipoly
+            for ring_idx in range(poly.GetGeometryCount()):
+                ring = poly.GetGeometryRef(ring_idx)
+                for i in range(0, ring.GetPointCount()):
+                    pt = ring.GetPoint(i)
                     if pt[0]>corners[0] and pt[0]<corners[1] and \
                        pt[1]>corners[2] and pt[1]<corners[3]:
                         pass
@@ -142,9 +162,11 @@ draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('input_img', help='Orthorectified 8-bit image file')
-parser.add_argument('input_osm', help='OSM vector file')
+parser.add_argument('input_vector', help='Vector file with OSM or US Cities data')
 parser.add_argument('output_mask',
-                    help='Output image mask (tif) generated from input_osm and aligned with input_img')
+                    help='Output image mask (tif) generated from input_vector and aligned with input_img')
+parser.add_argument('--input_layer' ,
+                    help='Input layer name that contains buildings in input_vector')
 parser.add_argument('--scale' , type=float, default=0.2,
                     help='Scale factor. We cannot deal with the images with original resolution')
 parser.add_argument('--move_thres' , type=float, default=5,
@@ -198,8 +220,7 @@ model['corners'] = [left, top, right, bottom]
 model['project_model'] = gt
 model['scale'] = scale
 
-print("Clipping buildings to source_img ...")
-building_list = clipVectorFile(args.input_osm, [left, right, bottom, top])
+building_list = readAndClipVectorFile(args.input_vector, args.input_layer, [left, right, bottom, top])
 
 if args.clusters:
     print("Clustering ...")
@@ -215,26 +236,25 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
     print("Aligning cluster {}: {} buildings ...".format(cluster_idx, len(building_cluster)))
     tmp_img = np.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
                        dtype=np.uint8)
-    poly_array_list = []
+    ring_point_list = []
     for building in building_cluster:
-        geom = building.GetGeometryRef()
-        g = geom.GetGeometryRef(0)
-        if g.GetPointCount()<=0:
-            shape_ptr = g
+        multipoly = building.GetGeometryRef()
+        if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
+            poly = multipoly.GetGeometryRef(0)
         else:
-            shape_ptr = geom
-        for shape_idx in range(shape_ptr.GetGeometryCount()):
-            polygon = shape_ptr.GetGeometryRef(shape_idx)
-            poly_point_list = []
-            for i in range(0, polygon.GetPointCount()):
-                pt = polygon.GetPoint(i)
-                poly_point_list.append(ProjectPoint(model,pt))
-            poly_array = np.array(poly_point_list)
-            poly_array = poly_array.reshape((-1,1,2))
-            poly_array_list.append(poly_array)
+            poly = multipoly
+        for ring_idx in range(poly.GetGeometryCount()):
+            ring = poly.GetGeometryRef(ring_idx)
+            rp = []
+            for i in range(0, ring.GetPointCount()):
+                pt = ring.GetPoint(i)
+                rp.append(ProjectPoint(model,pt))
+            ring_points = np.array(rp)
+            ring_points = ring_points.reshape((-1,1,2))
+            ring_point_list.append(ring_points)
 
             #edge mask of the building cluster
-            cv2.polylines(tmp_img,[poly_array],True,(255),thickness=2)
+            cv2.polylines(tmp_img,[ring_points],True,(255),thickness=2)
             check_point_list = []
 
     # build a sparse set to fast process
@@ -279,7 +299,7 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
         #move the mask to match
         cases = initial_cases
         old_max_value = 0
-        max_value = totalMatchingPoints(check_point_list, edge_img, 0, 0, args.debug)
+        max_value = computeMatchingPoints(check_point_list, edge_img, 0, 0, args.debug)
         for i in range(args.move_thres):
             if args.debug:
                 print("===== {} =====".format(i))
@@ -287,8 +307,8 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
                 old_max_value = max_value
                 for i in cases:
                     [dx, dy] = moves[i]
-                    total_value = totalMatchingPoints(check_point_list, edge_img,
-                                                      current_dx + dx, current_dy + dy, args.debug)
+                    total_value = computeMatchingPoints(check_point_list, edge_img,
+                                                        current_dx + dx, current_dy + dy, args.debug)
                     if total_value > max_value:
                         max_value = total_value
                         index_max_value = i
@@ -310,20 +330,19 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
     index = 0
     print("Drawing mask ...")
     for building in building_cluster:
-        geom = building.GetGeometryRef()
-        g = geom.GetGeometryRef(0)
-        if g.GetPointCount()<=0:
-            shape_ptr = g
+        multipoly = building.GetGeometryRef()
+        if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
+            poly = multipoly.GetGeometryRef(0)
         else:
-            shape_ptr = geom
-        for shape_idx in range(shape_ptr.GetGeometryCount()):
-            poly_array = poly_array_list[index]
+            poly = multipoly
+        for ring_idx in range(poly.GetGeometryCount()):
+            ring_points = ring_point_list[index]
             index = index+1
-            for i in range(len(poly_array)):
-                poly_array[i,0,0] = int((poly_array[i,0,0] + offsetx)/scale)
-                poly_array[i,0,1] = int((poly_array[i,0,1] + offsety)/scale)
-            poly_array = np.array([poly_array])
-            cv2.fillPoly(full_res_mask, poly_array, draw_color[cluster_idx%len(draw_color)])
+            for i in range(len(ring_points)):
+                ring_points[i,0,0] = int((ring_points[i,0,0] + offsetx)/scale)
+                ring_points[i,0,1] = int((ring_points[i,0,1] + offsety)/scale)
+            ring_points = np.array([ring_points])
+            cv2.fillPoly(full_res_mask, ring_points, draw_color[cluster_idx%len(draw_color)])
 
 
 cv2.imwrite(args.output_mask, full_res_mask)
