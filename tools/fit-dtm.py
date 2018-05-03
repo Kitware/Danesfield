@@ -38,19 +38,18 @@ def main(args):
     # create the DTM image
     driver = dsm.GetDriver()
     driverMetadata = driver.GetMetadata()
-    destImage = None
-    if driverMetadata.get(gdal.DCAP_CREATE) == "YES":
-        print("Create destination DTM of "
-              "size:({}, {}) ...".format(dsm.RasterXSize, dsm.RasterYSize))
-        destImage = driver.Create(
-            args.destination_dtm, xsize=dtm.shape[1],
-            ysize=dtm.shape[0],
-            bands=dsm.RasterCount, eType=band.DataType)
-
-        gdalnumeric.CopyDatasetInfo(dsm, destImage)
-    else:
+    if driverMetadata.get(gdal.DCAP_CREATE) != "YES":
         print("Driver {} does not supports Create().".format(driver))
         sys.exit(1)
+
+    print("Create destination DTM of "
+          "size:({}, {}) ...".format(dsm.RasterXSize, dsm.RasterYSize))
+    destImage = driver.Create(
+        args.destination_dtm, xsize=dtm.shape[1],
+        ysize=dtm.shape[0],
+        bands=dsm.RasterCount, eType=band.DataType)
+
+    gdalnumeric.CopyDatasetInfo(dsm, destImage)
 
     estimator = danesfield.dtm.DTMEstimator(band.GetNoDataValue(),
                                             args.num_iterations,
