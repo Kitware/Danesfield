@@ -36,19 +36,17 @@ class DTMEstimator(object):
         self.num_inner_iter = num_inner_iter
         self.base_step = base_step
 
-
     @staticmethod
     def downsample(dtm):
         """Simple 2X downsampling, take every other pixel
         """
         return dtm[::2, ::2]
 
-
     @staticmethod
     def upsample(dtm, out):
         """Simple 2X upsampling, duplicate pixels
         """
-        # Adjust teh slicing for odd row count
+        # Adjust the slicing for odd row count
         if out.shape[0] % 2 == 1:
             s0 = numpy.s_[:-1]
         else:
@@ -64,7 +62,6 @@ class DTMEstimator(object):
         out[1::2, ::2] = dtm[s0, :]
         out[::2, 1::2] = dtm[:, s1]
         out[1::2, 1::2] = dtm[s0, s1]
-
 
     def recursive_fit_dtm(self, dtm, dsm, step=1, level=0):
         """
@@ -91,7 +88,6 @@ class DTMEstimator(object):
         # Apply cloth draping at the coarsest level (base case)
         return self.drape_cloth(dtm, dsm, step, self.num_outer_iter), level
 
-
     def drape_cloth(self, dtm, dsm, step=1, num_outer_iter=10):
         """
         Compute inverted 2.5D cloth draping simulation iterations
@@ -112,7 +108,6 @@ class DTMEstimator(object):
         # one final intersection check
         numpy.minimum(dtm, dsm, out=dtm, where=valid)
         return dtm
-
 
     def fit_dtm(self, dsm):
         """

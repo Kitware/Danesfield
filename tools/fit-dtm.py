@@ -2,7 +2,6 @@
 import argparse
 import gdal
 import gdalnumeric
-import numpy
 import sys
 
 import danesfield.dtm
