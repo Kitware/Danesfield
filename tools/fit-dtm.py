@@ -26,7 +26,7 @@ def main(args):
     dsm = gdal.Open(args.source_dsm, gdal.GA_ReadOnly)
     if not dsm:
         print("Unable to open {}".format(args.source_dsm))
-        exit(1)
+        sys.exit(1)
     band = dsm.GetRasterBand(1)
     dsmRaster = band.ReadAsArray(
         xoff=0, yoff=0,
