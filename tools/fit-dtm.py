@@ -57,7 +57,6 @@ def main(args):
     dtm = estimator.fit_dtm(dtm)
 
     destBand = destImage.GetRasterBand(1)
-    destBand.SetNoDataValue(band.GetNoDataValue())
     destBand.WriteArray(dtm)
 
 

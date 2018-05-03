@@ -31,6 +31,8 @@ class DTMEstimator(object):
                  num_inner_iter=10, base_step=1):
         """Constructor
         """
+        if nodata_val is None:
+            nodata_val = -9999
         self.nodata_val = nodata_val
         self.num_outer_iter = num_outer_iter
         self.num_inner_iter = num_inner_iter
