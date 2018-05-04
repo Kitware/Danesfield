@@ -91,23 +91,8 @@ def computeMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
             dx, dy, total_value, max_value))
     return total_value
 
-def readAndClipVectorFile(inputVector, inputLayer, corners):
+def readAndClipVectorFile(inputVector, inputLayer, outputMask, corners):
     print("Clipping {} to source_img: {} ...".format(inputVector, corners))
-    # clip the shape file first
-    basename=os.path.basename(inputVector)
-    basenameNoExt = os.path.splitext(basename)[0]
-    destinationVectorFile = basenameNoExt + "_spat.shp"
-    ogr2ogr_args = ["ogr2ogr", "-spat",
-                    str(corners[0]), str(corners[1]), str(corners[2]), str(corners[3]),
-                    "-select", "name,building", "-where", "building is not null",
-                    destinationVectorFile, inputVector]
-    if inputLayer:
-        ogr2ogr_args.append(inputLayer)
-    print("Execute: {}".format(ogr2ogr_args))
-    subprocess.run(ogr2ogr_args)
-    inputVector = destinationVectorFile
-    inputLayer = os.path.splitext(inputVector)[0]
-
     ds = ogr.Open(inputVector)
     if inputLayer:
         layer = ds.GetLayer(inputLayer)
@@ -118,20 +103,41 @@ def readAndClipVectorFile(inputVector, inputLayer, corners):
         layer = ds.GetLayerByIndex(0)
     else:
         layer = ds.GetLayerByIndex(3)
-    nameList = []
+    layerDefinition = layer.GetLayerDefn()
+    hasBuildingField = False
+    for i in range(layerDefinition.GetFieldCount()):
+        if layerDefinition.GetFieldDefn(i).GetName() == "building":
+            hasBuildingField = True
+            break
+
+
+    # clip the shape file first
+    outputNoExt = os.path.splitext(outputMask)[0]
+    destinationVectorFile = outputNoExt + ".shp"
+    ogr2ogr_args = ["ogr2ogr", "-spat",
+                    str(corners[0]), str(corners[2]), str(corners[1]), str(corners[3])]
+    if hasBuildingField:
+        ogr2ogr_args.extend(["-where", "building is not null"])
+    ogr2ogr_args.extend([destinationVectorFile, inputVector])
+    if inputLayer:
+        ogr2ogr_args.append(inputLayer)
+    print(*ogr2ogr_args)
+    subprocess.run(ogr2ogr_args)
+    inputVector = destinationVectorFile
+    inputLayer = os.path.splitext(os.path.basename(inputVector))[0]
+
 
     building_list = []
     for feature in layer:
         building_flag = False
-        try:
+        if hasBuildingField:
             tmp_field = feature.GetField("building")
             if tmp_field != None:
                 building_flag = True
             else:
                 building_flag = False
-        except:
+        else:
             building_flag = True
-
         if building_flag:
             flag = True
             multipoly = feature.GetGeometryRef()
@@ -198,10 +204,8 @@ gt = sourceImage.GetGeoTransform() # captures origin and pixel size
 print('Origin:', (gt[0], gt[3]))
 print('Pixel size:', (gt[1], gt[5]))
 
-left = gdal.ApplyGeoTransform(gt,0,0)[0]
-top = gdal.ApplyGeoTransform(gt,0,0)[1]
-right = gdal.ApplyGeoTransform(gt,sourceImage.RasterXSize,sourceImage.RasterYSize)[0]
-bottom = gdal.ApplyGeoTransform(gt,sourceImage.RasterXSize,sourceImage.RasterYSize)[1]
+left,top = gdal.ApplyGeoTransform(gt,0,0)
+right,bottom = gdal.ApplyGeoTransform(gt,sourceImage.RasterXSize,sourceImage.RasterYSize)
 band = None
 
 print("Resize and edge detection ...")
@@ -220,7 +224,8 @@ model['corners'] = [left, top, right, bottom]
 model['project_model'] = gt
 model['scale'] = scale
 
-building_list = readAndClipVectorFile(args.input_vector, args.input_layer, [left, right, bottom, top])
+building_list = readAndClipVectorFile(args.input_vector, args.input_layer,args.output_mask,
+                                      [left, right, bottom, top])
 
 if args.clusters:
     print("Clustering ...")
@@ -265,10 +270,8 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
 
     max_value = 0
     index_max_value = 0
-    offsetx = 0
-    offsety = 0
-    current_dx = 0
-    current_dy = 0
+    offset = [0, 0]
+    current = [0, 0]
     if not args.no_offset:
         img_height = edge_img.shape[0]
         img_width = edge_img.shape[1]
@@ -308,24 +311,28 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
                 for i in cases:
                     [dx, dy] = moves[i]
                     total_value = computeMatchingPoints(check_point_list, edge_img,
-                                                        current_dx + dx, current_dy + dy, args.debug)
+                                                        current[0] + dx, current[1] + dy, args.debug)
                     if total_value > max_value:
                         max_value = total_value
                         index_max_value = i
                 if (max_value > old_max_value):
                     [dx, dy] = moves[index_max_value]
-                    [current_dx, current_dy] = [current_dx + dx, current_dy + dy]
+                    current = [current[0] + dx, current[1] + dy]
                     if args.debug:
-                        print("Current: {}".format([current_dx, current_dy]))
-                    [offsetx, offsety] = [current_dx, current_dy]
+                        print("Current: {}".format(current))
+                    offset = current
                     cases = next_cases[index_max_value]
                     break
 
-        print("Resulting offset: ({}, {})".format(offsetx, offsety))
+        offsetGeo = gdal.ApplyGeoTransform(gt, offset[0] / scale, offset[1] / scale)
+        offsetGeo[0] = offsetGeo[0] - left
+        offsetGeo[1] = top - offsetGeo[1]
+        print("Resulting offset: {}, {}".format(offset, offsetGeo))
         #do something to deal with the bad data
         if max_value/float(len(check_point_list))<0.05:
-            offsetx = 0
-            offsety = 0
+            print("Fewer than 5% of points match {} / {}. Set offset to 0.".format(
+                max_value, len(check_point_list)))
+            offset = [0, 0]
 
     index = 0
     print("Drawing mask ...")
@@ -339,8 +346,8 @@ for cluster_idx, building_cluster in enumerate(building_cluster_list):
             ring_points = ring_point_list[index]
             index = index+1
             for i in range(len(ring_points)):
-                ring_points[i,0,0] = int((ring_points[i,0,0] + offsetx)/scale)
-                ring_points[i,0,1] = int((ring_points[i,0,1] + offsety)/scale)
+                ring_points[i,0,0] = int((ring_points[i,0,0] + offset[0])/scale)
+                ring_points[i,0,1] = int((ring_points[i,0,1] + offset[1])/scale)
             ring_points = np.array([ring_points])
             cv2.fillPoly(full_res_mask, ring_points, draw_color[cluster_idx%len(draw_color)])
 
