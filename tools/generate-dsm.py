@@ -59,6 +59,10 @@ else:
             print("Iteration {}".format(i))
 print("Bounds ({}, {}, {}, {})".format(minX, maxX, minY, maxY))
 
+# compensate for PDAL expanding the extents by 1 pixel
+maxX -= args.gsd
+maxY -= args.gsd
+
 # read the pdal file and project the points
 jsonTemplate = """
 {
