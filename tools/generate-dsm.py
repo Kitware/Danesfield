@@ -2,17 +2,8 @@ import argparse
 import gdal
 import json
 import numpy
-import os
 import subprocess
 import sys
-
-
-def getTempFilename(filename):
-    """Get a temporary filename in the same directory as the specified filename."""
-    path, basename = os.path.split(filename)
-    name, ext = os.path.splitext(basename)
-    name += '_temp'
-    return os.path.join(path, name + ext)
 
 
 def getMinMax(json_string):
@@ -85,14 +76,11 @@ jsonTemplate = """
   ]
 }"""
 print("Generating DSM ...")
-tempImage = getTempFilename(args.destination_image)
 all_sources = ",\n".join("\"" + str(e) + "\"" for e in args.source_points)
-pipeline = jsonTemplate % (all_sources, args.gsd, tempImage,
+pipeline = jsonTemplate % (all_sources,
+                           args.gsd, args.destination_image,
                            minX, maxX, minY, maxY)
 pdal_pipeline_args = ["pdal", "pipeline", "--stream", "--stdin"]
 subprocess.run(pdal_pipeline_args, input=pipeline.encode())
 
 
-print("Converting to EPSG:4326 ...")
-gdal.Warp(args.destination_image, tempImage, dstSRS="EPSG:4326")
-os.remove(tempImage)
