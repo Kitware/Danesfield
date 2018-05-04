@@ -76,6 +76,7 @@ jsonTemplate = """
     %s,
     {
       "resolution": %s,
+      "data_type": "float",
       "filename":"%s",
       "output_type": "max",
       "window_size": "20",
