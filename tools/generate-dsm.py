@@ -66,6 +66,10 @@ jsonTemplate = """
   "pipeline": [
     %s,
     {
+      "type": "filters.crop",
+      "bounds": "([%s, %s], [%s, %s])"
+    },
+    {
       "resolution": %s,
       "data_type": "float",
       "filename":"%s",
@@ -78,6 +82,7 @@ jsonTemplate = """
 print("Generating DSM ...")
 all_sources = ",\n".join("\"" + str(e) + "\"" for e in args.source_points)
 pipeline = jsonTemplate % (all_sources,
+                           minX, maxX, minY, maxY,
                            args.gsd, args.destination_image,
                            minX, maxX, minY, maxY)
 pdal_pipeline_args = ["pdal", "pipeline", "--stream", "--stdin"]
