@@ -1,5 +1,4 @@
 import argparse
-import gdal
 import json
 import numpy
 import subprocess
