@@ -10,6 +10,7 @@ import cv2
 import gdal
 import numpy as np
 import ogr
+import osr
 import os
 import pdb
 import subprocess
@@ -21,58 +22,6 @@ def ProjectPoint(model, pt):
     px = int((pt[0]-model['corners'][0])/model['project_model'][1]*model['scale'])
     py = int((pt[1]-model['corners'][1])/model['project_model'][5]*model['scale'])
     return [px,py]
-
-#build building cluster
-def GetBuildingCluster(building_list, model, cluster_thres = 200):
-    building_cluster_list = []
-    #go through all the buildings
-    for building in building_list:
-        #nothing in the list
-        if len(building_cluster_list) == 0:
-            building_cluster_list.append([building])
-        else:
-            max_index = -1
-            max_similarity = 0
-            #check all the buildings in the list, find one cluster with highest similarity.
-            for cluster_idx, building_cluster in enumerate(building_cluster_list):
-                for exist_building in building_cluster:
-                    similarity = BuildingSimilarity(building, exist_building, model, cluster_thres)
-                    if similarity > max_similarity:
-                        max_index = cluster_idx
-                        max_similarity = similarity
-            #find one good cluster
-            if max_index>=0 and max_similarity>0.1:
-                building_cluster_list[max_index].append(building)
-            else:
-                building_cluster_list.append([building])
-
-    return building_cluster_list
-
-#Calculate the similarity between two buildings base on location.
-#only based on the first point of the building
-#It's a very simple method. It can be improved in the future
-def BuildingSimilarity(building_1, building_2, model, cluster_thres = 200):
-    geom_1 = building_1.GetGeometryRef()
-    g_1 = geom_1.GetGeometryRef(0)
-    if g_1.GetPointCount() > 0:
-        first_polygon = g_1
-    else:
-        first_polygon = g_1.GetGeometryRef(0)
-    pt_1 = first_polygon.GetPoint(0)
-
-    geom_2 = building_2.GetGeometryRef()
-    g_2 = geom_2.GetGeometryRef(0)
-    if g_2.GetPointCount() > 0:
-        second_polygon = g_2
-    else:
-        second_polygon = g_2.GetGeometryRef(0)
-    pt_2 = second_polygon.GetPoint(0)
-
-    similarity = np.sqrt(float((pt_1[0]-pt_2[0])*(pt_1[0]-pt_2[0])) + \
-            float((pt_1[1]-pt_2[1])*(pt_1[1]-pt_2[1])))\
-            /model['project_model'][1]*model['scale']/cluster_thres
-    return max(1-similarity,0)
-
 
 def computeMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
     img_height = edge_img.shape[0]
@@ -91,76 +40,50 @@ def computeMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
             dx, dy, total_value, max_value))
     return total_value
 
-def readAndClipVectorFile(inputVector, inputLayer, outputMask, corners):
-    print("Clipping {} to source_img: {} ...".format(inputVector, corners))
-    ds = ogr.Open(inputVector)
-    if inputLayer:
-        layer = ds.GetLayer(inputLayer)
-        if not layer:
-            print("Invalid layer: {}".format(inputLayer))
-            sys.exit(10)
-    elif ds.GetLayerCount()<=1:
-        layer = ds.GetLayerByIndex(0)
+def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners):
+    print("Clipping {} to source_img: {} ...".format(inputVectorFile, corners))
+    inputVector = ogr.Open(inputVectorFile)
+    if inputLayerName:
+        inputLayer = inputVector.GetLayer(inputLayerName)
+        if not inputLayer:
+            print("Invalid layer: {}".format(inputLayerName))
+            return None
     else:
-        layer = ds.GetLayerByIndex(3)
-    layerDefinition = layer.GetLayerDefn()
+        layerCount = inputVector.GetLayerCount()
+        for i in range(layerCount):
+            inputLayer = inputVector.GetLayerByIndex(i)
+            inputLayerName = inputLayer.GetName()
+            type = inputLayer.GetGeomType()
+            if (type == ogr.wkbMultiPolygon or type == ogr.wkbPolygon):
+                break
+        if i == layerCount:
+            print("No polygon or multipolygon layer found")
+            return None
+    layerDefinition = inputLayer.GetLayerDefn()
     hasBuildingField = False
     for i in range(layerDefinition.GetFieldCount()):
         if layerDefinition.GetFieldDefn(i).GetName() == "building":
             hasBuildingField = True
             break
 
-
     # clip the shape file first
-    outputNoExt = os.path.splitext(outputMask)[0]
-    destinationVectorFile = outputNoExt + ".shp"
+    outputNoExt = os.path.splitext(output_mask)[0]
+    destinationVectorFile = outputNoExt + "_original.shp"
     ogr2ogr_args = ["ogr2ogr", "-spat",
                     str(corners[0]), str(corners[2]), str(corners[1]), str(corners[3])]
     if hasBuildingField:
         ogr2ogr_args.extend(["-where", "building is not null"])
-    ogr2ogr_args.extend([destinationVectorFile, inputVector])
-    if inputLayer:
-        ogr2ogr_args.append(inputLayer)
+    ogr2ogr_args.extend([destinationVectorFile, inputVectorFile])
+    if inputLayerName:
+        ogr2ogr_args.append(inputLayerName)
     print(*ogr2ogr_args)
     subprocess.run(ogr2ogr_args)
-    inputVector = destinationVectorFile
-    inputLayer = os.path.splitext(os.path.basename(inputVector))[0]
-
-
-    building_list = []
-    for feature in layer:
-        building_flag = False
-        if hasBuildingField:
-            tmp_field = feature.GetField("building")
-            if tmp_field != None:
-                building_flag = True
-            else:
-                building_flag = False
-        else:
-            building_flag = True
-        if building_flag:
-            flag = True
-            multipoly = feature.GetGeometryRef()
-            if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:#for osm data
-                poly = multipoly.GetGeometryRef(0)
-            else:#for us city data
-                poly = multipoly
-            for ring_idx in range(poly.GetGeometryCount()):
-                ring = poly.GetGeometryRef(ring_idx)
-                for i in range(0, ring.GetPointCount()):
-                    pt = ring.GetPoint(i)
-                    if pt[0]>corners[0] and pt[0]<corners[1] and \
-                       pt[1]>corners[2] and pt[1]<corners[3]:
-                        pass
-                    else:
-                        flag = False
-                        break
-                if not flag:
-                    break
-            if flag:
-                building_list.append(feature)
-    ds = None
-    return building_list
+    inputVectorFile = destinationVectorFile
+    inputLayerName = os.path.splitext(os.path.basename(inputVectorFile))[0]
+    print("Opening {} {}".format(inputVectorFile, inputLayerName))
+    inputVector = ogr.Open(inputVectorFile)
+    inputLayer = inputVector.GetLayer(inputLayerName)
+    return list(inputLayer)
 
 
 draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
@@ -179,16 +102,9 @@ parser.add_argument('--move_thres' , type=float, default=5,
                     help='Distance for edge matching')
 parser.add_argument("--no_offset", action="store_true",
                     help="Write original OSM data.")
-parser.add_argument("--clusters", action="store_true",
-                    help="Cluster buildings and compute translation for every cluster. "
-                    "Otherwise compute a global translation.")
 parser.add_argument("--debug", action="store_true",
                     help="Print debugging information")
 args = parser.parse_args()
-
-base=os.path.basename(args.output_mask)
-basename = os.path.splitext(base)[0]
-output_dir = os.path.dirname(args.output_mask)
 
 scale = args.scale
 
@@ -217,149 +133,192 @@ if scale != 1.0:
     color_image = small_color_image
 grayimg = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 edge_img = cv2.Canny(grayimg, 100, 200)
-cv2.imwrite(output_dir + '/{}_edge.tif'.format(basename),edge_img)
+cv2.imwrite(os.path.splitext(args.output_mask)[0] + '_edge.tif',edge_img)
 
 model = {}
 model['corners'] = [left, top, right, bottom]
 model['project_model'] = gt
 model['scale'] = scale
 
-building_list = readAndClipVectorFile(args.input_vector, args.input_layer,args.output_mask,
-                                      [left, right, bottom, top])
-
-if args.clusters:
-    print("Clustering ...")
-    building_cluster_list = GetBuildingCluster(building_list, model)
-    print("Got {} clusters".format(len(building_cluster_list)))
-else:
-    building_cluster_list = []
-    building_cluster_list.append(building_list)
+corners = [left, right, bottom, top]
+building_cluster = readAndClipVectorFile(args.input_vector, args.input_layer,args.output_mask,
+                                      corners)
+if not building_cluster:
+    sys.exit(10)
 
 full_res_mask = np.zeros((sourceImage.RasterYSize,sourceImage.RasterXSize, 4),
                          dtype=np.uint8)
-for cluster_idx, building_cluster in enumerate(building_cluster_list):
-    print("Aligning cluster {}: {} buildings ...".format(cluster_idx, len(building_cluster)))
-    tmp_img = np.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
-                       dtype=np.uint8)
-    ring_point_list = []
-    for building in building_cluster:
-        multipoly = building.GetGeometryRef()
+print("Aligning {} buildings ...".format(len(building_cluster)))
+tmp_img = np.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
+                   dtype=np.uint8)
+ring_point_list = []
+for feature in building_cluster:
+    multipoly = feature.GetGeometryRef()
+    if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
+        poly = multipoly.GetGeometryRef(0)
+    else:
+        poly = multipoly
+    for ring_idx in range(poly.GetGeometryCount()):
+        ring = poly.GetGeometryRef(ring_idx)
+        rp = []
+        for i in range(0, ring.GetPointCount()):
+            pt = ring.GetPoint(i)
+            rp.append(ProjectPoint(model,pt))
+        ring_points = np.array(rp)
+        ring_points = ring_points.reshape((-1,1,2))
+        ring_point_list.append(ring_points)
+
+        #edge mask of the building cluster
+        cv2.polylines(tmp_img,[ring_points],True,(255),thickness=2)
+        check_point_list = []
+
+# build a sparse set to fast process
+for y in range(0,tmp_img.shape[0]):
+    for x in range(0,tmp_img.shape[1]):
+        if tmp_img[y,x] > 200:
+            check_point_list.append([x,y])
+
+max_value = 0
+index_max_value = 0
+offset = [0, 0]
+current = [0, 0]
+if not args.no_offset:
+    img_height = edge_img.shape[0]
+    img_width = edge_img.shape[1]
+    # shift moves possible from [0, 0]
+    moves = [
+        [1, 0],   # 0
+        [1, 1],   # 1
+        [0, 1],   # 2
+        [-1, 1],  # 3
+        [-1, 0],  # 4
+        [-1, -1], # 5
+        [0, -1],  # 6
+        [1,-1]]   # 7
+    initial_cases = range(8)
+    # cases[i] shows shift moves possible after the previous move was cases[i][0]
+    # we change direction with at most 45 degrees.
+    next_cases = [
+        [0, 7, 1],
+        [1, 0, 2],
+        [2, 1, 3],
+        [3, 2, 4],
+        [4, 3, 5],
+        [5, 4, 6],
+        [6, 5, 7],
+        [7, 6, 0]
+    ]
+
+    #move the mask to match
+    cases = initial_cases
+    old_max_value = 0
+    max_value = computeMatchingPoints(check_point_list, edge_img, 0, 0, args.debug)
+    for i in range(args.move_thres):
+        if args.debug:
+            print("===== {} =====".format(i))
+        while (max_value > old_max_value):
+            old_max_value = max_value
+            for i in cases:
+                [dx, dy] = moves[i]
+                total_value = computeMatchingPoints(check_point_list, edge_img,
+                                                    current[0] + dx, current[1] + dy, args.debug)
+                if total_value > max_value:
+                    max_value = total_value
+                    index_max_value = i
+            if (max_value > old_max_value):
+                [dx, dy] = moves[index_max_value]
+                current = [current[0] + dx, current[1] + dy]
+                if args.debug:
+                    print("Current: {}".format(current))
+                offset = current
+                cases = next_cases[index_max_value]
+                break
+
+    offsetGeo = gdal.ApplyGeoTransform(gt, offset[0] / scale, offset[1] / scale)
+    offsetGeo[0] = offsetGeo[0] - left
+    offsetGeo[1] = top - offsetGeo[1]
+    print("Resulting offset: {}, {}".format(offset, offsetGeo))
+    #do something to deal with the bad data
+    if max_value/float(len(check_point_list))<0.05:
+        print("Fewer than 5% of points match {} / {}. Set offset to 0.".format(
+            max_value, len(check_point_list)))
+        offset = [0, 0]
+
+index = 0
+print("Shifting mask ...")
+for feature in building_cluster:
+    multipoly = feature.GetGeometryRef()
+    if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
+        poly = multipoly.GetGeometryRef(0)
+    else:
+        poly = multipoly
+    for ring_idx in range(poly.GetGeometryCount()):
+        ring_points = ring_point_list[index]
+        index = index+1
+        for i in range(len(ring_points)):
+            ring_points[i,0,0] = int((ring_points[i,0,0] + offset[0])/scale)
+            ring_points[i,0,1] = int((ring_points[i,0,1] + offset[1])/scale)
+        ring_points = np.array([ring_points])
+        cv2.fillPoly(full_res_mask, ring_points, draw_color[0])
+cv2.imwrite(args.output_mask, full_res_mask)
+# write spatial reference information in the tiff
+outputImage = gdal.Open(args.output_mask, gdal.GA_Update)
+outputImage.SetProjection(projection)
+outputImage.SetGeoTransform(gt)
+band = outputImage.GetRasterBand(4)
+band.SetRasterColorInterpretation(gdal.GCI_AlphaBand)
+outputImage = None
+
+if not (offset[0] == 0 and offset[1] == 0):
+    print("Shifting vector file ...")
+    outputNoExt = os.path.splitext(args.output_mask)[0]
+    destinationVectorFile = outputNoExt + ".shp"
+    outDriver = ogr.GetDriverByName("ESRI Shapefile")
+    outVector = outDriver.CreateDataSource(destinationVectorFile)
+    outSrs = osr.SpatialReference(projection)
+    # create layer
+    outLayer = outVector.CreateLayer(os.path.basename(outputNoExt),
+                                     srs=outSrs, geom_type=ogr.wkbPolygon)
+    outFeatureDef = outLayer.GetLayerDefn()
+    # create rings from input rings by shifting points
+    for feature in building_cluster:
+        # create the poly
+        outPoly = ogr.Geometry(ogr.wkbPolygon)
+        multipoly = feature.GetGeometryRef()
         if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
             poly = multipoly.GetGeometryRef(0)
         else:
             poly = multipoly
         for ring_idx in range(poly.GetGeometryCount()):
             ring = poly.GetGeometryRef(ring_idx)
-            rp = []
+            # create the ring
+            outRing = ogr.Geometry(ogr.wkbLinearRing)
             for i in range(0, ring.GetPointCount()):
                 pt = ring.GetPoint(i)
-                rp.append(ProjectPoint(model,pt))
-            ring_points = np.array(rp)
-            ring_points = ring_points.reshape((-1,1,2))
-            ring_point_list.append(ring_points)
+                outRing.AddPoint(pt[0] + offsetGeo[0], pt[1] + offsetGeo[1])
+            outPoly.AddGeometry(outRing)
+        # create feature
+        outFeature = ogr.Feature(outFeatureDef)
+        outFeature.SetGeometry(outPoly)
+        outLayer.CreateFeature(outFeature)
+    outLayer = None
+    outVector = None
 
-            #edge mask of the building cluster
-            cv2.polylines(tmp_img,[ring_points],True,(255),thickness=2)
-            check_point_list = []
+print("Cliping vector file ...")
+ogr2ogr_args = ["ogr2ogr", "-clipsrc",
+                str(corners[0]), str(corners[2]),
+                str(corners[1]), str(corners[3])]
+outputNoExt = os.path.splitext(args.output_mask)[0]
+ogr2ogr_args.extend([outputNoExt + "_clip.shp", outputNoExt + ".shp"])
+print(*ogr2ogr_args)
+subprocess.run(ogr2ogr_args)
 
-    # build a sparse set to fast process
-    for y in range(0,tmp_img.shape[0]):
-        for x in range(0,tmp_img.shape[1]):
-            if tmp_img[y,x] > 200:
-                check_point_list.append([x,y])
-
-    max_value = 0
-    index_max_value = 0
-    offset = [0, 0]
-    current = [0, 0]
-    if not args.no_offset:
-        img_height = edge_img.shape[0]
-        img_width = edge_img.shape[1]
-        # shift moves possible from [0, 0]
-        moves = [
-            [1, 0],   # 0
-            [1, 1],   # 1
-            [0, 1],   # 2
-            [-1, 1],  # 3
-            [-1, 0],  # 4
-            [-1, -1], # 5
-            [0, -1],  # 6
-            [1,-1]]   # 7
-        initial_cases = range(8)
-        # cases[i] shows shift moves possible after the previous move was cases[i][0]
-        # we change direction with at most 45 degrees.
-        next_cases = [
-            [0, 7, 1],
-            [1, 0, 2],
-            [2, 1, 3],
-            [3, 2, 4],
-            [4, 3, 5],
-            [5, 4, 6],
-            [6, 5, 7],
-            [7, 6, 0]
-        ]
-
-        #move the mask to match
-        cases = initial_cases
-        old_max_value = 0
-        max_value = computeMatchingPoints(check_point_list, edge_img, 0, 0, args.debug)
-        for i in range(args.move_thres):
-            if args.debug:
-                print("===== {} =====".format(i))
-            while (max_value > old_max_value):
-                old_max_value = max_value
-                for i in cases:
-                    [dx, dy] = moves[i]
-                    total_value = computeMatchingPoints(check_point_list, edge_img,
-                                                        current[0] + dx, current[1] + dy, args.debug)
-                    if total_value > max_value:
-                        max_value = total_value
-                        index_max_value = i
-                if (max_value > old_max_value):
-                    [dx, dy] = moves[index_max_value]
-                    current = [current[0] + dx, current[1] + dy]
-                    if args.debug:
-                        print("Current: {}".format(current))
-                    offset = current
-                    cases = next_cases[index_max_value]
-                    break
-
-        offsetGeo = gdal.ApplyGeoTransform(gt, offset[0] / scale, offset[1] / scale)
-        offsetGeo[0] = offsetGeo[0] - left
-        offsetGeo[1] = top - offsetGeo[1]
-        print("Resulting offset: {}, {}".format(offset, offsetGeo))
-        #do something to deal with the bad data
-        if max_value/float(len(check_point_list))<0.05:
-            print("Fewer than 5% of points match {} / {}. Set offset to 0.".format(
-                max_value, len(check_point_list)))
-            offset = [0, 0]
-
-    index = 0
-    print("Drawing mask ...")
-    for building in building_cluster:
-        multipoly = building.GetGeometryRef()
-        if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
-            poly = multipoly.GetGeometryRef(0)
-        else:
-            poly = multipoly
-        for ring_idx in range(poly.GetGeometryCount()):
-            ring_points = ring_point_list[index]
-            index = index+1
-            for i in range(len(ring_points)):
-                ring_points[i,0,0] = int((ring_points[i,0,0] + offset[0])/scale)
-                ring_points[i,0,1] = int((ring_points[i,0,1] + offset[1])/scale)
-            ring_points = np.array([ring_points])
-            cv2.fillPoly(full_res_mask, ring_points, draw_color[cluster_idx%len(draw_color)])
-
-
-cv2.imwrite(args.output_mask, full_res_mask)
-
-# write spatial reference information
-outputImage = gdal.Open(args.output_mask, gdal.GA_Update)
-outputImage.SetProjection(projection)
-outputImage.SetGeoTransform(gt)
-# band = outputImage.GetRasterBand(1)
-# band.SetNoDataValue(0)
-band = outputImage.GetRasterBand(4)
-band.SetRasterColorInterpretation(gdal.GCI_AlphaBand)
-outputImage = None
+print("Rasterizing vector file ...")
+rasterize_args = ["gdal_rasterize", "-ot", "Byte",
+                  "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
+                  "-ts", str(sourceImage.RasterXSize),
+                  str(sourceImage.RasterYSize)]
+outputNoExt = os.path.splitext(args.output_mask)[0]
+rasterize_args.extend([outputNoExt + "_clip.shp", outputNoExt + "_clip.tif"])
+print(*rasterize_args)
+subprocess.run(rasterize_args)
