@@ -146,12 +146,9 @@ building_cluster = readAndClipVectorFile(args.input_vector, args.input_layer,arg
 if not building_cluster:
     sys.exit(10)
 
-full_res_mask = np.zeros((sourceImage.RasterYSize,sourceImage.RasterXSize, 4),
-                         dtype=np.uint8)
 print("Aligning {} buildings ...".format(len(building_cluster)))
 tmp_img = np.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
                    dtype=np.uint8)
-ring_point_list = []
 for feature in building_cluster:
     multipoly = feature.GetGeometryRef()
     if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
@@ -166,7 +163,6 @@ for feature in building_cluster:
             rp.append(ProjectPoint(model,pt))
         ring_points = np.array(rp)
         ring_points = ring_points.reshape((-1,1,2))
-        ring_point_list.append(ring_points)
 
         #edge mask of the building cluster
         cv2.polylines(tmp_img,[ring_points],True,(255),thickness=2)
@@ -244,31 +240,6 @@ if not args.no_offset:
             max_value, len(check_point_list)))
         offset = [0, 0]
 
-index = 0
-print("Shifting mask ...")
-for feature in building_cluster:
-    multipoly = feature.GetGeometryRef()
-    if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
-        poly = multipoly.GetGeometryRef(0)
-    else:
-        poly = multipoly
-    for ring_idx in range(poly.GetGeometryCount()):
-        ring_points = ring_point_list[index]
-        index = index+1
-        for i in range(len(ring_points)):
-            ring_points[i,0,0] = int((ring_points[i,0,0] + offset[0])/scale)
-            ring_points[i,0,1] = int((ring_points[i,0,1] + offset[1])/scale)
-        ring_points = np.array([ring_points])
-        cv2.fillPoly(full_res_mask, ring_points, draw_color[0])
-cv2.imwrite(args.output_mask, full_res_mask)
-# write spatial reference information in the tiff
-outputImage = gdal.Open(args.output_mask, gdal.GA_Update)
-outputImage.SetProjection(projection)
-outputImage.SetGeoTransform(gt)
-band = outputImage.GetRasterBand(4)
-band.SetRasterColorInterpretation(gdal.GCI_AlphaBand)
-outputImage = None
-
 if not (offset[0] == 0 and offset[1] == 0):
     print("Shifting vector file ...")
     outputNoExt = os.path.splitext(args.output_mask)[0]
@@ -319,6 +290,6 @@ rasterize_args = ["gdal_rasterize", "-ot", "Byte",
                   "-ts", str(sourceImage.RasterXSize),
                   str(sourceImage.RasterYSize)]
 outputNoExt = os.path.splitext(args.output_mask)[0]
-rasterize_args.extend([outputNoExt + "_clip.shp", outputNoExt + "_clip.tif"])
+rasterize_args.extend([outputNoExt + "_clip.shp", outputNoExt + ".tif"])
 print(*rasterize_args)
 subprocess.run(rasterize_args)
