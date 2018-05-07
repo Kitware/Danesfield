@@ -1,18 +1,8 @@
 import argparse
-import gdal
 import json
 import numpy
-import os
 import subprocess
 import sys
-
-
-def getTempFilename(filename):
-    """Get a temporary filename in the same directory as the specified filename."""
-    path, basename = os.path.split(filename)
-    name, ext = os.path.splitext(basename)
-    name += '_temp'
-    return os.path.join(path, name + ext)
 
 
 def getMinMax(json_string):
@@ -69,13 +59,22 @@ else:
             print("Iteration {}".format(i))
 print("Bounds ({}, {}, {}, {})".format(minX, maxX, minY, maxY))
 
+# compensate for PDAL expanding the extents by 1 pixel
+maxX -= args.gsd
+maxY -= args.gsd
+
 # read the pdal file and project the points
 jsonTemplate = """
 {
   "pipeline": [
     %s,
     {
+      "type": "filters.crop",
+      "bounds": "([%s, %s], [%s, %s])"
+    },
+    {
       "resolution": %s,
+      "data_type": "float",
       "filename":"%s",
       "output_type": "max",
       "window_size": "20",
@@ -84,14 +83,18 @@ jsonTemplate = """
   ]
 }"""
 print("Generating DSM ...")
-tempImage = getTempFilename(args.destination_image)
 all_sources = ",\n".join("\"" + str(e) + "\"" for e in args.source_points)
-pipeline = jsonTemplate % (all_sources, args.gsd, tempImage,
+pipeline = jsonTemplate % (all_sources,
+                           minX, maxX, minY, maxY,
+                           args.gsd, args.destination_image,
                            minX, maxX, minY, maxY)
 pdal_pipeline_args = ["pdal", "pipeline", "--stream", "--stdin"]
-subprocess.run(pdal_pipeline_args, input=pipeline.encode())
+response = subprocess.run(pdal_pipeline_args, input=pipeline.encode(),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-
-print("Converting to EPSG:4326 ...")
-gdal.Warp(args.destination_image, tempImage, dstSRS="EPSG:4326")
-os.remove(tempImage)
+if response.returncode != 0:
+    print("PDAL failed with error code {}", format(response.returncode))
+    print("STDERR")
+    print(response.stderr)
+    print("STDOUT")
+    print(response.stdout)
