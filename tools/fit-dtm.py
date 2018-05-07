@@ -44,10 +44,12 @@ def main(args):
 
     print("Create destination DTM of "
           "size:({}, {}) ...".format(dsm.RasterXSize, dsm.RasterYSize))
+    options = ["COMPRESS=DEFLATE", "PREDICTOR=3"]
     destImage = driver.Create(
         args.destination_dtm, xsize=dtm.shape[1],
         ysize=dtm.shape[0],
-        bands=dsm.RasterCount, eType=band.DataType)
+        bands=dsm.RasterCount, eType=band.DataType,
+        options=options)
 
     gdalnumeric.CopyDatasetInfo(dsm, destImage)
 
