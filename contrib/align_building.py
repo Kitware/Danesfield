@@ -89,11 +89,15 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners)
 draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
         (0,0,255,255),(255,255,255,255)]
 
-parser = argparse.ArgumentParser(description='')
+parser = argparse.ArgumentParser(
+    description="Shift buildings to match edges generated from image")
 parser.add_argument('input_img', help='Orthorectified 8-bit image file')
 parser.add_argument('input_vector', help='Vector file with OSM or US Cities data')
 parser.add_argument('output_mask',
-                    help='Output image mask (tif) generated from input_vector and aligned with input_img')
+                    help="Output image mask (tif and shp) generated from the input_vector "
+                         "and aligned with input_img. A _clip.shp file is also "
+                         "generated from the shp file clipped to the image boundaries.")
+
 parser.add_argument('--input_layer' ,
                     help='Input layer name that contains buildings in input_vector')
 parser.add_argument('--scale' , type=float, default=0.2,
