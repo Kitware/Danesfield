@@ -253,30 +253,26 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
 
 def bounding_box(raster):
     projection = raster.GetProjection()
-    transform = raster.GetGeoTransform()
-    gcpProjection = raster.GetGCPProjection()
-    gcps = raster.GetGCPs()
     if (projection):
         transform = raster.GetGeoTransform()
-        lines = numpy.array([0, 0, raster.RasterYSize, raster.RasterYSize])
-        pixels = numpy.array([0, raster.RasterXSize, raster.RasterXSize, 0])
-        arrayX = transform[0] + pixels * transform[1] + lines * transform[2]
-        arrayY = transform[3] + pixels * transform[4] + lines * transform[5]
     else:
-        projection = gcpProjection
-        if len(gcps) == 4:
-            arrayX = [gcps[0].GCPX, gcps[1].GCPX, gcps[2].GCPX, gcps[3].GCPX]
-            arrayY = [gcps[0].GCPY, gcps[1].GCPY, gcps[2].GCPY, gcps[3].GCPY]
-        else:
-            print("Invalid number of GCPs")
+        projection = raster.GetGCPProjection()
+        gcps = raster.GetGCPs()
+        transform = gdal.GCPsToGeoTransform(gcps)
+        if transform is None:
+            print("Unable to extract a geotransform from GCPs")
             return ERROR
+    lines = numpy.array([0, 0, raster.RasterYSize, raster.RasterYSize])
+    pixels = numpy.array([0, raster.RasterXSize, raster.RasterXSize, 0])
+    arrayX = transform[0] + pixels * transform[1] + lines * transform[2]
+    arrayY = transform[3] + pixels * transform[4] + lines * transform[5]
 
     srs = osr.SpatialReference(wkt=projection)
     proj_srs = srs.ExportToProj4()
     inProj = pyproj.Proj(proj_srs)
     outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
     arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
-            
+
     minX = numpy.amin(arrayX)
     minY = numpy.amin(arrayY)
     maxX = numpy.amax(arrayX)

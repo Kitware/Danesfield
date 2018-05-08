@@ -10,8 +10,7 @@ import sys
 
 
 def orthoParamsToString(args_source_image, args_dsm, args_destination_image,
-                        args_occlusion_thresh, args_denoise_radius,
-                        args_raytheon_rpc):
+                        args_occlusion_thresh, args_denoise_radius, args_raytheon_rpc):
     ret = "orthorectify.py " + args_source_image + " " + args_dsm +\
       " " + args_destination_image
     if args_occlusion_thresh is not None:
@@ -128,10 +127,9 @@ for dsm in dsms:
           "_" + index[1] + ".tif"
         ortho_params = (
             source_image, dsm, oargs_destination_image,
-            args.occlusion_thresh, args.denoise_radius,
-            oargs_raytheon_rpc)
-        print(orthoParamsToString(ortho_params))
-        if ortho.orthorectify(ortho_params) <= ortho.PARTIAL_DSM_INTERSECTION:
+            args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc)
+        print(orthoParamsToString(*ortho_params))
+        if ortho.orthorectify(*ortho_params) <= ortho.PARTIAL_DSM_INTERSECTION:
             break
         # We don't have a complete image so try the next image.
         print("Image does not cover DSM {}".format(source_image))
