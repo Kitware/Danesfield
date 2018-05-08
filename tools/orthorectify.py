@@ -19,5 +19,6 @@ parser.add_argument("--raytheon-rpc", type=str,
                     "the RPC is read from the source_image")
 args = parser.parse_args()
 
-ret = ortho.orthorectify(args)
+ret = ortho.orthorectify(args.source_image, args.dsm, args.destination_image,
+                         args.occlusion_thresh, args.denoise_radius, args.raytheon_rpc)
 sys.exit(ret == ortho.ERROR)

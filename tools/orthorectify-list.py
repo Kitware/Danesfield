@@ -9,22 +9,17 @@ import re
 import sys
 
 
-class OrthorectifyArgs:
-    source_image = ""
-    dsm = ""
-    destination_image = ""
-    occlusion_thresh = ""
-    denoise_radius = ""
-    raytheon_rpc = ""
-    def __str__(self):
-        ret = "orthorectify.py " + self.source_image + " " + self.dsm +\
-          " " + self.destination_image
-        if self.occlusion_thresh is not None:
-            ret = ret + " -t " + str(self.occlusion_thresh)
-        if self.denoise_radius is not None:
-            ret = ret + " -d " + str(self.denoise_radius)
-        ret = ret + " --raytheon-rpc " + self.raytheon_rpc if self.raytheon_rpc else ret
-        return ret
+def orthoParamsToString(args_source_image, args_dsm, args_destination_image,
+                        args_occlusion_thresh, args_denoise_radius,
+                        args_raytheon_rpc):
+    ret = "orthorectify.py " + args_source_image + " " + args_dsm +\
+      " " + args_destination_image
+    if args_occlusion_thresh is not None:
+        ret = ret + " -t " + str(args_occlusion_thresh)
+    if args_denoise_radius is not None:
+        ret = ret + " -d " + str(args_denoise_radius)
+    ret = ret + " --raytheon-rpc " + args_raytheon_rpc if args_raytheon_rpc else ret
+    return ret
 
 
 def intersection(a, b):
@@ -89,10 +84,6 @@ dsms = dsms[sortIndex]
 #     print("{}: {} {}".format(f, angles[i], bounds[i]))
 # sys.exit(0)
 
-oargs = OrthorectifyArgs();
-oargs.occlusion_thresh = args.occlusion_thresh
-oargs.denoise_radius = args.denoise_radius
-
 reIndex = re.compile(r'\d+')
 
 ids = dsms
@@ -113,7 +104,6 @@ for dsm in dsms:
         print("Skipping {} not in dense_ids".format(dsmBasename))
         continue
     index = reIndex.findall(dsm)
-    oargs.dsm = dsm
     dsmImage = gdal.Open(dsm, gdal.GA_ReadOnly)
     dsmBounds = ortho.bounding_box(dsmImage)
     areaDsm = (dsmBounds[2] - dsmBounds[0]) * (dsmBounds[3] - dsmBounds[1])
@@ -127,20 +117,23 @@ for dsm in dsms:
             print("{} {}".format(areaImageIntersectDsm, areaDsm))
             print("{} {}".format(dsmBounds, bounds[i]))
             continue
-        oargs.source_image = source_image
         destination_image = os.path.basename(source_image)
         destination_image = os.path.splitext(destination_image)[0]
         if args.rpc_folder:
-            oargs.raytheon_rpc = glob.glob(
+            oargs_raytheon_rpc = glob.glob(
                 args.rpc_folder + "/GRA_" + destination_image + '*.up.rpc')[0]
         postfix = "pan" if source_image.find('PAN') > 0 else "msi"
-        oargs.destination_image =\
+        oargs_destination_image =\
           destination_image + "_or_" + postfix + "_" + index[0] +\
           "_" + index[1] + ".tif"
-        print(oargs)
-        if ortho.orthorectify(oargs) <= ortho.PARTIAL_DSM_INTERSECTION:
+        ortho_params = (
+            source_image, dsm, oargs_destination_image,
+            args.occlusion_thresh, args.denoise_radius,
+            oargs_raytheon_rpc)
+        print(orthoParamsToString(ortho_params))
+        if ortho.orthorectify(ortho_params) <= ortho.PARTIAL_DSM_INTERSECTION:
             break
         # We don't have a complete image so try the next image.
-        print("Image does not cover DSM {}".format(oargs.source_image))
-        if os.path.isfile(oargs.destination_image):
-            os.remove(oargs.destination_image)
+        print("Image does not cover DSM {}".format(source_image))
+        if os.path.isfile(oargs_destination_image):
+            os.remove(oargs_destination_image)

@@ -21,21 +21,43 @@ PARTIAL_DSM_INTERSECTION = 1
 EMPTY_DSM_INTERSECTION = 2
 ERROR = 10
 
-def orthorectify(args):
+def orthorectify(args_source_image, args_dsm, args_destination_image,
+                 args_occlusion_thresh = 1.0, args_denoise_radius = 2,
+                 args_raytheon_rpc = None):
+    """
+    Orthorectify an image given the DSM
+
+    Args:
+        source_image: Source image file name
+        dsm: Digital surface model (DSM) image file name
+        destination_image: Orthorectified image file name
+        occlusion-thresh: Threshold on height difference for detecting
+                          and masking occluded regions (in meters)
+        denoise-radius: Apply morphological operations with this radius
+                        to the DSM reduce speckled noise
+        raytheon-rpc: Raytheon RPC file name. If not provided
+                      the RPC is read from the source_image
+
+    Returns:
+        COMPLETE_DSM_INTERSECTION = 0
+        PARTIAL_DSM_INTERSECTION = 1
+        EMPTY_DSM_INTERSECTION = 2
+        ERROR = 10
+    """
     returnValue = COMPLETE_DSM_INTERSECTION
     # open the source image
-    sourceImage = gdal.Open(args.source_image, gdal.GA_ReadOnly)
+    sourceImage = gdal.Open(args_source_image, gdal.GA_ReadOnly)
     if not sourceImage:
         return ERROR
     sourceBand = sourceImage.GetRasterBand(1)
 
-    if (args.raytheon_rpc):
+    if (args_raytheon_rpc):
         # read the RPC from raytheon file
-        print("Reading RPC from Raytheon file: {}".format(args.raytheon_rpc))
-        model = raytheon_rpc.read_raytheon_rpc_file(args.raytheon_rpc)
+        print("Reading RPC from Raytheon file: {}".format(args_raytheon_rpc))
+        model = raytheon_rpc.read_raytheon_rpc_file(args_raytheon_rpc)
     else:
         # read the RPC from RPC Metadata in the image file
-        print("Reading RPC Metadata from {}".format(args.source_image))
+        print("Reading RPC Metadata from {}".format(args_source_image))
         rpcMetaData = sourceImage.GetMetadata('RPC')
         model = rpc.rpc_from_gdal_dict(rpcMetaData)
     if model is None:
@@ -43,7 +65,7 @@ def orthorectify(args):
         return ERROR
 
     # open the DSM
-    dsm = gdal.Open(args.dsm, gdal.GA_ReadOnly)
+    dsm = gdal.Open(args_dsm, gdal.GA_ReadOnly)
     if not dsm:
         return ERROR
     band = dsm.GetRasterBand(1)
@@ -54,8 +76,8 @@ def orthorectify(args):
     print("DSM raster shape {}".format(dsmRaster.shape))
 
     # apply morphology to denoise the DSM
-    if (args.denoise_radius > 0):
-        morph_struct = circ_structure(args.denoise_radius)
+    if (args_denoise_radius > 0):
+        morph_struct = circ_structure(args_denoise_radius)
         dsmRaster = morphology.grey_opening(dsmRaster, structure=morph_struct)
         dsmRaster = morphology.grey_closing(dsmRaster, structure=morph_struct)
 
@@ -83,7 +105,7 @@ def orthorectify(args):
         # Dataset does not support the AddBand() method.
         # So I create all bands using the same type at the begining
         destImage = driver.Create(
-            args.destination_image, xsize=dsm.RasterXSize,
+            args_destination_image, xsize=dsm.RasterXSize,
             ysize=dsm.RasterYSize,
             bands=sourceImage.RasterCount, eType=sourceBand.DataType,
             options=options)
@@ -125,7 +147,7 @@ def orthorectify(args):
     arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
 
     # Sort the points by height so that higher points project last
-    if (args.occlusion_thresh > 0):
+    if (args_occlusion_thresh > 0):
         print("Sorting by Height")
         heightIdx = numpy.argsort(arrayZ)
         arrayX = arrayX[heightIdx]
@@ -177,7 +199,7 @@ def orthorectify(args):
         returnValue = PARTIAL_DSM_INTERSECTION
 
     # use a height map to test for occlusion
-    if (args.occlusion_thresh > 0):
+    if (args_occlusion_thresh > 0):
         print("Mapping occluded points")
         valid_arrayZ = arrayZ[validIdx]
         # render a height map in the source image space
@@ -187,7 +209,7 @@ def orthorectify(args):
         # get a mask of points that locally are (approximately)
         # the highest point in the map
         is_max_height = height_map[intImgPoints[1], intImgPoints[0]] \
-                        <= valid_arrayZ + args.occlusion_thresh
+                        <= valid_arrayZ + args_occlusion_thresh
         num_occluded = numpy.size(is_max_height) - numpy.count_nonzero(is_max_height)
         print("Skipped {} occluded points".format(num_occluded))
 
@@ -247,7 +269,7 @@ def bounding_box(raster):
             arrayY = [gcps[0].GCPY, gcps[1].GCPY, gcps[2].GCPY, gcps[3].GCPY]
         else:
             print("Invalid number of GCPs")
-            sys.exit(0)
+            return ERROR
 
     srs = osr.SpatialReference(wkt=projection)
     proj_srs = srs.ExportToProj4()
