@@ -33,8 +33,9 @@ def intersection(a, b):
 parser = argparse.ArgumentParser(
     description='Orthorectify a list of images to cover all DSMs. '
     'The image chosen is the one with the smallest NITF_CSEXRA_OBLIQUITY_ANGLE '
-    'that (partially) covers the DSM. The output has the same name as the source image '
-    'with postfix or_pan (if image_folders contain PAN) or or_msi')
+    '(off-nadir angle) that (partially) covers the DSM. The output has the '
+    'same name as the source image with postfix or_pan (if image_folders '
+    'contain PAN) or or_msi')
 parser.add_argument("dsm_folder",
                     help="Folder for all DSMs which follow name_ii_jj.tif pattern, "
                     "where ii and jj are indexes (00, 01, ...)")
@@ -52,6 +53,8 @@ parser.add_argument("--dense_ids", type=str,
                     help="Process only the DSMs with the specified IDs. "
                     "IDs are listed in the specified file using the format name_000ii_000jj."
                     "Comments are prefixed by #. Otherwise process all DSMs in the image_folders.")
+parser.add_argument("--debug", action="store_true",
+                    help="Print additional information")
 args = parser.parse_args()
 
 imagesList = []
@@ -67,12 +70,6 @@ for i,f in enumerate(images):
     metaData = sourceImage.GetMetadata()
     angles[i] = metaData['NITF_CSEXRA_OBLIQUITY_ANGLE']
     bounds[i] = ortho.bounding_box(sourceImage)
-
-# sort images by angle
-sortIndex = angles.argsort()
-images = images[sortIndex]
-angles = angles[sortIndex]
-bounds = bounds[sortIndex]
 
 # list of dsms
 dsmList = glob.glob(args.dsm_folder + "/dsm_*.tif")
@@ -108,36 +105,37 @@ for dsm in dsms:
     dsmImage = gdal.Open(dsm, gdal.GA_ReadOnly)
     dsmBounds = ortho.bounding_box(dsmImage)
     dsmArea = (dsmBounds[2] - dsmBounds[0]) * (dsmBounds[3] - dsmBounds[1])
+    areas = numpy.zeros(len(images))
     for i, source_image in enumerate(images):
-        print("========== {} {} {} ==========".format(index[0], index[1],
-                                                      angles[i]))
         imageIntersectDsm = intersection(dsmBounds, bounds[i])
         areaImageIntersectDsm = (imageIntersectDsm[2] - imageIntersectDsm[0]) *\
             (imageIntersectDsm[3] - imageIntersectDsm[1]) if imageIntersectDsm else 0
-        if areaImageIntersectDsm < (dsmArea * 3. / 4.):
-            print("Skipping {} percentage: {}".format(source_image, areaImageIntersectDsm / dsmArea))
-            print("Areas: intersection: {} dsm: {}".format(areaImageIntersectDsm, dsmArea))
-            print("Bounds: intersection: {} dsm: {} image: {}".format(imageIntersectDsm, dsmBounds, bounds[i]))
-            continue
-        print("Using {} percentage: {}".format(source_image, areaImageIntersectDsm / dsmArea))
-        print("Areas: intersection: {} dsm: {}".format(areaImageIntersectDsm, dsmArea))
-        print("Bounds: intersection: {} dsm: {} image: {}".format(imageIntersectDsm, dsmBounds, bounds[i]))
-        destination_image = os.path.basename(source_image)
-        destination_image = os.path.splitext(destination_image)[0]
-        if args.rpc_folder:
-            oargs_raytheon_rpc = glob.glob(
-                args.rpc_folder + "/GRA_" + destination_image + '*.up.rpc')[0]
-        postfix = "pan" if source_image.find('PAN') > 0 else "msi"
-        oargs_destination_image =\
-          destination_image + "_or_" + postfix + "_" + index[0] +\
-          "_" + index[1] + ".tif"
-        ortho_params = (
-            source_image, dsm, oargs_destination_image,
-            args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc)
-        print(orthoParamsToString(*ortho_params))
-        if ortho.orthorectify(*ortho_params) <= ortho.PARTIAL_DSM_INTERSECTION:
-            break
-        # We don't have a complete image so try the next image.
-        print("Image does not cover DSM {}".format(source_image))
-        if os.path.isfile(oargs_destination_image):
-            os.remove(oargs_destination_image)
+        # area of DSM not covered
+        areas[i] = dsmArea - areaImageIntersectDsm
+    sortIndex = numpy.lexsort((angles, areas))
+    # sort images by angle
+    images = images[sortIndex]
+    angles = angles[sortIndex]
+    areas = areas[sortIndex]
+    if args.debug:
+        for i in range(len(images)):
+            print("========== {} {}: {} {} {} ==========".format(
+                index[0], index[1], os.path.basename(images[i]), angles[i], areas[i]))
+
+    source_image = images[0]
+    print("Using {} percentage not covered: {} angle: {}".format(
+        source_image, areas[0] / dsmArea, angles[0]))
+    destination_image = os.path.basename(source_image)
+    destination_image = os.path.splitext(destination_image)[0]
+    if args.rpc_folder:
+        oargs_raytheon_rpc = glob.glob(
+            args.rpc_folder + "/GRA_" + destination_image + '*.up.rpc')[0]
+    postfix = "pan" if source_image.find('PAN') > 0 else "msi"
+    oargs_destination_image =\
+      destination_image + "_or_" + postfix + "_" + index[0] +\
+      "_" + index[1] + ".tif"
+    ortho_params = (
+        source_image, dsm, oargs_destination_image,
+        args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc)
+    print(orthoParamsToString(*ortho_params))
+    ortho.orthorectify(*ortho_params)

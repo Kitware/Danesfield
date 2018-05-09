@@ -261,7 +261,7 @@ def bounding_box(raster):
         transform = gdal.GCPsToGeoTransform(gcps)
         if transform is None:
             print("Unable to extract a geotransform from GCPs")
-            return ERROR
+            return None
     lines = numpy.array([0, 0, raster.RasterYSize, raster.RasterYSize])
     pixels = numpy.array([0, raster.RasterXSize, raster.RasterXSize, 0])
     arrayX = transform[0] + pixels * transform[1] + lines * transform[2]
