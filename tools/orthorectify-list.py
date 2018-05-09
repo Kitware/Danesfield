@@ -27,7 +27,7 @@ def intersection(a, b):
     x2 = min(a[2], b[2])
     y2 = min(a[3], b[3])
     if x1<x2 and y1<y2:
-        return [x1, x2, y1, y2]
+        return [x1, y1, x2, y2]
     # else return None
 
 parser = argparse.ArgumentParser(
@@ -67,11 +67,13 @@ for i,f in enumerate(images):
     metaData = sourceImage.GetMetadata()
     angles[i] = metaData['NITF_CSEXRA_OBLIQUITY_ANGLE']
     bounds[i] = ortho.bounding_box(sourceImage)
+
 # sort images by angle
 sortIndex = angles.argsort()
 images = images[sortIndex]
 angles = angles[sortIndex]
 bounds = bounds[sortIndex]
+
 # list of dsms
 dsmList = glob.glob(args.dsm_folder + "/dsm_*.tif")
 dsms = numpy.array(dsmList)
@@ -105,17 +107,21 @@ for dsm in dsms:
     index = reIndex.findall(dsm)
     dsmImage = gdal.Open(dsm, gdal.GA_ReadOnly)
     dsmBounds = ortho.bounding_box(dsmImage)
-    areaDsm = (dsmBounds[2] - dsmBounds[0]) * (dsmBounds[3] - dsmBounds[1])
+    dsmArea = (dsmBounds[2] - dsmBounds[0]) * (dsmBounds[3] - dsmBounds[1])
     for i, source_image in enumerate(images):
         print("========== {} {} {} ==========".format(index[0], index[1],
                                                       angles[i]))
         imageIntersectDsm = intersection(dsmBounds, bounds[i])
         areaImageIntersectDsm = (imageIntersectDsm[2] - imageIntersectDsm[0]) *\
             (imageIntersectDsm[3] - imageIntersectDsm[1]) if imageIntersectDsm else 0
-        if areaImageIntersectDsm < areaDsm * 3. / 4.:
-            print("{} {}".format(areaImageIntersectDsm, areaDsm))
-            print("{} {}".format(dsmBounds, bounds[i]))
+        if areaImageIntersectDsm < (dsmArea * 3. / 4.):
+            print("Skipping {} percentage: {}".format(source_image, areaImageIntersectDsm / dsmArea))
+            print("Areas: intersection: {} dsm: {}".format(areaImageIntersectDsm, dsmArea))
+            print("Bounds: intersection: {} dsm: {} image: {}".format(imageIntersectDsm, dsmBounds, bounds[i]))
             continue
+        print("Using {} percentage: {}".format(source_image, areaImageIntersectDsm / dsmArea))
+        print("Areas: intersection: {} dsm: {}".format(areaImageIntersectDsm, dsmArea))
+        print("Bounds: intersection: {} dsm: {} image: {}".format(imageIntersectDsm, dsmBounds, bounds[i]))
         destination_image = os.path.basename(source_image)
         destination_image = os.path.splitext(destination_image)[0]
         if args.rpc_folder:
