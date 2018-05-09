@@ -144,7 +144,7 @@ def main(args):
     dtm_nodata_value = dtm_band.GetNoDataValue()
     print("DTM raster shape {}".format(dtm.shape))
 
-    mask = (dsm - dtm) > 3
+    mask = (dsm - dtm) > 2
     seeds = (dsm - dtm) > 4
 
     if args.msi:
