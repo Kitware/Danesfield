@@ -32,8 +32,8 @@ def intersection(a, b):
 
 parser = argparse.ArgumentParser(
     description='Orthorectify a list of images to cover all DSMs. '
-    'The image chosen is the one with the smallest NITF_CSEXRA_OBLIQUITY_ANGLE '
-    '(off-nadir angle) that (partially) covers the DSM. The output has the '
+    'The image chosen is the one with maximum coverage of the DSM and '
+    'the smallest NITF_CSEXRA_OBLIQUITY_ANGLE (off-nadir angle). The output has the '
     'same name as the source image with postfix or_pan (if image_folders '
     'contain PAN) or or_msi')
 parser.add_argument("dsm_folder",
@@ -77,11 +77,6 @@ dsms = numpy.array(dsmList)
 sortIndex = dsms.argsort()
 dsms = dsms[sortIndex]
 
-# print("======================================================================")
-# for i,f in enumerate(images):
-#     print("{}: {} {}".format(f, angles[i], bounds[i]))
-# sys.exit(0)
-
 reIndex = re.compile(r'\d+')
 
 ids = dsms
@@ -101,6 +96,7 @@ for dsm in dsms:
     if not dsmBasename in ids:
         print("Skipping {} not in dense_ids".format(dsmBasename))
         continue
+    print("Processing {}".format(dsmBasename))
     index = reIndex.findall(dsm)
     dsmImage = gdal.Open(dsm, gdal.GA_ReadOnly)
     dsmBounds = ortho.bounding_box(dsmImage)
@@ -112,15 +108,16 @@ for dsm in dsms:
             (imageIntersectDsm[3] - imageIntersectDsm[1]) if imageIntersectDsm else 0
         # area of DSM not covered
         areas[i] = dsmArea - areaImageIntersectDsm
+    # sort images by areas and angle
     sortIndex = numpy.lexsort((angles, areas))
-    # sort images by angle
     images = images[sortIndex]
     angles = angles[sortIndex]
     areas = areas[sortIndex]
     if args.debug:
+        print("========== Sorted list of images ==========")
         for i in range(len(images)):
-            print("========== {} {}: {} {} {} ==========".format(
-                index[0], index[1], os.path.basename(images[i]), angles[i], areas[i]))
+            print("{} {}: {} {} {}".format(
+                index[0], index[1], os.path.basename(images[i]), areas[i] / dsmArea, angles[i]))
 
     source_image = images[0]
     print("Using {} percentage not covered: {} angle: {}".format(
