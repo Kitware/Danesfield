@@ -216,7 +216,7 @@ def main(args):
         print("Create destination mask of "
               "size:({}, {}) ...".format(dsm_file.RasterXSize,
                                          dsm_file.RasterYSize))
-        options = []
+        options = ["COMPRESS=DEFLATE"]
         # ensure that space will be reserved for geographic corner coordinates
         # (in DMS) to be set later
         if (driver.ShortName == "NITF" and not projection):
