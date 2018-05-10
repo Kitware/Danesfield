@@ -40,9 +40,12 @@ def computeMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
             dx, dy, total_value, max_value))
     return total_value
 
-def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners):
-    print("Clipping {} to source_img: {} ...".format(inputVectorFile, corners))
+def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners, debug = False):
+    print("Spatial query {} to source_img: {} ...".format(inputVectorFile, corners))
     inputVector = ogr.Open(inputVectorFile)
+    if not inputVector:
+        print("Invalid vector file: {}".format(inputVectorFile))
+        return None
     if inputLayerName:
         inputLayer = inputVector.GetLayer(inputLayerName)
         if not inputLayer:
@@ -83,7 +86,11 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners)
     print("Opening {} {}".format(inputVectorFile, inputLayerName))
     inputVector = ogr.Open(inputVectorFile)
     inputLayer = inputVector.GetLayer(inputLayerName)
-    return list(inputLayer)
+    inputList = list(inputLayer)
+    if len(inputList) == 0:
+        print("No buildings in the clipped vector file")
+        return None
+    return inputList
 
 
 draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
