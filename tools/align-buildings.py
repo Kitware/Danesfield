@@ -40,8 +40,8 @@ def computeMatchingPoints(check_point_list, edge_img, dx, dy, debug = False):
             dx, dy, total_value, max_value))
     return total_value
 
-def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners, debug = False):
-    print("Spatial query {} to source_img: {} ...".format(inputVectorFile, corners))
+def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask,
+                          inputImageCorners, inputImageSrs, debug = False):
     inputVector = ogr.Open(inputVectorFile)
     if not inputVector:
         print("Invalid vector file: {}".format(inputVectorFile))
@@ -62,6 +62,9 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners,
         if i == layerCount:
             print("No polygon or multipolygon layer found")
             return None
+    inputVectorSrs = inputLayer.GetSpatialRef()
+    imageVectorDifferentSrs = False if inputVectorSrs.IsSame(inputImageSrs) else True
+
     layerDefinition = inputLayer.GetLayerDefn()
     hasBuildingField = False
     for i in range(layerDefinition.GetFieldCount()):
@@ -71,19 +74,39 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask, corners,
 
     # clip the shape file first
     outputNoExt = os.path.splitext(output_mask)[0]
-    destinationVectorFile = outputNoExt + "_original.shp"
+    if imageVectorDifferentSrs:
+        destinationVectorFile = outputNoExt + "_original.shp"
+    else:
+        destinationVectorFile = outputNoExt + "_spat.shp"
     ogr2ogr_args = ["ogr2ogr", "-spat",
-                    str(corners[0]), str(corners[2]), str(corners[1]), str(corners[3])]
+                    str(inputImageCorners[0]), str(inputImageCorners[2]),
+                    str(inputImageCorners[1]), str(inputImageCorners[3])]
+    if imageVectorDifferentSrs:
+        ogr2ogr_args.extend(["-spat_srs", str(inputImageSrs)])
     if hasBuildingField:
         ogr2ogr_args.extend(["-where", "building is not null"])
     ogr2ogr_args.extend([destinationVectorFile, inputVectorFile])
     if inputLayerName:
         ogr2ogr_args.append(inputLayerName)
-    print(*ogr2ogr_args)
-    subprocess.run(ogr2ogr_args)
+    print("Spatial query (clip): {} -> {}".format(
+        os.path.basename(inputVectorFile), os.path.basename(destinationVectorFile)))
+    response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if args.debug:
+        print(*ogr2ogr_args)
+        print("{}\n{}".format(response.stdout, response.stderr))
+    if imageVectorDifferentSrs:
+        # convert to the same SRS as the image file
+        destinationVectorFile = outputNoExt + "_spat.shp"
+        ogr2ogr_arg = ["ogr2ogr", "-t_srs", str(inputImageSrs),
+                       destinationVectorFile, outputNoExt + "_original.shp"]
+        response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if args.debug:
+            print(*ogr2ogr_args)
+            print("{}\n{}".format(response.stdout, response.stderr))
+
     inputVectorFile = destinationVectorFile
     inputLayerName = os.path.splitext(os.path.basename(inputVectorFile))[0]
-    print("Opening {} {}".format(inputVectorFile, inputLayerName))
+
     inputVector = ogr.Open(inputVectorFile)
     inputLayer = inputVector.GetLayer(inputLayerName)
     inputList = list(inputLayer)
@@ -98,11 +121,11 @@ draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255
 
 parser = argparse.ArgumentParser(
     description="Shift buildings to match edges generated from image")
-parser.add_argument('input_img', help='Orthorectified 8-bit image file')
+parser.add_argument('input_image', help='Orthorectified 8-bit image file')
 parser.add_argument('input_vector', help='Vector file with OSM or US Cities data')
 parser.add_argument('output_mask',
                     help="Output image mask (tif and shp) generated from the input_vector "
-                         "and aligned with input_img. A _clip.shp file is also "
+                         "and aligned with input_image. A _clip.shp file is also "
                          "generated from the shp file clipped to the image boundaries.")
 
 parser.add_argument('--input_layer' ,
@@ -120,23 +143,22 @@ args = parser.parse_args()
 scale = args.scale
 
 # open the GDAL file
-sourceImage = gdal.Open(args.input_img, gdal.GA_ReadOnly)
-band = sourceImage.GetRasterBand(1)
+inputImage = gdal.Open(args.input_image, gdal.GA_ReadOnly)
+band = inputImage.GetRasterBand(1)
 if (not band.DataType == gdal.GDT_Byte):
-    print("Input image {} does not have Byte type.".format(args.input_img))
+    print("Input image {} does not have Byte type.".format(args.input_image))
     sys.exit(10)
 
-projection = sourceImage.GetProjection()
-gt = sourceImage.GetGeoTransform() # captures origin and pixel size
-print('Origin:', (gt[0], gt[3]))
-print('Pixel size:', (gt[1], gt[5]))
+projection = inputImage.GetProjection()
+inputImageSrs = osr.SpatialReference(projection)
+gt = inputImage.GetGeoTransform() # captures origin and pixel size
 
 left,top = gdal.ApplyGeoTransform(gt,0,0)
-right,bottom = gdal.ApplyGeoTransform(gt,sourceImage.RasterXSize,sourceImage.RasterYSize)
+right,bottom = gdal.ApplyGeoTransform(gt,inputImage.RasterXSize,inputImage.RasterYSize)
 band = None
 
-print("Resize and edge detection ...")
-color_image = cv2.imread(args.input_img)
+print("Resize and edge detection: {}".format(os.path.basename(args.input_image)))
+color_image = cv2.imread(args.input_image)
 small_color_image = np.zeros((int(color_image.shape[0]*scale),\
         int(color_image.shape[1]*scale), 3), dtype=np.uint8)
 if scale != 1.0:
@@ -151,9 +173,9 @@ model['corners'] = [left, top, right, bottom]
 model['project_model'] = gt
 model['scale'] = scale
 
-corners = [left, right, bottom, top]
+inputImageCorners = [left, right, bottom, top]
 building_cluster = readAndClipVectorFile(args.input_vector, args.input_layer,args.output_mask,
-                                      corners)
+                                      inputImageCorners, inputImageSrs)
 if not building_cluster:
     sys.exit(10)
 
@@ -252,10 +274,10 @@ if not args.no_offset:
         offset = [0, 0]
 
 if not (offset[0] == 0 and offset[1] == 0):
-    print("Shifting vector file ...")
     outputNoExt = os.path.splitext(args.output_mask)[0]
     destinationVectorFile = outputNoExt + ".shp"
     outDriver = ogr.GetDriverByName("ESRI Shapefile")
+    print("Shifting vector -> {}".format(os.path.basename(destinationVectorFile)))
     outVector = outDriver.CreateDataSource(destinationVectorFile)
     outSrs = osr.SpatialReference(projection)
     # create layer
@@ -286,21 +308,29 @@ if not (offset[0] == 0 and offset[1] == 0):
     outLayer = None
     outVector = None
 
-print("Cliping vector file ...")
 ogr2ogr_args = ["ogr2ogr", "-clipsrc",
-                str(corners[0]), str(corners[2]),
-                str(corners[1]), str(corners[3])]
+                str(inputImageCorners[0]), str(inputImageCorners[2]),
+                str(inputImageCorners[1]), str(inputImageCorners[3])]
 outputNoExt = os.path.splitext(args.output_mask)[0]
 ogr2ogr_args.extend([outputNoExt + "_clip.shp", outputNoExt + ".shp"])
-print(*ogr2ogr_args)
-subprocess.run(ogr2ogr_args)
+print("Clipping vector file {} -> {}".format(
+    os.path.basename(outputNoExt + ".shp"),
+    os.path.basename(outputNoExt + "_clip.shp")))
+response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+if args.debug:
+    print(*ogr2ogr_args)
+    print("{}\n{}".format(response.stdout, response.stderr))
 
-print("Rasterizing vector file ...")
+
 rasterize_args = ["gdal_rasterize", "-ot", "Byte",
                   "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
-                  "-ts", str(sourceImage.RasterXSize),
-                  str(sourceImage.RasterYSize)]
+                  "-ts", str(inputImage.RasterXSize),
+                  str(inputImage.RasterYSize)]
 outputNoExt = os.path.splitext(args.output_mask)[0]
 rasterize_args.extend([outputNoExt + "_clip.shp", outputNoExt + ".tif"])
-print(*rasterize_args)
-subprocess.run(rasterize_args)
+print("Rasterizing {} -> {}".format(os.path.basename(outputNoExt + "_clip.shp"),
+                                    os.path.basename(outputNoExt + ".tif")))
+response = subprocess.run(rasterize_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+if args.debug:
+    print(*rasterize_args)
+    print("{}\n{}".format(response.stdout, response.stderr))
