@@ -270,11 +270,11 @@ if not args.no_offset:
     offsetGeo[0] = offsetGeo[0] - left
     offsetGeo[1] = top - offsetGeo[1]
     print("Resulting offset: {}, {}".format(offset, offsetGeo))
-    #do something to deal with the bad data
     if max_value/float(len(check_point_list))<0.05:
-        print("Fewer than 5% of points match {} / {}. Set offset to 0.".format(
+        print("Fewer than 5% of points match {} / {}. This may happen because of "
+              "missing areas in the orthorectified image."
+              "Increasing scale may increase the number of points that match.".format(
             max_value, len(check_point_list)))
-        offset = [0, 0]
 
 outputNoExt = os.path.splitext(args.output_mask)[0]
 destinationVectorFile = outputNoExt + "_spat.shp"
