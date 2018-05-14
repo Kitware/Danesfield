@@ -9,7 +9,7 @@ conda activate core3d
 
 # Set up X virtual framebuffer (Xvfb) to support running VTK with OSMesa
 # Note: requires mesalib variant of vtk package
-sudo Xvfb :1 -screen 0 1024x768x16 -nolisten tcp > xvfb.log &
+Xvfb :1 -screen 0 1024x768x16 -nolisten tcp > xvfb.log &
 export DISPLAY=:1.0
 
 # Run specified command
