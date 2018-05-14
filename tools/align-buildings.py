@@ -14,6 +14,7 @@ import osr
 import os
 import pdb
 import subprocess
+import shutil
 import sys
 
 #project a vector point to image
@@ -77,7 +78,7 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask,
     if imageVectorDifferentSrs:
         destinationVectorFile = outputNoExt + "_original.shp"
     else:
-        destinationVectorFile = outputNoExt + "_spat.shp"
+        destinationVectorFile = outputNoExt + "_spat_not_aligned.shp"
     ogr2ogr_args = ["ogr2ogr", "-spat",
                     str(inputImageCorners[0]), str(inputImageCorners[2]),
                     str(inputImageCorners[1]), str(inputImageCorners[3])]
@@ -96,9 +97,12 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask,
         print("{}\n{}".format(response.stdout, response.stderr))
     if imageVectorDifferentSrs:
         # convert to the same SRS as the image file
-        destinationVectorFile = outputNoExt + "_spat.shp"
-        ogr2ogr_arg = ["ogr2ogr", "-t_srs", str(inputImageSrs),
-                       destinationVectorFile, outputNoExt + "_original.shp"]
+        inputVectorFile = outputNoExt + "_original.shp"
+        destinationVectorFile = outputNoExt + "_spat_not_aligned.shp"
+        ogr2ogr_args = ["ogr2ogr", "-t_srs", str(inputImageSrs),
+                        destinationVectorFile, inputVectorFile]
+        print("Convert SRS: {} -> {}".format(
+            os.path.basename(inputVectorFile), os.path.basename(destinationVectorFile)))
         response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if args.debug:
             print(*ogr2ogr_args)
@@ -125,8 +129,8 @@ parser.add_argument('input_image', help='Orthorectified 8-bit image file')
 parser.add_argument('input_vector', help='Vector file with OSM or US Cities data')
 parser.add_argument('output_mask',
                     help="Output image mask (tif and shp) generated from the input_vector "
-                         "and aligned with input_image. A _clip.shp file is also "
-                         "generated from the shp file clipped to the image boundaries.")
+                         "and aligned with input_image. A _spat.shp file is also "
+                         "generated where buildings are not clipped at image boundaries.")
 
 parser.add_argument('--input_layer' ,
                     help='Input layer name that contains buildings in input_vector')
@@ -206,6 +210,7 @@ for y in range(0,tmp_img.shape[0]):
     for x in range(0,tmp_img.shape[1]):
         if tmp_img[y,x] > 200:
             check_point_list.append([x,y])
+print("Checking {} points ...".format(len(check_point_list)))
 
 max_value = 0
 index_max_value = 0
@@ -273,9 +278,9 @@ if not args.no_offset:
             max_value, len(check_point_list)))
         offset = [0, 0]
 
+outputNoExt = os.path.splitext(args.output_mask)[0]
+destinationVectorFile = outputNoExt + "_spat.shp"
 if not (offset[0] == 0 and offset[1] == 0):
-    outputNoExt = os.path.splitext(args.output_mask)[0]
-    destinationVectorFile = outputNoExt + ".shp"
     outDriver = ogr.GetDriverByName("ESRI Shapefile")
     print("Shifting vector -> {}".format(os.path.basename(destinationVectorFile)))
     outVector = outDriver.CreateDataSource(destinationVectorFile)
@@ -307,15 +312,21 @@ if not (offset[0] == 0 and offset[1] == 0):
         outLayer.CreateFeature(outFeature)
     outLayer = None
     outVector = None
+else:
+    inputVectorFile = os.path.splitext(outputNoExt + "_spat_not_aligned.shp")[0]
+    destinationVectorFile = os.path.splitext(destinationVectorFile)[0]
+    print("Copy vector -> {}".format(os.path.basename(destinationVectorFile)))
+    for ext in ['.dbf', '.prj', '.shp', '.shx']:
+        shutil.copyfile(inputVectorFile + ext, destinationVectorFile + ext)
 
 ogr2ogr_args = ["ogr2ogr", "-clipsrc",
                 str(inputImageCorners[0]), str(inputImageCorners[2]),
                 str(inputImageCorners[1]), str(inputImageCorners[3])]
 outputNoExt = os.path.splitext(args.output_mask)[0]
-ogr2ogr_args.extend([outputNoExt + "_clip.shp", outputNoExt + ".shp"])
+ogr2ogr_args.extend([outputNoExt + ".shp", outputNoExt + "_spat.shp"])
 print("Clipping vector file {} -> {}".format(
-    os.path.basename(outputNoExt + ".shp"),
-    os.path.basename(outputNoExt + "_clip.shp")))
+    os.path.basename(outputNoExt + "_spat.shp"),
+    os.path.basename(outputNoExt + ".shp")))
 response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 if args.debug:
     print(*ogr2ogr_args)
@@ -327,8 +338,8 @@ rasterize_args = ["gdal_rasterize", "-ot", "Byte",
                   "-ts", str(inputImage.RasterXSize),
                   str(inputImage.RasterYSize)]
 outputNoExt = os.path.splitext(args.output_mask)[0]
-rasterize_args.extend([outputNoExt + "_clip.shp", outputNoExt + ".tif"])
-print("Rasterizing {} -> {}".format(os.path.basename(outputNoExt + "_clip.shp"),
+rasterize_args.extend([outputNoExt + ".shp", outputNoExt + ".tif"])
+print("Rasterizing {} -> {}".format(os.path.basename(outputNoExt + ".shp"),
                                     os.path.basename(outputNoExt + ".tif")))
 response = subprocess.run(rasterize_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 if args.debug:
