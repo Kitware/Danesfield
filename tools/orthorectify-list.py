@@ -1,4 +1,5 @@
 from danesfield import ortho
+from danesfield import gdal_utils
 
 import argparse
 import gdal
@@ -69,7 +70,7 @@ for i,f in enumerate(images):
     sourceImage = gdal.Open(f, gdal.GA_ReadOnly)
     metaData = sourceImage.GetMetadata()
     angles[i] = metaData['NITF_CSEXRA_OBLIQUITY_ANGLE']
-    bounds[i] = ortho.bounding_box(sourceImage)
+    bounds[i] = gdal_utils.bounding_box(sourceImage)
 
 # list of dsms
 dsmList = glob.glob(args.dsm_folder + "/dsm_*.tif")
@@ -99,7 +100,7 @@ for dsm in dsms:
     print("Processing {}".format(dsmBasename))
     index = reIndex.findall(dsm)
     dsmImage = gdal.Open(dsm, gdal.GA_ReadOnly)
-    dsmBounds = ortho.bounding_box(dsmImage)
+    dsmBounds = gdal_utils.bounding_box(dsmImage)
     dsmArea = (dsmBounds[2] - dsmBounds[0]) * (dsmBounds[3] - dsmBounds[1])
     areas = numpy.zeros(len(images))
     for i, source_image in enumerate(images):
