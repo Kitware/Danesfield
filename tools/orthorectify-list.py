@@ -112,12 +112,14 @@ for dsm in dsms:
     sortIndex = numpy.lexsort((angles, areas))
     images = images[sortIndex]
     angles = angles[sortIndex]
+    bounds = bounds[sortIndex]
     areas = areas[sortIndex]
     if args.debug:
         print("========== Sorted list of images ==========")
         for i in range(len(images)):
-            print("{} {}: {} {} {}".format(
-                index[0], index[1], os.path.basename(images[i]), areas[i] / dsmArea, angles[i]))
+            print("{} {}: {} {} (dsmBounds: {}, bounds: {}) {}".format(
+                index[0], index[1], os.path.basename(images[i]), areas[i] / dsmArea,
+                dsmBounds, bounds[i], angles[i]))
 
     source_image = images[0]
     print("Using {} percentage not covered: {} angle: {}".format(
