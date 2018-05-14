@@ -1,5 +1,5 @@
 """
-Align vector layer to the tiff image. The input image must be warped by gdalwarp first!!!!
+Align vector layer to the tiff image.
 
 Author: Xu Zhang
 Email: xu.zhang@columbia.edu.cn
@@ -120,9 +120,6 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask,
     return inputList
 
 
-draw_color = [(255,0,0,255),(255,255,0,255),(255,0,255,255),(0,255,0,255),(0,255,255,255),\
-        (0,0,255,255),(255,255,255,255)]
-
 parser = argparse.ArgumentParser(
     description="Shift buildings to match edges generated from image")
 parser.add_argument('input_image', help='Orthorectified 8-bit image file')
@@ -150,7 +147,8 @@ scale = args.scale
 inputImage = gdal.Open(args.input_image, gdal.GA_ReadOnly)
 band = inputImage.GetRasterBand(1)
 if (not band.DataType == gdal.GDT_Byte):
-    print("Input image {} does not have Byte type.".format(args.input_image))
+    print("Input image {} does not have Byte type. Use msi-to-rgb.py to-8bit.py "
+          "to convert it.".format(args.input_image))
     sys.exit(10)
 
 projection = inputImage.GetProjection()
