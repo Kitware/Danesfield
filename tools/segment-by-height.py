@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
+
+import cv2
 import gdal
 import gdalnumeric
-import logging
 import numpy
 import scipy.ndimage.measurements as ndm
 import scipy.ndimage.morphology as morphology
-import cv2
 
 
 def compute_ndvi(msi_file):
