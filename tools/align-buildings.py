@@ -17,6 +17,14 @@ import subprocess
 import shutil
 import sys
 
+def copy_shapefile(inputNoExt, outputNoExt):
+    for ext in ['.dbf', '.prj', '.shp', '.shx']:
+        shutil.copyfile(inputNoExt + ext, outputNoExt + ext)
+
+def remove_shapefile(inputNoExt):
+    for ext in ['.dbf', '.prj', '.shp', '.shx']:
+        os.remove(inputNoExt + ext)
+
 #project a vector point to image
 def ProjectPoint(model, pt):
     #simplest projection model
@@ -107,6 +115,8 @@ def readAndClipVectorFile(inputVectorFile, inputLayerName, output_mask,
         if args.debug:
             print(*ogr2ogr_args)
             print("{}\n{}".format(response.stdout, response.stderr))
+        else:
+            remove_shapefile(os.path.splitext(inputVectorFile)[0])
 
     inputVectorFile = destinationVectorFile
     inputLayerName = os.path.splitext(os.path.basename(inputVectorFile))[0]
@@ -168,7 +178,8 @@ if scale != 1.0:
     color_image = small_color_image
 grayimg = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 edge_img = cv2.Canny(grayimg, 100, 200)
-cv2.imwrite(os.path.splitext(args.output_mask)[0] + '_edge.tif',edge_img)
+if args.debug:
+    cv2.imwrite(os.path.splitext(args.output_mask)[0] + '_edge.tif',edge_img)
 
 model = {}
 model['corners'] = [left, top, right, bottom]
@@ -272,7 +283,7 @@ if not args.no_offset:
     print("Resulting offset: {}, {}".format(offset, offsetGeo))
     if max_value/float(len(check_point_list))<0.05:
         print("Fewer than 5% of points match {} / {}. This may happen because of "
-              "missing areas in the orthorectified image."
+              "missing areas in the orthorectified image. "
               "Increasing scale may increase the number of points that match.".format(
             max_value, len(check_point_list)))
 
@@ -314,8 +325,10 @@ else:
     inputVectorFile = os.path.splitext(outputNoExt + "_spat_not_aligned.shp")[0]
     destinationVectorFile = os.path.splitext(destinationVectorFile)[0]
     print("Copy vector -> {}".format(os.path.basename(destinationVectorFile)))
-    for ext in ['.dbf', '.prj', '.shp', '.shx']:
-        shutil.copyfile(inputVectorFile + ext, destinationVectorFile + ext)
+    copy_shapefile(inputVectorFile, destinationVectorFile)
+
+if not args.debug:
+    remove_shapefile(os.path.splitext(outputNoExt + "_spat_not_aligned.shp")[0])
 
 ogr2ogr_args = ["ogr2ogr", "-clipsrc",
                 str(inputImageCorners[0]), str(inputImageCorners[2]),
