@@ -16,8 +16,6 @@ def compute_ndvi(msi_file):
     Compute a normalized difference vegetation index (NVDI) image from an MSI file
     """
     num_bands = msi_file.RasterCount
-    red_idx = None
-    nir_idx = None
     # Guess band indices based on the number of bands
     if num_bands == 8:
         # for 8-band MSI from WV3 and WV2 the RGB bands have these indices
