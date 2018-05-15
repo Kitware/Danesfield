@@ -6,8 +6,8 @@ import numpy
 import sys
 import scipy.ndimage.measurements as ndm
 import scipy.ndimage.morphology as morphology
-
 import cv2
+
 
 def compute_ndvi(msi_file):
     """
@@ -51,13 +51,8 @@ def save_ndvi(ndvi, msi_file, filename):
     """
     driver = msi_file.GetDriver()
     driver_metadata = driver.GetMetadata()
-    ndvi_image = None
     if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
         options = []
-        # ensure that space will be reserved for geographic corner coordinates
-        # (in DMS) to be set later
-        if (driver.ShortName == "NITF" and not projection):
-            options.append("ICORDS=G")
         ndvi_file = driver.Create(
             filename, xsize=ndvi.shape[1],
             ysize=ndvi.shape[0],
@@ -79,13 +74,8 @@ def save_ndsm(ndsm, dsm_file, filename):
     """
     driver = dsm_file.GetDriver()
     driver_metadata = driver.GetMetadata()
-    ndsm_image = None
     if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
         options = []
-        # ensure that space will be reserved for geographic corner coordinates
-        # (in DMS) to be set later
-        if (driver.ShortName == "NITF" and not projection):
-            options.append("ICORDS=G")
         ndsm_file = driver.Create(
             filename, xsize=ndsm.shape[1],
             ysize=ndsm.shape[0],
@@ -119,7 +109,7 @@ def main(args):
     parser.add_argument("--ndvi",
                         help="Write out the Normalized Difference Vegetation "
                              "Index image")
-    parser.add_argument("-d","--debug", action="store_true",
+    parser.add_argument("-d", "--debug", action="store_true",
                         help="Enable debug output and visualization")
     parser.add_argument("destination_mask",
                         help="Building mask output image")
@@ -150,12 +140,10 @@ def main(args):
     dtm = dtm_band.ReadAsArray(
         xoff=0, yoff=0,
         win_xsize=dtm_file.RasterXSize, win_ysize=dtm_file.RasterYSize)
-    dtm_nodata_value = dtm_band.GetNoDataValue()
     print("DTM raster shape {}".format(dtm.shape))
 
     # Compute the normalized DSM by subtracting the terrain
     ndsm = dsm - dtm
-
 
     # consider any point above 2m as possible buildings
     mask = ndsm > 2
@@ -184,11 +172,11 @@ def main(args):
         seeds[ndvi > 0.1] = False
 
     # use morphology to clean up the mask
-    mask = morphology.binary_opening(mask, numpy.ones((3,3)), iterations=1)
-    mask = morphology.binary_closing(mask, numpy.ones((3,3)), iterations=1)
+    mask = morphology.binary_opening(mask, numpy.ones((3, 3)), iterations=1)
+    mask = morphology.binary_closing(mask, numpy.ones((3, 3)), iterations=1)
     # use morphology to clean up the seeds
-    seeds = morphology.binary_opening(seeds, numpy.ones((3,3)), iterations=1)
-    seeds = morphology.binary_closing(seeds, numpy.ones((3,3)), iterations=1)
+    seeds = morphology.binary_opening(seeds, numpy.ones((3, 3)), iterations=1)
+    seeds = morphology.binary_closing(seeds, numpy.ones((3, 3)), iterations=1)
 
     # compute connected components on the seeds
     label_img = ndm.label(seeds)[0]
@@ -215,7 +203,7 @@ def main(args):
     good_mask = numpy.isin(label_img, selected)
 
     # a final mask cleanup
-    good_mask = morphology.binary_closing(good_mask, numpy.ones((3,3)), iterations=3)
+    good_mask = morphology.binary_closing(good_mask, numpy.ones((3, 3)), iterations=3)
 
     # visualize final mask if in debug mode
     if args.debug:
@@ -227,20 +215,14 @@ def main(args):
     cls = numpy.full(good_mask.shape, 2)
     cls[good_mask] = 6
 
-
     # create the mask image
     driver = dsm_file.GetDriver()
     driver_metadata = driver.GetMetadata()
-    destImage = None
     if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
         print("Create destination mask of "
               "size:({}, {}) ...".format(dsm_file.RasterXSize,
                                          dsm_file.RasterYSize))
         options = ["COMPRESS=DEFLATE"]
-        # ensure that space will be reserved for geographic corner coordinates
-        # (in DMS) to be set later
-        if (driver.ShortName == "NITF" and not projection):
-            options.append("ICORDS=G")
         dest_file = driver.Create(
             args.destination_mask, xsize=cls.shape[1],
             ysize=cls.shape[0],
