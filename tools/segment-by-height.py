@@ -44,50 +44,38 @@ def compute_ndvi(msi_file):
     return numpy.divide(nir - red, nir + red, where=mask)
 
 
+def save_gdal(arr, src_file, filename, eType, options=[]):
+    """
+    Save the 2D ndarray arr to filename using the same metadata as the
+    given source file.  Returns the new gdal file object in case
+    additional operations are desired.
+    """
+    driver = src_file.GetDriver()
+    if driver.GetMetadata().get(gdal.DCAP_CREATE) != "YES":
+        raise RuntimeError("Driver {} does not support Create().".format(driver))
+    arr_file = driver.Create(
+        filename, xsize=arr.shape[1], ysize=arr.shape[0],
+        bands=1, eType=eType, options=options,
+    )
+    gdalnumeric.CopyDatasetInfo(src_file, arr_file)
+    arr_file.GetRasterBand(1).WriteArray(arr)
+    return arr_file
+
+
 def save_ndvi(ndvi, msi_file, filename):
     """
     Save an NDVI image using the same metadata as the given MSI file
     """
-    driver = msi_file.GetDriver()
-    driver_metadata = driver.GetMetadata()
-    if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
-        options = []
-        ndvi_file = driver.Create(
-            filename, xsize=ndvi.shape[1],
-            ysize=ndvi.shape[0],
-            bands=1, eType=gdal.GDT_Float32,
-            options=options)
-
-        gdalnumeric.CopyDatasetInfo(msi_file, ndvi_file)
-    else:
-        raise RuntimeError("Driver {} does not supports Create().".format(driver))
-
-    ndvi_band = ndvi_file.GetRasterBand(1)
-    ndvi_band.WriteArray(ndvi)
+    save_gdal(ndvi, msi_file, filename, gdal.GDT_Float32)
 
 
 def save_ndsm(ndsm, dsm_file, filename):
     """
     Save a normalized DSM image using the same metadata as the source DSM
     """
-    driver = dsm_file.GetDriver()
-    driver_metadata = driver.GetMetadata()
-    if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
-        options = []
-        ndsm_file = driver.Create(
-            filename, xsize=ndsm.shape[1],
-            ysize=ndsm.shape[0],
-            bands=1, eType=gdal.GDT_Float32,
-            options=options)
-
-        gdalnumeric.CopyDatasetInfo(dsm_file, ndsm_file)
-    else:
-        raise RuntimeError("Driver {} does not supports Create().".format(driver))
-
-    ndsm_band = ndsm_file.GetRasterBand(1)
-    ndsm_band.WriteArray(ndsm)
+    ndsm_file = save_gdal(ndsm, dsm_file, filename, gdal.GDT_Float32)
     no_data_val = dsm_file.GetRasterBand(1).GetNoDataValue()
-    ndsm_band.SetNoDataValue(no_data_val)
+    ndsm_file.GetRasterBand(1).SetNoDataValue(no_data_val)
 
 
 def main(args):
@@ -213,25 +201,10 @@ def main(args):
     cls[good_mask] = 6
 
     # create the mask image
-    driver = dsm_file.GetDriver()
-    driver_metadata = driver.GetMetadata()
-    if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
-        print("Create destination mask of "
-              "size:({}, {}) ...".format(dsm_file.RasterXSize,
-                                         dsm_file.RasterYSize))
-        options = ["COMPRESS=DEFLATE"]
-        dest_file = driver.Create(
-            args.destination_mask, xsize=cls.shape[1],
-            ysize=cls.shape[0],
-            bands=1, eType=gdal.GDT_Byte,
-            options=options)
-
-        gdalnumeric.CopyDatasetInfo(dsm_file, dest_file)
-    else:
-        raise RuntimeError("Driver {} does not supports Create().".format(driver))
-
-    dest_band = dest_file.GetRasterBand(1)
-    dest_band.WriteArray(cls)
+    print("Create destination mask of size:({}, {}) ..."
+          .format(dsm_file.RasterXSize, dsm_file.RasterYSize))
+    save_gdal(cls, dsm_file, args.destination_mask, gdal.GDT_Byte,
+              options=['COMPRESS=DEFLATE'])
 
 
 if __name__ == '__main__':
