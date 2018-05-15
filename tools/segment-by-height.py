@@ -28,7 +28,7 @@ def compute_ndvi(msi_file):
     else:
         print("Unknown Red/NIR channels in {}-band image".format(num_bands))
         sys.exit(1)
-    
+
     red_band = msi_file.GetRasterBand(red_idx)
     red = red_band.ReadAsArray()
     red_mask = red != red_band.GetNoDataValue()
@@ -46,6 +46,9 @@ def compute_ndvi(msi_file):
 
 
 def save_ndvi(ndvi, msi_file, filename):
+    """
+    Save an NDVI image using the same metadata as the given MSI file
+    """
     driver = msi_file.GetDriver()
     driver_metadata = driver.GetMetadata()
     ndvi_image = None
@@ -71,6 +74,9 @@ def save_ndvi(ndvi, msi_file, filename):
 
 
 def save_ndsm(ndsm, dsm_file, filename):
+    """
+    Save a normalized DSM image using the same metadata as the source DSM
+    """
     driver = dsm_file.GetDriver()
     driver_metadata = driver.GetMetadata()
     ndsm_image = None
@@ -97,8 +103,6 @@ def save_ndsm(ndsm, dsm_file, filename):
     ndsm_band.SetNoDataValue(no_data_val)
 
 
-
-
 def main(args):
     # Configure argument parser
     parser = argparse.ArgumentParser(
@@ -112,6 +116,11 @@ def main(args):
                              "for vegetation removal")
     parser.add_argument("--ndsm",
                         help="Write out the normalized DSM image")
+    parser.add_argument("--ndvi",
+                        help="Write out the Normalized Difference Vegetation "
+                             "Index image")
+    parser.add_argument("-d","--debug", action="store_true",
+                        help="Enable debug output and visualization")
     parser.add_argument("destination_mask",
                         help="Building mask output image")
     args = parser.parse_args()
@@ -144,68 +153,79 @@ def main(args):
     dtm_nodata_value = dtm_band.GetNoDataValue()
     print("DTM raster shape {}".format(dtm.shape))
 
-    mask = (dsm - dtm) > 2
-    seeds = (dsm - dtm) > 4
+    # Compute the normalized DSM by subtracting the terrain
+    ndsm = dsm - dtm
 
+
+    # consider any point above 2m as possible buildings
+    mask = ndsm > 2
+    # Use any point above 4m as a high confidence seed point
+    seeds = ndsm > 4
+
+    # if requested, write out the normalized DSM
+    if args.ndsm:
+        ndsm[dsm == dsm_nodata_value] = dsm_nodata_value
+        save_ndsm(ndsm, dsm_file, args.ndsm)
+
+    # if an MSI images was specified, use it to filter by NDVI
     if args.msi:
         msi_file = gdal.Open(args.msi, gdal.GA_ReadOnly)
         if not msi_file:
             print("Unable to open {}".format(args.msi))
             exit(1)
+        # Compute normalized difference vegetation index (NDVI)
         ndvi = compute_ndvi(msi_file)
-        save_ndvi(ndvi, msi_file, "NDVI.tiff")
+        # if requested, write out the NDVI image
+        if args.ndvi:
+            save_ndvi(ndvi, msi_file, args.ndvi)
+        # remove building candidates with high vegetation likelihood
         mask[ndvi > 0.2] = False
+        # reduce seeds to areas with high confidence non-vegetation
         seeds[ndvi > 0.1] = False
 
+    # use morphology to clean up the mask
     mask = morphology.binary_opening(mask, numpy.ones((3,3)), iterations=1)
     mask = morphology.binary_closing(mask, numpy.ones((3,3)), iterations=1)
+    # use morphology to clean up the seeds
     seeds = morphology.binary_opening(seeds, numpy.ones((3,3)), iterations=1)
     seeds = morphology.binary_closing(seeds, numpy.ones((3,3)), iterations=1)
 
+    # compute connected components on the seeds
     label_img = ndm.label(seeds)[0]
+    # compute the size of each connected component
     labels, counts = numpy.unique(label_img, return_counts=True)
-    for idx, count in zip(labels, counts):
-        if idx == 0:
-            continue
-        if count < 500:
-            seeds[label_img == idx] = False
-        print("index {} has size {}".format(idx, count))
+    # filter seed connected components to keep only large areas
+    to_remove = numpy.extract(counts < 500, labels)
+    print("Removing {} small connected components".format(len(to_remove)))
+    seeds[numpy.isin(label_img, to_remove)] = False
 
-    cv2.imshow('mask1', mask.astype(numpy.uint8)*127 + seeds.astype(numpy.uint8)*127)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # visualize initial seeds if in debug mode
+    if args.debug:
+        cv2.imshow('seeds', mask.astype(numpy.uint8)*127 + seeds.astype(numpy.uint8)*127)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
-
-
-    seed_img, num_seeds = ndm.label(seeds)
+    # label the larger mask image
     label_img = ndm.label(mask)[0]
-    label_set = set()
-    for idx in range(1, num_seeds+1):
-        print(numpy.unique(label_img[seed_img == idx]))
-        label_set.update(set(numpy.unique(label_img[seed_img == idx]).tolist()))
-    print("labels")
-    print(label_set)
-    good_mask = numpy.full(mask.shape, False)
-    for idx in label_set:
-        if idx == 0:
-            continue
-        print(numpy.count_nonzero(label_img == idx))
-        good_mask[label_img == idx] = True
+    # extract the unique labels that match the seeds
+    selected = numpy.unique(numpy.extract(seeds, label_img))
+    print("Keeping {} connected components".format(len(selected)))
 
+    # keep only the mask components selected above
+    good_mask = numpy.isin(label_img, selected)
+
+    # a final mask cleanup
     good_mask = morphology.binary_closing(good_mask, numpy.ones((3,3)), iterations=3)
 
-    cv2.imshow('mask2', good_mask.astype(numpy.uint8)*255)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # visualize final mask if in debug mode
+    if args.debug:
+        cv2.imshow('mask', good_mask.astype(numpy.uint8)*255)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     # convert the mask to label map with value 2 (background) and 6 (building)
     cls = numpy.full(good_mask.shape, 2)
     cls[good_mask] = 6
-
-    if args.ndsm:
-        ndsm = dsm - dtm
-        ndsm[dsm == dsm_nodata_value] = dsm_nodata_value
-        save_ndsm(ndsm, dsm_file, args.ndsm) 
 
 
     # create the mask image
