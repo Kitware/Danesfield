@@ -20,7 +20,8 @@ def main(args):
     parser.add_argument("--render_png", action="store_true",
                         help="Do not save the DSM, render into a PNG instead.")
     parser.add_argument("--render_cls", action="store_true",
-                        help="Render a buildings mask: render buildings label (6), background (2) and no DTM.")
+                        help="Render a buildings mask: render buildings label (6), "
+                             "background (2) and no DTM.")
     parser.add_argument("--buildings_only", action="store_true",
                         help="Do not use the DTM, use only the buildings.")
     parser.add_argument("--debug", action="store_true",
@@ -69,17 +70,17 @@ def main(args):
             gdal.GCPsToGeoTransform(gcps, transform)
         corners = [[0, 0], [0, dtm.RasterYSize],
                    [dtm.RasterXSize, dtm.RasterYSize], [dtm.RasterXSize, 0]]
-        geoCorners = numpy.zeros((4,2))
+        geoCorners = numpy.zeros((4, 2))
         for i, corner in enumerate(corners):
             geoCorners[i] = [
-                transform[0] + corner[0] * transform[1] +\
+                transform[0] + corner[0] * transform[1] +
                 corner[1] * transform[2],
-                transform[3] + corner[0] * transform[4] +\
+                transform[3] + corner[0] * transform[4] +
                 corner[1] * transform[5]]
-        dtmBounds[0] = numpy.min(geoCorners[:,0])
-        dtmBounds[1] = numpy.max(geoCorners[:,0])
-        dtmBounds[2] = numpy.min(geoCorners[:,1])
-        dtmBounds[3] = numpy.max(geoCorners[:,1])
+        dtmBounds[0] = numpy.min(geoCorners[:, 0])
+        dtmBounds[1] = numpy.max(geoCorners[:, 0])
+        dtmBounds[2] = numpy.min(geoCorners[:, 1])
+        dtmBounds[3] = numpy.max(geoCorners[:, 1])
 
         if args.render_cls:
             # label for no building
@@ -87,16 +88,16 @@ def main(args):
             nodata = 0
         else:
             print("Reading the DTM {} size: ({}, {})\n"
-                "\tbounds: ({}, {}), ({}, {})...".format(
-                args.dtm, dtm.RasterXSize, dtm.RasterYSize, dtmBounds[0], dtmBounds[1],
-                dtmBounds[2], dtmBounds[3]))
+                  "\tbounds: ({}, {}), ({}, {})...".format(
+                      args.dtm, dtm.RasterXSize, dtm.RasterYSize,
+                      dtmBounds[0], dtmBounds[1],
+                      dtmBounds[2], dtmBounds[3]))
             dtmRaster = dtm.GetRasterBand(1).ReadAsArray()
             nodata = dtm.GetRasterBand(1).GetNoDataValue()
         print("Nodata: {}".format(nodata))
     else:
         print("Driver {} does not supports Create().".format(dtmDriver))
         return False
-
 
     # read the buildings polydata, set Z as a scalar and project to XY plane
     print("Reading the buildings ...")
@@ -133,13 +134,12 @@ def main(args):
     renWin.OffScreenRenderingOn()
     renWin.SetSize(dtm.RasterXSize, dtm.RasterYSize)
     renWin.SetMultiSamples(0)
-    renWin.AddRenderer( ren )
+    renWin.AddRenderer(ren)
 
     # show the buildings
     trisBuildingsFilter = vtk.vtkTriangleFilter()
     trisBuildingsFilter.SetInputDataObject(polyBuildingsVtk)
     trisBuildingsFilter.Update()
-    trisBuildings = trisBuildingsFilter.GetOutput()
 
     p2cBuildings = vtk.vtkPointDataToCellData()
     p2cBuildings.SetInputConnection(trisBuildingsFilter.GetOutputPort())
@@ -255,7 +255,6 @@ def main(args):
         ren.SetPass(cameraPass)
         # We have to render the points first, otherwise we get a segfault.
         renWin.Render()
-        #ren.RemoveActor(dtmActor)
         valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, arrayName)
         renWin.Render()
         elevationFlatVtk = valuePass.GetFloatImageDataArray(ren)
