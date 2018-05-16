@@ -13,7 +13,8 @@ import sys
 
 
 def orthoParamsToString(args_source_image, args_dsm, args_destination_image,
-                        args_occlusion_thresh, args_denoise_radius, args_raytheon_rpc):
+                        args_occlusion_thresh, args_denoise_radius, args_raytheon_rpc,
+                        args_dtm):
     ret = "orthorectify.py " + args_source_image + " " + args_dsm +\
       " " + args_destination_image
     if args_occlusion_thresh is not None:
@@ -21,6 +22,7 @@ def orthoParamsToString(args_source_image, args_dsm, args_destination_image,
     if args_denoise_radius is not None:
         ret = ret + " -d " + str(args_denoise_radius)
     ret = ret + " --raytheon-rpc " + args_raytheon_rpc if args_raytheon_rpc else ret
+    ret = ret + " --dtm " + args_dtm if args_dtm else ret
     return ret
 
 
@@ -52,6 +54,9 @@ parser.add_argument('-d', "--denoise_radius", type=float, default=2,
 parser.add_argument("--rpc_folder", type=str,
                     help="Raytheon RPC folder. If not provided, "
                     "the RPC is read from the source_image")
+parser.add_argument("--dtm_folder", type=str,
+                    help="Optional folder for DTMs which follow name_ii_jj.tif pattern. "
+                    "DTMs are used to replace nodata areas in the orthorectified images")
 parser.add_argument("--dense_ids", type=str,
                     help="Process only the DSMs with the specified IDs. "
                     "IDs are listed in the specified file using the format name_000ii_000jj."
@@ -136,8 +141,12 @@ for dsm in dsms:
     oargs_destination_image =\
       destination_image + "_or_" + postfix + "_" + index[0] +\
       "_" + index[1] + ".tif"
-    ortho_params = (
+    ortho_params = [
         source_image, dsm, oargs_destination_image,
-        args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc)
+        args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc]
+    if args.dtm_folder:
+        dtmList = glob.glob(args.dtm_folder + "/*_" + index[0] +\
+                            "_" + index[1] + ".tif")
+        ortho_params.append(dtmList[0])
     print(orthoParamsToString(*ortho_params))
     ortho.orthorectify(*ortho_params)
