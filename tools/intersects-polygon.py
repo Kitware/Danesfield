@@ -4,8 +4,7 @@ import argparse
 from gaia.geo.geo_inputs import *
 from gaia.geo.processes_vector import *
 from gaia.geo.processes_raster import *
-from gaia import formats
-from osgeo import gdal,ogr,osr
+from osgeo import gdal,osr
 from shutil import copyfile
 import subprocess
 from subprocess import call
@@ -55,64 +54,74 @@ def ReprojectCoords(coords,src_srs,tgt_srs):
         trans_coords.append([x,y])
     return trans_coords
 
-parser = argparse.ArgumentParser(
-    description="Write a destination file with all features from source file "
-                "overlapping specified polygon")
-parser.add_argument("source", help="Source vector file name that contain all features")
-parser.add_argument("-p", "--polygon", nargs="+",
-                    help="xmin ymin xmax ymax or vector file specifying the polygon")
-parser.add_argument("destination",
-                    help="Destination vector file with only features "
-                         "overlapping the specified polygon")
-args = parser.parse_args()
+
+def main(args):
+    parser = argparse.ArgumentParser(
+        description="Write a destination file with all features from source file "
+                    "overlapping specified polygon")
+    parser.add_argument("source", help="Source vector file name that contain all features")
+    parser.add_argument("-p", "--polygon", nargs="+",
+                        help="xmin ymin xmax ymax or vector file specifying the polygon")
+    parser.add_argument("destination",
+                        help="Destination vector file with only features "
+                             "overlapping the specified polygon")
+    args = parser.parse_args(args)
 
 
-if (len(args.polygon) == 4):
-    xmin,ymin,xmax,ymax = [float(val) for val in args.polygon]
-    polygon = FeatureIO(features=[
-        {"geometry":
-            {"type": "Polygon",
-             "coordinates":
-             [
-                 [[xmin, ymin], [xmax, ymin], [xmax, ymax], [xmin, ymax]]
-             ]
-            },
-         "properties": {"id": "Bounding box"}
-        },
-        ])
-elif (len(args.polygon) == 1):
-    polygonImage = gdal.Open(args.polygon[0], gdal.GA_ReadOnly)
-    if (polygonImage):
-        gt=polygonImage.GetGeoTransform()
-        cols = polygonImage.RasterXSize
-        rows = polygonImage.RasterYSize
-        ext=GetExtent(gt,cols,rows)
-
-        src_srs=osr.SpatialReference()
-        src_srs.ImportFromWkt(polygonImage.GetProjection())
-        tgt_srs = src_srs.CloneGeogCS()
-        p = ReprojectCoords(ext,src_srs,tgt_srs)
+    if (len(args.polygon) == 4):
+        xmin,ymin,xmax,ymax = [float(val) for val in args.polygon]
         polygon = FeatureIO(features=[
             {"geometry":
                 {"type": "Polygon",
-                "coordinates":
-                [
-                    [[p[0][0], p[0][1]], [p[1][0], p[1][1]],
-                     [p[2][0], p[2][1]], [p[3][0], p[3][1]]]
-                ]
-            },
-            "properties": {"id": "Bounding box"}
+                 "coordinates":
+                 [
+                     [[xmin, ymin], [xmax, ymin], [xmax, ymax], [xmin, ymax]]
+                 ]
+                },
+             "properties": {"id": "Bounding box"}
             },
             ])
+    elif (len(args.polygon) == 1):
+        polygonImage = gdal.Open(args.polygon[0], gdal.GA_ReadOnly)
+        if (polygonImage):
+            gt=polygonImage.GetGeoTransform()
+            cols = polygonImage.RasterXSize
+            rows = polygonImage.RasterYSize
+            ext=GetExtent(gt,cols,rows)
+
+            src_srs=osr.SpatialReference()
+            src_srs.ImportFromWkt(polygonImage.GetProjection())
+            tgt_srs = src_srs.CloneGeogCS()
+            p = ReprojectCoords(ext,src_srs,tgt_srs)
+            polygon = FeatureIO(features=[
+                {"geometry":
+                    {"type": "Polygon",
+                    "coordinates":
+                    [
+                        [[p[0][0], p[0][1]], [p[1][0], p[1][1]],
+                         [p[2][0], p[2][1]], [p[3][0], p[3][1]]]
+                    ]
+                },
+                "properties": {"id": "Bounding box"}
+                },
+                ])
+        else:
+            polygon = VectorFileIO(uri=args.polygon[0])
     else:
-        polygon = VectorFileIO(uri=args.polygon[0])
-else:
-    print("wrong number of parameters for polygon: {} (can be 4 or 1)".format(len(args.polygon)))
-    exit(1)
+        print("wrong number of parameters for polygon: {} (can be 4 or 1)".format(len(args.polygon)))
+        return False
 
 
-source = VectorFileIO(uri=args.source)
-destination = VectorFileIO(uri=args.destination)
+    source = VectorFileIO(uri=args.source)
+    destination = VectorFileIO(uri=args.destination)
 
-intersectProcess = IntersectsProcess(inputs=[source, polygon], output=destination)
-intersectProcess.compute()
+    intersectProcess = IntersectsProcess(inputs=[source, polygon], output=destination)
+    intersectProcess.compute()
+    return True
+
+
+if __name__ == '__main__':
+    import sys
+    ret = main(sys.argv[1:])
+    if ret is False:
+        sys.exit(1)
