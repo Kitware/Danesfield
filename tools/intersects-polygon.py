@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 from gaia.geo.geo_inputs import *
 from gaia.geo.processes_vector import *
