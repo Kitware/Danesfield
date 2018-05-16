@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import subprocess
 
 import cv2
 import gdal
@@ -89,6 +90,23 @@ def gdal_open(filename):
     return rv
 
 
+def rasterize_file(vector_filename_in, reference_file, raster_filename_out):
+    """
+    Rasterize the vector geometry at vector_filename_in to a file at
+    raster_filename_out.  Get image dimensions, boundary, and other
+    metadata from reference_file (an in-memory object).
+    """
+    size = reference_file.RasterYSize, reference_file.RasterXSize
+    save_gdal(numpy.zeros(size, dtype=numpy.uint8),
+              reference_file, raster_filename_out, gdal.GDT_Byte)
+    subprocess.run(['gdal_rasterize', '-burn', '255',
+                    vector_filename_in, raster_filename_out],
+                   check=True,
+                   stdin=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL,
+                   stderr=subprocess.PIPE)
+
+
 def main(args):
     # Configure argument parser
     parser = argparse.ArgumentParser(
@@ -105,6 +123,9 @@ def main(args):
     parser.add_argument("--ndvi",
                         help="Write out the Normalized Difference Vegetation "
                              "Index image")
+    parser.add_argument('--road-vector', help='Path to road vector file')
+    # XXX this is not ideal
+    parser.add_argument('--road-rasterized', help='Path to save rasterized road image')
     parser.add_argument("-d", "--debug", action="store_true",
                         help="Enable debug output and visualization")
     parser.add_argument("destination_mask",
@@ -154,6 +175,22 @@ def main(args):
         # reduce seeds to areas with high confidence non-vegetation
         seeds[ndvi > 0.1] = False
 
+    if args.road_vector or args.road_rasterized:
+        if not args.road_rasterized:
+            raise RuntimeError("A (save path to) a rasterized image is required at the moment")
+        if args.road_vector:
+            # XXX Document that passing the vectorized image is only
+            # necessary the first time
+            rasterize_file(args.road_vector, dsm_file, args.road_rasterized)
+        road_file = gdal_open(args.road_rasterized)
+        roads = road_file.GetRasterBand(1).ReadAsArray()
+
+        # Dilate the roads to make the width more realistic
+        roads = morphology.binary_dilation(roads, numpy.ones((11, 11)), iterations=4)
+        # Remove building candidates that overlap with a road
+        mask[roads] = False
+        seeds[roads] = False
+
     # use morphology to clean up the mask
     mask = morphology.binary_opening(mask, numpy.ones((3, 3)), iterations=1)
     mask = morphology.binary_closing(mask, numpy.ones((3, 3)), iterations=1)
@@ -194,9 +231,12 @@ def main(args):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    # convert the mask to label map with value 2 (background) and 6 (building)
+    # convert the mask to label map with value 2 (background),
+    # 6 (building), and 17 (elevated roadway)
     cls = numpy.full(good_mask.shape, 2)
     cls[good_mask] = 6
+    if args.road_vector or args.road_rasterized:
+        cls[roads] = 17
 
     # create the mask image
     print("Create destination mask of size:({}, {}) ..."
