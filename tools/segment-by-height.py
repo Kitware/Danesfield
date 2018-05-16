@@ -78,6 +78,17 @@ def save_ndsm(ndsm, dsm_file, filename):
     ndsm_file.GetRasterBand(1).SetNoDataValue(no_data_val)
 
 
+def gdal_open(filename):
+    """
+    Like gdal.Open, but always read-only and raises an OSError instead
+    of returning None
+    """
+    rv = gdal.Open(filename, gdal.GA_ReadOnly)
+    if rv is None:
+        raise OSError("Unable to open {!r}".format(filename))
+    return rv
+
+
 def main(args):
     # Configure argument parser
     parser = argparse.ArgumentParser(
@@ -105,10 +116,7 @@ def main(args):
     # to the DSM, if needed.
 
     # open the DSM
-    dsm_file = gdal.Open(args.source_dsm, gdal.GA_ReadOnly)
-    if not dsm_file:
-        print("Unable to open {}".format(args.source_dsm))
-        exit(1)
+    dsm_file = gdal_open(args.source_dsm)
     dsm_band = dsm_file.GetRasterBand(1)
     dsm = dsm_band.ReadAsArray(
         xoff=0, yoff=0,
@@ -117,10 +125,7 @@ def main(args):
     print("DSM raster shape {}".format(dsm.shape))
 
     # open the DTM
-    dtm_file = gdal.Open(args.source_dtm, gdal.GA_ReadOnly)
-    if not dtm_file:
-        print("Unable to open {}".format(args.source_dtm))
-        exit(1)
+    dtm_file = gdal_open(args.source_dtm)
     dtm_band = dtm_file.GetRasterBand(1)
     dtm = dtm_band.ReadAsArray(
         xoff=0, yoff=0,
@@ -142,10 +147,7 @@ def main(args):
 
     # if an MSI images was specified, use it to filter by NDVI
     if args.msi:
-        msi_file = gdal.Open(args.msi, gdal.GA_ReadOnly)
-        if not msi_file:
-            print("Unable to open {}".format(args.msi))
-            exit(1)
+        msi_file = gdal_open(args.msi)
         # Compute normalized difference vegetation index (NDVI)
         ndvi = compute_ndvi(msi_file)
         # if requested, write out the NDVI image
