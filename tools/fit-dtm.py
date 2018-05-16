@@ -21,7 +21,7 @@ def main(args):
     parser.add_argument('-t', "--tension", type=int, default=10,
                         help="Number of inner smoothing iterations, "
                              "greater values increase surface tension.")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # open the DSM
     dsm = gdal.Open(args.source_dsm, gdal.GA_ReadOnly)
