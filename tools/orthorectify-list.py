@@ -37,8 +37,9 @@ def intersection(a, b):
 
 parser = argparse.ArgumentParser(
     description='Orthorectify a list of images to cover all DSMs. '
-    'The image chosen is the one with maximum coverage of the DSM and '
-    'the smallest NITF_CSEXRA_OBLIQUITY_ANGLE (off-nadir angle). The output has the '
+    'The image chosen is the one with largest coverage of the DSM, '
+    'smallest cloud coverage (NITF_PIAIMC_CLOUDCVR) and '
+    'smallest off-nadir angle (NITF_CSEXRA_OBLIQUITY_ANGLE). The output has the '
     'same name as the source image with postfix or_pan (if image_folders '
     'contain PAN) or or_msi')
 parser.add_argument("dsm_folder",
@@ -72,11 +73,13 @@ for oneFolder in args.image_folders:
 
 images = numpy.array(imagesList)
 angles = numpy.zeros(len(images))
+cloudCover = numpy.zeros(len(images))
 bounds = numpy.zeros([len(images), 4])
 for i,f in enumerate(images):
     sourceImage = gdal.Open(f, gdal.GA_ReadOnly)
     metaData = sourceImage.GetMetadata()
     angles[i] = metaData['NITF_CSEXRA_OBLIQUITY_ANGLE']
+    cloudCover[i] = metaData['NITF_PIAIMC_CLOUDCVR']
     bounds[i] = gdal_utils.bounding_box(sourceImage)
 
 # list of dsms
@@ -117,17 +120,19 @@ for dsm in dsms:
         # area of DSM not covered
         areas[i] = dsmArea - areaImageIntersectDsm
     # sort images by areas and angle
-    sortIndex = numpy.lexsort((angles, areas))
+    sortIndex = numpy.lexsort((angles, cloudCover, areas))
     images = images[sortIndex]
     angles = angles[sortIndex]
+    cloudCover = cloudCover[sortIndex]
     bounds = bounds[sortIndex]
     areas = areas[sortIndex]
     if args.debug:
         print("========== Sorted list of images ==========")
         for i in range(len(images)):
-            print("{} {}: {} {} (dsmBounds: {}, bounds: {}) {}".format(
+            print("{} {}: {} area not covered: {} (dsmBounds: {}, bounds: {}) "
+                  "cloudCover: {} angle: {}".format(
                 index[0], index[1], os.path.basename(images[i]), areas[i] / dsmArea,
-                dsmBounds, bounds[i], angles[i]))
+                dsmBounds, bounds[i], cloudCover[i], angles[i]))
 
     source_image = images[0]
     print("Using {} percentage not covered: {} angle: {}".format(
