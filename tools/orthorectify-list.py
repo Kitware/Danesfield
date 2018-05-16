@@ -29,9 +29,10 @@ def intersection(a, b):
     y1 = max(a[1], b[1])
     x2 = min(a[2], b[2])
     y2 = min(a[3], b[3])
-    if x1<x2 and y1<y2:
+    if x1 < x2 and y1 < y2:
         return [x1, y1, x2, y2]
     # else return None
+
 
 parser = argparse.ArgumentParser(
     description='Orthorectify a list of images to cover all DSMs. '
@@ -68,7 +69,7 @@ for oneFolder in args.image_folders:
 images = numpy.array(imagesList)
 angles = numpy.zeros(len(images))
 bounds = numpy.zeros([len(images), 4])
-for i,f in enumerate(images):
+for i, f in enumerate(images):
     sourceImage = gdal.Open(f, gdal.GA_ReadOnly)
     metaData = sourceImage.GetMetadata()
     angles[i] = metaData['NITF_CSEXRA_OBLIQUITY_ANGLE']
@@ -89,14 +90,14 @@ if args.dense_ids:
         sys.exit(10)
     ids = [line for line in f if not line[0] == '#']
     ids = [reIndex.findall(line) for line in ids]
-    ids = ["dsm_{}_{}.tif".format(line[0][-2:], line[1][-2:])  for line in ids]
+    ids = ["dsm_{}_{}.tif".format(line[0][-2:], line[1][-2:]) for line in ids]
 else:
     ids = [os.path.basename(line) for line in dsms]
 ids = set(ids)
 
 for dsm in dsms:
     dsmBasename = os.path.basename(dsm)
-    if not dsmBasename in ids:
+    if dsmBasename not in ids:
         print("Skipping {} not in dense_ids".format(dsmBasename))
         continue
     print("Processing {}".format(dsmBasename))
@@ -134,8 +135,8 @@ for dsm in dsms:
             args.rpc_folder + "/GRA_" + destination_image + '*.up.rpc')[0]
     postfix = "pan" if source_image.find('PAN') > 0 else "msi"
     oargs_destination_image =\
-      destination_image + "_or_" + postfix + "_" + index[0] +\
-      "_" + index[1] + ".tif"
+        destination_image + "_or_" + postfix + "_" + index[0] +\
+        "_" + index[1] + ".tif"
     ortho_params = (
         source_image, dsm, oargs_destination_image,
         args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc)
