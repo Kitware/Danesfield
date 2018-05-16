@@ -24,7 +24,7 @@ def main(args):
     parser.add_argument("--dtm", type=str,
                         help="Optional DTM parameter used to replace nodata areas in the "
                              "orthorectified image")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     return ortho.orthorectify(args.source_image, args.dsm, args.destination_image,
                               args.occlusion_thresh, args.denoise_radius,
