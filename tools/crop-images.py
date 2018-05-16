@@ -27,11 +27,7 @@ from danesfield import rpc
 from danesfield import raytheon_rpc
 
 import gdalconst
-import gdalnumeric
 import gdal
-
-import ogr
-import osr
 
 
 def gdal_get_transform(src_image):
@@ -85,7 +81,7 @@ def main(args):
     parser.add_argument("aoi",
                         choices=['D1', 'D2', 'D3', 'D4'],
                         help="dataset_AOI options: D1 (WPAFB), D2 (WPAFB), "
-                              "D3 (USCD), D4 (Jacksonville)")
+                             "D3 (USCD), D4 (Jacksonville)")
     parser.add_argument("src-root",
                         help="Source imagery root directory")
     parser.add_argument("dest-dir",
@@ -170,8 +166,6 @@ def main(args):
         ll_lon = -81.67062242425624
         ll_lat = 30.32997669492018
 
-    working_dst_dir = dst_root_dir
-
     for root, dirs, files in os.walk(src_root_dir):
         for file_ in files:
             new_root = root.replace(src_root_dir, dst_root_dir)
@@ -188,7 +182,6 @@ def main(args):
 
             print('Converting img: ' + src_img_file)
             src_image = gdal.Open(src_img_file, gdalconst.GA_ReadOnly)
-            geo_trans = gdal_get_transform(src_image)
 
             nodata_values = []
             nodata = 0
@@ -322,10 +315,8 @@ def main(args):
 
             if dst_img_file:
                 output_driver = gdal.GetDriverByName('GTiff')
-                outfile = output_driver.CreateCopy(
+                output_driver.CreateCopy(
                     dst_img_file, output_dataset, False)
-
-                outfile = None
 
 
 if __name__ == '__main__':
