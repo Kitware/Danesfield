@@ -118,18 +118,14 @@ def main(args):
     # open the DSM
     dsm_file = gdal_open(args.source_dsm)
     dsm_band = dsm_file.GetRasterBand(1)
-    dsm = dsm_band.ReadAsArray(
-        xoff=0, yoff=0,
-        win_xsize=dsm_file.RasterXSize, win_ysize=dsm_file.RasterYSize)
+    dsm = dsm_band.ReadAsArray()
     dsm_nodata_value = dsm_band.GetNoDataValue()
     print("DSM raster shape {}".format(dsm.shape))
 
     # open the DTM
     dtm_file = gdal_open(args.source_dtm)
     dtm_band = dtm_file.GetRasterBand(1)
-    dtm = dtm_band.ReadAsArray(
-        xoff=0, yoff=0,
-        win_xsize=dtm_file.RasterXSize, win_ysize=dtm_file.RasterYSize)
+    dtm = dtm_band.ReadAsArray()
     print("DTM raster shape {}".format(dtm.shape))
 
     # Compute the normalized DSM by subtracting the terrain
