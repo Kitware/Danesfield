@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from danesfield import rpc
 from danesfield import raytheon_rpc
 
