@@ -17,8 +17,11 @@ parser.add_argument('-d', "--denoise-radius", type=float, default=2,
 parser.add_argument("--raytheon-rpc", type=str,
                     help="Raytheon RPC file name. If not provided, "
                     "the RPC is read from the source_image")
+parser.add_argument("--dtm", type=str,
+                    help="Optional DTM parameter used to replace nodata areas in the "
+                         "orthorectified image")
 args = parser.parse_args()
 
 ret = ortho.orthorectify(args.source_image, args.dsm, args.destination_image,
-                         args.occlusion_thresh, args.denoise_radius, args.raytheon_rpc)
+                         args.occlusion_thresh, args.denoise_radius, args.raytheon_rpc, args.dtm)
 sys.exit(ret == ortho.ERROR)

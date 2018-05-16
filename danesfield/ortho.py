@@ -23,7 +23,7 @@ ERROR = 10
 
 def orthorectify(args_source_image, args_dsm, args_destination_image,
                  args_occlusion_thresh = 1.0, args_denoise_radius = 2,
-                 args_raytheon_rpc = None):
+                 args_raytheon_rpc = None, args_dtm = None):
     """
     Orthorectify an image given the DSM
 
@@ -74,6 +74,17 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
         win_xsize=dsm.RasterXSize, win_ysize=dsm.RasterYSize)
     dsm_nodata_value = band.GetNoDataValue()
     print("DSM raster shape {}".format(dsmRaster.shape))
+
+    if args_dtm:
+        dtm = gdal.Open(args_dtm, gdal.GA_ReadOnly)
+        if not dtm:
+            return ERROR
+        band = dtm.GetRasterBand(1)
+        dtmRaster = band.ReadAsArray(
+            xoff=0, yoff=0,
+            win_xsize=dtm.RasterXSize, win_ysize=dtm.RasterYSize)
+        newRaster = numpy.where(dsmRaster != dsm_nodata_value, dsmRaster, dtmRaster)
+        dsmRaster = newRaster
 
     # apply morphology to denoise the DSM
     if (args_denoise_radius > 0):
