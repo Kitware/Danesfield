@@ -8,6 +8,7 @@ import cv2
 import gdal
 import gdalnumeric
 import numpy
+import numpy.linalg
 import scipy.ndimage.measurements as ndm
 import scipy.ndimage.morphology as morphology
 
@@ -105,6 +106,21 @@ def rasterize_file(vector_filename_in, reference_file, raster_filename_out):
                    stdin=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    stderr=subprocess.PIPE)
+
+
+def estimate_object_scale(img):
+    """
+    Given a binary (boolean) image, return a pair estimating the large
+    and small dimension of the object in img.  We currently use PCA
+    for this purpose.
+    """
+    points = numpy.transpose(img.nonzero())
+    points = points - points.mean(0)
+    s = numpy.linalg.svd(points, compute_uv=False) / len(points) ** 0.5
+    # If the object was a perfect rectangle, this would calculate the
+    # lengths of its axes.  (For an ellipse the value is 1/16)
+    VARIANCE_RATIO = 1 / 12
+    return s / VARIANCE_RATIO ** 0.5
 
 
 def main(args):
@@ -217,10 +233,17 @@ def main(args):
     label_img = ndm.label(mask)[0]
     # extract the unique labels that match the seeds
     selected = numpy.unique(numpy.extract(seeds, label_img))
-    print("Keeping {} connected components".format(len(selected)))
+    # filter out very oblong objects
+    subselected = []
+    for i in selected:
+        dim_large, dim_small = estimate_object_scale(label_img == i)
+        if dim_large / dim_small < 6:
+            subselected.append(i)
+
+    print("Keeping {} connected components".format(len(subselected)))
 
     # keep only the mask components selected above
-    good_mask = numpy.isin(label_img, selected)
+    good_mask = numpy.isin(label_img, subselected)
 
     # a final mask cleanup
     good_mask = morphology.binary_closing(good_mask, numpy.ones((3, 3)), iterations=3)
