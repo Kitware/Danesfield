@@ -191,7 +191,8 @@ def main(args):
         # reduce seeds to areas with high confidence non-vegetation
         seeds[ndvi > 0.1] = False
 
-    if args.road_vector or args.road_rasterized:
+    use_roads = args.road_vector or args.road_rasterized
+    if use_roads:
         if not args.road_rasterized:
             raise RuntimeError("A (save path to) a rasterized image is required at the moment")
         if args.road_vector:
@@ -258,7 +259,7 @@ def main(args):
     # 6 (building), and 17 (elevated roadway)
     cls = numpy.full(good_mask.shape, 2)
     cls[good_mask] = 6
-    if args.road_vector or args.road_rasterized:
+    if use_roads:
         cls[roads] = 17
 
     # create the mask image
