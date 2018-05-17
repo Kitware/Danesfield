@@ -146,6 +146,7 @@ def main(args):
     parser.add_argument('--road-vector', help='Path to road vector file')
     # XXX this is not ideal
     parser.add_argument('--road-rasterized', help='Path to save rasterized road image')
+    parser.add_argument('--road-rasterized-bridge', help='Path to save rasterized bridge image')
     parser.add_argument("-d", "--debug", action="store_true",
                         help="Enable debug output and visualization")
     parser.add_argument("destination_mask",
@@ -195,19 +196,29 @@ def main(args):
         # reduce seeds to areas with high confidence non-vegetation
         seeds[ndvi > 0.1] = False
 
-    use_roads = args.road_vector or args.road_rasterized
+    use_roads = args.road_vector or args.road_rasterized or args.road_rasterized_bridge
     if use_roads:
-        if not args.road_rasterized:
-            raise RuntimeError("A (save path to) a rasterized image is required at the moment")
+        if not (args.road_rasterized and args.road_rasterized_bridge):
+            raise RuntimeError("(Save paths to) rasterized images are required at the moment")
         if args.road_vector:
             # XXX Document that passing the vectorized image is only
             # necessary the first time
             rasterize_file(args.road_vector, dsm_file, args.road_rasterized)
+            rasterize_file(args.road_vector, dsm_file, args.road_rasterized_bridge,
+                           "bridge = 1 and ("
+                                "type = 'monorail' "
+                                "or \"class\" = 'highway' "
+                                "and type not in ('footway', 'pedestrian')"
+                           ")")
         road_file = gdal_open(args.road_rasterized)
         roads = road_file.GetRasterBand(1).ReadAsArray()
 
+        road_bridge_file = gdal_open(args.road_rasterized_bridge)
+        road_bridges = road_bridge_file.GetRasterBand(1).ReadAsArray()
+
         # Dilate the roads to make the width more realistic
         roads = morphology.binary_dilation(roads, numpy.ones((11, 11)), iterations=4)
+        road_bridges = morphology.binary_dilation(road_bridges, numpy.ones((11, 11)), iterations=4)
         # Remove building candidates that overlap with a road
         mask[roads] = False
         seeds[roads] = False
@@ -264,7 +275,7 @@ def main(args):
     cls = numpy.full(good_mask.shape, 2)
     cls[good_mask] = 6
     if use_roads:
-        cls[roads] = 17
+        cls[road_bridges] = 17
 
     # create the mask image
     print("Create destination mask of size:({}, {}) ..."
