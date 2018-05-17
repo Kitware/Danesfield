@@ -91,17 +91,21 @@ def gdal_open(filename):
     return rv
 
 
-def rasterize_file(vector_filename_in, reference_file, raster_filename_out):
+def rasterize_file(vector_filename_in, reference_file, raster_filename_out, query=None):
     """
     Rasterize the vector geometry at vector_filename_in to a file at
     raster_filename_out.  Get image dimensions, boundary, and other
     metadata from reference_file (an in-memory object).
+
+    If query is passed, use it as a SQL where-clause to select certain
+    features.
     """
     size = reference_file.RasterYSize, reference_file.RasterXSize
     save_gdal(numpy.zeros(size, dtype=numpy.uint8),
               reference_file, raster_filename_out, gdal.GDT_Byte)
-    subprocess.run(['gdal_rasterize', '-burn', '255',
-                    vector_filename_in, raster_filename_out],
+    subprocess.run(['gdal_rasterize', '-burn', '255']
+                   + ([] if query is None else ['-where', query])
+                   + [vector_filename_in, raster_filename_out],
                    check=True,
                    stdin=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
