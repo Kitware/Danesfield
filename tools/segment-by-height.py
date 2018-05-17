@@ -206,9 +206,9 @@ def main(args):
             rasterize_file(args.road_vector, dsm_file, args.road_rasterized)
             rasterize_file(args.road_vector, dsm_file, args.road_rasterized_bridge,
                            "bridge = 1 and ("
-                                "type = 'monorail' "
-                                "or \"class\" = 'highway' "
-                                "and type not in ('footway', 'pedestrian')"
+                           "    type = 'monorail'"
+                           "    or \"class\" = 'highway'"
+                           "        and type not in ('footway', 'pedestrian')"
                            ")")
         road_file = gdal_open(args.road_rasterized)
         roads = road_file.GetRasterBand(1).ReadAsArray()
