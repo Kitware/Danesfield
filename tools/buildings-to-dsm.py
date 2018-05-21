@@ -5,6 +5,7 @@ import gdal
 import glob
 import numpy
 import os
+import re
 import sys
 import vtk
 from vtk.numpy_interface import dataset_adapter as dsa
@@ -12,9 +13,9 @@ from vtk.util import numpy_support
 
 parser = argparse.ArgumentParser(
     description='Render a DSM from a DTM and polygons representing buildings.')
-parser.add_argument("buildings", help="Buildings polygonal file")
-parser.add_argument("dtm", help="Digital terain model (DTM)")
-parser.add_argument("dsm", help="Resulting digital surface model (DSM)")
+parser.add_argument("input_buildings", help="Input buildings polygonal file")
+parser.add_argument("input_dtm", help="Input digital terain model (DTM)")
+parser.add_argument("output_dsm", help="Output digital surface model (DSM)")
 parser.add_argument("--render_png", action="store_true",
                     help="Do not save the DSM, render into a PNG instead.")
 parser.add_argument("--render_cls", action="store_true",
@@ -26,9 +27,9 @@ parser.add_argument("--debug", action="store_true",
 args = parser.parse_args()
 
 # open the DTM
-dtm = gdal.Open(args.dtm, gdal.GA_ReadOnly)
+dtm = gdal.Open(args.input_dtm, gdal.GA_ReadOnly)
 if not dtm:
-    print("Error: Failed to open DTM {}".format(args.dtm))
+    print("Error: Failed to open DTM {}".format(args.input_dtm))
     sys.exit(1)
 
 dtmDriver = dtm.GetDriver()
@@ -54,7 +55,7 @@ if dtmDriverMetadata.get(gdal.DCAP_CREATE) == "YES":
     else:
         eType = gdal.GDT_Float32
     dsm = dtmDriver.Create(
-        args.dsm, xsize=dtm.RasterXSize,
+        args.output_dsm, xsize=dtm.RasterXSize,
         ysize=dtm.RasterYSize, bands=1, eType=eType,
         options=options)
     if (projection):
@@ -86,7 +87,7 @@ if dtmDriverMetadata.get(gdal.DCAP_CREATE) == "YES":
     else:
         print("Reading the DTM {} size: ({}, {})\n"
             "\tbounds: ({}, {}), ({}, {})...".format(
-            args.dtm, dtm.RasterXSize, dtm.RasterYSize, dtmBounds[0], dtmBounds[1],
+            args.input_dtm, dtm.RasterXSize, dtm.RasterYSize, dtmBounds[0], dtmBounds[1],
             dtmBounds[2], dtmBounds[3]))
         dtmRaster = dtm.GetRasterBand(1).ReadAsArray()
         nodata = dtm.GetRasterBand(1).GetNoDataValue()
@@ -95,22 +96,40 @@ else:
     print("Driver {} does not supports Create().".format(dtmDriver))
     sys.exit(1)
 
-
 # read the buildings polydata, set Z as a scalar and project to XY plane
 print("Reading the buildings ...")
-if (os.path.isfile(args.buildings)):
+if (os.path.isfile(args.input_buildings)):
     polyReader = vtk.vtkXMLPolyDataReader()
-    polyReader.SetFileName(args.buildings)
+    polyReader.SetFileName(args.input_buildings)
     polyReader.Update()
     polyBuildingsVtk = polyReader.GetOutput()
 else:
     # assume a folder with OBJ files
-    buildingsFiles = glob.glob(args.buildings + "/*.obj")
+    buildingsFiles = glob.glob(args.input_buildings + "/*.obj")
+    offset = [0.0, 0.0, 0.0]
+    axes = ['x', 'y', 'z']
+    reFloatList = list("#. offset: ([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)")
+    with open(buildingsFiles[0]) as f:
+        for i in range(3):
+            reFloatList[1] = axes[i]
+            reFloat = re.compile("".join(reFloatList))
+            line = f.readline()
+            match = reFloat.search(line)
+            if match:
+                offset[i] = float(match.group(1))
+            else:
+                break
+    print("Offset: {}".format(offset))
     append = vtk.vtkAppendPolyData()
+    transform = vtk.vtkTransform()
+    transform.Translate(offset[0], offset[1], offset[2])
     for i, buildingsFileName in enumerate(buildingsFiles):
         objReader = vtk.vtkOBJReader()
         objReader.SetFileName(buildingsFileName)
-        append.AddInputConnection(objReader.GetOutputPort())
+        transformFilter = vtk.vtkTransformFilter()
+        transformFilter.SetTransform(transform)
+        transformFilter.SetInputConnection(objReader.GetOutputPort())
+        append.AddInputConnection(transformFilter.GetOutputPort())
     append.Update()
     polyBuildingsVtk = append.GetOutput()
 
@@ -164,7 +183,7 @@ if (args.render_png):
     print("Converting the DTM into a surface ...")
     # read the DTM as a VTK object
     dtmReader = vtk.vtkGDALRasterReader()
-    dtmReader.SetFileName(args.dtm)
+    dtmReader.SetFileName(args.input_dtm)
     dtmReader.Update()
     dtmVtk = dtmReader.GetOutput()
 
@@ -220,7 +239,7 @@ if (args.render_png):
     windowToImageFilter.Update()
 
     writerPng = vtk.vtkPNGWriter()
-    writerPng.SetFileName(args.dsm + ".png")
+    writerPng.SetFileName(args.output_dsm + ".png")
     writerPng.SetInputConnection(windowToImageFilter.GetOutputPort())
     writerPng.Write()
 else:
@@ -275,4 +294,5 @@ else:
         # elevation has nans in places other than buildings
         dsmElevation = numpy.fmax(dtmRaster, elevation)
     dsm.GetRasterBand(1).WriteArray(dsmElevation)
-    dsm.GetRasterBand(1).SetNoDataValue(nodata)
+    if nodata:
+        dsm.GetRasterBand(1).SetNoDataValue(nodata)
