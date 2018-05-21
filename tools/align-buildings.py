@@ -140,13 +140,15 @@ parser.add_argument('output_mask',
                          "generated where buildings are not clipped at image boundaries.")
 
 parser.add_argument('--input_layer' ,
-                    help='Input layer name that contains buildings in input_vector')
+                    help='Input layer name that contains buildings in input_vector. '
+                    'If not specified, a polygon or multipolygon layer is chosen.')
 parser.add_argument('--scale' , type=float, default=0.2,
                     help='Scale factor. We cannot deal with the images with original resolution')
 parser.add_argument('--move_thres' , type=float, default=5,
                     help='Distance for edge matching')
-parser.add_argument("--no_offset", action="store_true",
-                    help="Write original OSM data.")
+parser.add_argument("--offset", type=float, nargs=2,
+                    help="Shift the mask using the offset specified "
+                         "(using the SRS of the input_image).")
 parser.add_argument("--debug", action="store_true",
                     help="Print debugging information")
 args = parser.parse_args()
@@ -223,9 +225,9 @@ print("Checking {} points ...".format(len(check_point_list)))
 
 max_value = 0
 index_max_value = 0
-offset = [0, 0]
+offsetGeo = [0.0, 0.0]
 current = [0, 0]
-if not args.no_offset:
+if not args.offset:
     img_height = edge_img.shape[0]
     img_width = edge_img.shape[1]
     # shift moves possible from [0, 0]
@@ -280,16 +282,19 @@ if not args.no_offset:
     offsetGeo = gdal.ApplyGeoTransform(gt, offset[0] / scale, offset[1] / scale)
     offsetGeo[0] = offsetGeo[0] - left
     offsetGeo[1] = top - offsetGeo[1]
-    print("Resulting offset: {}, {}".format(offset, offsetGeo))
+    print("Using offset: {} ({})".format(offsetGeo, offset))
     if max_value/float(len(check_point_list))<0.05:
         print("Fewer than 5% of points match {} / {}. This may happen because of "
               "missing areas in the orthorectified image. "
               "Increasing scale may increase the number of points that match.".format(
             max_value, len(check_point_list)))
+else:
+    print("Using offset: {}".format(offsetGeo))
+    offsetGeo = args.offset
 
 outputNoExt = os.path.splitext(args.output_mask)[0]
 destinationVectorFile = outputNoExt + "_spat.shp"
-if not (offset[0] == 0 and offset[1] == 0):
+if not (offsetGeo[0] == 0.0 and offsetGeo[1] == 0.0):
     outDriver = ogr.GetDriverByName("ESRI Shapefile")
     print("Shifting vector -> {}".format(os.path.basename(destinationVectorFile)))
     outVector = outDriver.CreateDataSource(destinationVectorFile)
