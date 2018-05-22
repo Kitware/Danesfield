@@ -23,3 +23,4 @@ dependencies:
 - geojson
 - flake8
 - pytest
+- opencv
