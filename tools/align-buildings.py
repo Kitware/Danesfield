@@ -142,13 +142,15 @@ parser.add_argument('output_mask',
 parser.add_argument('--input_layer' ,
                     help='Input layer name that contains buildings in input_vector. '
                     'If not specified, a polygon or multipolygon layer is chosen.')
+parser.add_argument('--render_cls' , action="store_true",
+                    help='Output a CLS image')
 parser.add_argument('--scale' , type=float, default=0.2,
                     help='Scale factor. We cannot deal with the images with original resolution')
 parser.add_argument('--move_thres' , type=float, default=5,
                     help='Distance for edge matching')
 parser.add_argument("--offset", type=float, nargs=2,
                     help="Shift the mask using the offset specified "
-                         "(using the SRS of the input_image).")
+                         "(using the SRS of the input_image) instead of the computed offset.")
 parser.add_argument("--debug", action="store_true",
                     help="Print debugging information")
 args = parser.parse_args()
@@ -228,6 +230,7 @@ index_max_value = 0
 offsetGeo = [0.0, 0.0]
 current = [0, 0]
 if not args.offset:
+    offset = [0, 0]
     img_height = edge_img.shape[0]
     img_width = edge_img.shape[1]
     # shift moves possible from [0, 0]
@@ -348,11 +351,16 @@ if args.debug:
     print(*ogr2ogr_args)
     print("{}\n{}".format(response.stdout, response.stderr))
 
-
-rasterize_args = ["gdal_rasterize", "-ot", "Byte",
-                  "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
-                  "-ts", str(inputImage.RasterXSize),
-                  str(inputImage.RasterYSize)]
+if args.render_cls:
+    rasterize_args = ["gdal_rasterize", "-ot", "Byte", "-init", "2",
+                      "-burn", "6",
+                      "-ts", str(inputImage.RasterXSize),
+                      str(inputImage.RasterYSize)]
+else:
+    rasterize_args = ["gdal_rasterize", "-ot", "Byte",
+                      "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
+                      "-ts", str(inputImage.RasterXSize),
+                      str(inputImage.RasterYSize)]
 outputNoExt = os.path.splitext(args.output_mask)[0]
 rasterize_args.extend([outputNoExt + ".shp", outputNoExt + ".tif"])
 print("Rasterizing {} -> {}".format(os.path.basename(outputNoExt + ".shp"),
