@@ -6,6 +6,7 @@ from danesfield import gdal_utils
 import argparse
 import gdal
 import glob
+import logging
 import numpy
 import os.path
 import re
@@ -89,7 +90,7 @@ def main(args):
     if args.dense_ids:
         f = open(args.dense_ids)
         if not f:
-            return False
+            raise RuntimeError("Error: Failed to open dense IDs file {}".format(args.dense_ids))
         ids = [line for line in f if not line[0] == '#']
         ids = [reIndex.findall(line) for line in ids]
         ids = ["dsm_{}_{}.tif".format(line[0][-2:], line[1][-2:]) for line in ids]
@@ -144,10 +145,11 @@ def main(args):
             args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc)
         print(orthoParamsToString(*ortho_params))
         ortho.orthorectify(*ortho_params)
-    return True
 
 
 if __name__ == '__main__':
-    ret = main(sys.argv[1:])
-    if ret is False:
-        sys.exit(10)
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)

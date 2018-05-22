@@ -2,6 +2,7 @@
 
 import argparse
 import gdal
+import logging
 import numpy
 import sys
 
@@ -17,19 +18,17 @@ def main(args):
     args = parser.parse_args(args)
 
     if args.range_percentile < 0.0 or args.range_percentile >= 50.0:
-        print("range percentile must be between 0 and 50")
-        return False
+        raise RuntimeError("Error: range percentile must be between 0 and 50")
 
     # open the source image
     source_image = gdal.Open(args.source_image, gdal.GA_ReadOnly)
     if not source_image:
-        return False
+        raise RuntimeError("Error: Failed to open source iamge {}".format(args.source_image))
 
     driver = source_image.GetDriver()
     driver_metadata = driver.GetMetadata()
     if driver_metadata.get(gdal.DCAP_CREATE) != "YES":
-        print("Driver {} does not supports Create().".format(driver))
-        return False
+        raise RuntimeError("Error: driver {} does not supports Create().".format(driver))
 
     # Create the output RGB image
     print("Create destination byte image "
@@ -89,10 +88,11 @@ def main(args):
         out_data[mask] = 0
         out_band.SetNoDataValue(0)
         out_band.WriteArray(out_data)
-    return True
 
 
 if __name__ == '__main__':
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)

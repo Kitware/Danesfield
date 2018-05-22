@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 from gaia.geo.geo_inputs import VectorFileIO, FeatureIO
 from gaia.geo.processes_vector import IntersectsProcess
 from osgeo import gdal, osr
@@ -97,20 +98,19 @@ def main(args):
         else:
             polygon = VectorFileIO(uri=args.polygon[0])
     else:
-        print("wrong number of parameters for polygon: {} "
-              "(can be 4 or 1)".format(len(args.polygon)))
-        return False
+        raise RuntimeError("Error: wrong number of parameters for polygon: {} "
+                           "(can be 4 or 1)".format(len(args.polygon)))
 
     source = VectorFileIO(uri=args.source)
     destination = VectorFileIO(uri=args.destination)
 
     intersectProcess = IntersectsProcess(inputs=[source, polygon], output=destination)
     intersectProcess.compute()
-    return True
 
 
 if __name__ == '__main__':
-    import sys
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)

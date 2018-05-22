@@ -20,6 +20,7 @@
 import os
 import sys
 import argparse
+import logging
 
 import numpy as np
 
@@ -320,6 +321,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)

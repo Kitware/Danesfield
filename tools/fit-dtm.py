@@ -3,6 +3,7 @@
 import argparse
 import gdal
 import gdalnumeric
+import logging
 import sys
 
 import danesfield.dtm
@@ -64,4 +65,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)

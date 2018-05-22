@@ -2,6 +2,7 @@
 
 import argparse
 import gdal
+import logging
 import numpy
 import sys
 
@@ -25,20 +26,18 @@ def main(args):
     args = parser.parse_args(args)
 
     if args.range_percentile < 0.0 or args.range_percentile >= 50.0:
-        print("range percentile must be between 0 and 50")
-        return False
+        raise RuntimeError("Error: range percentile must be between 0 and 50")
 
     # open the source image
     msi_image = gdal.Open(args.msi_image, gdal.GA_ReadOnly)
     if not msi_image:
-        return False
+        raise RuntimeError("Error: Failed to open MSI {}".format(args.msi_image))
 
     driver = msi_image.GetDriver()
     driver_metadata = driver.GetMetadata()
     rgb_image = None
     if driver_metadata.get(gdal.DCAP_CREATE) != "YES":
-        print("Driver {} does not supports Create().".format(driver))
-        return False
+        raise RuntimeError("Error: driver {} does not supports Create().".format(driver))
 
     num_bands = msi_image.RasterCount
     rgb_bands = [0, 0, 0]
@@ -63,8 +62,8 @@ def main(args):
             # assume that we have already converted to RGB
             rgb_bands = [1, 2, 3]
         else:
-            print("Unknown RGB channels in {}-band image".format(num_bands))
-            return False
+            raise RuntimeError("Error: unknown RGB channels in {}-band "
+                               "image".format(num_bands))
         print("Assuming RGB labels on bands {}".format(rgb_bands))
     else:
         print("Found RGB labels on bands {}".format(rgb_bands))
@@ -175,10 +174,11 @@ def main(args):
         elif dtype == numpy.uint16:
             alpha *= 65535
         out_band.WriteArray(alpha)
-    return True
 
 
 if __name__ == '__main__':
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)

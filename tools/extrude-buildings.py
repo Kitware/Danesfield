@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 import numpy
 import vtk
 from vtk.numpy_interface import dataset_adapter as dsa
@@ -229,5 +230,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import sys
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)

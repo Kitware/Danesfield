@@ -2,6 +2,7 @@
 
 import argparse
 import gdal
+import logging
 import numpy
 from osgeo import ogr
 from osgeo import osr
@@ -149,5 +150,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    import sys
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)

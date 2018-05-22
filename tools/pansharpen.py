@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 import subprocess
 
 
@@ -30,8 +31,8 @@ def main(args):
     args = parser.parse_args(args)
 
     if (not args.to_rgb and (args.red or args.green or args.blue)):
-        print("You can specify color band indexes only when to_rgb is specified")
-        return False
+        raise RuntimeError("Error: you can specify color band indexes "
+                           "only when to_rgb is specified")
 
     call_args_rest = []
     out_dataset = args.out_dataset
@@ -76,11 +77,11 @@ def main(args):
         print(message)
         print(call_args)
         subprocess.call(call_args)
-    return True
 
 
 if __name__ == '__main__':
-    import sys
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)

@@ -2,6 +2,7 @@
 
 import argparse
 import gdal
+import logging
 
 
 def main(args):
@@ -14,7 +15,7 @@ def main(args):
 
     image = gdal.Open(args.image, gdal.GA_Update)
     if not image:
-        return False
+        raise RuntimeError("Failed to open {}".format(args.image))
 
     # check the default geotransform
     oldgeo = image.GetGeoTransform()
@@ -27,11 +28,11 @@ def main(args):
     print("Changing geotransform from {} to {}".format(oldgeo, geo))
 
     image.SetGeoTransform(geo)
-    return True
 
 
 if __name__ == '__main__':
-    import sys
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)

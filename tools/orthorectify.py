@@ -3,6 +3,7 @@
 from danesfield import ortho
 
 import argparse
+import logging
 import sys
 
 
@@ -26,11 +27,16 @@ def main(args):
                              "orthorectified image")
     args = parser.parse_args(args)
 
-    return ortho.orthorectify(args.source_image, args.dsm, args.destination_image,
-                              args.occlusion_thresh, args.denoise_radius,
-                              args.raytheon_rpc, args.dtm)
+    ret = ortho.orthorectify(args.source_image, args.dsm, args.destination_image,
+                             args.occlusion_thresh, args.denoise_radius,
+                             args.raytheon_rpc, args.dtm)
+    if ret == ortho.ERROR:
+        raise RuntimeException("Error: orthorectification failed")
 
 
 if __name__ == '__main__':
-    ret = main(sys.argv[1:])
-    sys.exit(ret == ortho.ERROR)
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)

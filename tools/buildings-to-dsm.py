@@ -4,6 +4,7 @@ import argparse
 import gdal
 import glob
 import numpy
+import logging
 import os
 import sys
 import vtk
@@ -31,8 +32,7 @@ def main(args):
     # open the DTM
     dtm = gdal.Open(args.dtm, gdal.GA_ReadOnly)
     if not dtm:
-        print("Error: Failed to open DTM {}".format(args.dtm))
-        return False
+        raise RuntimeError("Error: Failed to open DTM {}".format(args.dtm))
 
     dtmDriver = dtm.GetDriver()
     dtmDriverMetadata = dtmDriver.GetMetadata()
@@ -96,8 +96,7 @@ def main(args):
             nodata = dtm.GetRasterBand(1).GetNoDataValue()
         print("Nodata: {}".format(nodata))
     else:
-        print("Driver {} does not supports Create().".format(dtmDriver))
-        return False
+        raise RuntimeError("Driver {} does not supports Create().".format(dtmDriver))
 
     # read the buildings polydata, set Z as a scalar and project to XY plane
     print("Reading the buildings ...")
@@ -277,10 +276,11 @@ def main(args):
             dsmElevation = numpy.fmax(dtmRaster, elevation)
         dsm.GetRasterBand(1).WriteArray(dsmElevation)
         dsm.GetRasterBand(1).SetNoDataValue(nodata)
-    return True
 
 
 if __name__ == '__main__':
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)

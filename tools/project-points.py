@@ -5,6 +5,7 @@ from danesfield import raytheon_rpc
 
 import argparse
 import gdal
+import logging
 import numpy
 import pdal
 import sys
@@ -28,7 +29,7 @@ def main(args):
     # open the GDAL file
     sourceImage = gdal.Open(args.source_image, gdal.GA_ReadOnly)
     if not sourceImage:
-        return False
+        raise RuntimeError("Error: Failed to open source image {}".format(args.source_image))
     model = None
     if (args.raytheon_rpc):
         # read the RPC from raytheon file
@@ -84,8 +85,7 @@ def main(args):
             (sourceImage.RasterYSize, sourceImage.RasterXSize),
             dtype=dtype)
     else:
-        print("Driver {} does not supports Create().".format(driver))
-        return False
+        raise RuntimeError("Error: driver {} does not supports Create().".format(driver))
 
     # read the pdal file and project the points
     json = u"""
@@ -158,10 +158,11 @@ def main(args):
     print("Close files ...")
     destImage = None
     sourceImage = None
-    return True
 
 
 if __name__ == '__main__':
-    ret = main(sys.argv[1:])
-    if ret is False:
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
         sys.exit(1)
