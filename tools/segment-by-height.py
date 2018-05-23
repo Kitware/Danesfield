@@ -46,7 +46,7 @@ def compute_ndvi(msi_file):
     return numpy.divide(nir - red, nir + red, where=mask)
 
 
-def save_gdal(arr, src_file, filename, eType, options=[]):
+def gdal_save(arr, src_file, filename, eType, options=[]):
     """
     Save the 2D ndarray arr to filename using the same metadata as the
     given source file.  Returns the new gdal file object in case
@@ -68,14 +68,14 @@ def save_ndvi(ndvi, msi_file, filename):
     """
     Save an NDVI image using the same metadata as the given MSI file
     """
-    save_gdal(ndvi, msi_file, filename, gdal.GDT_Float32)
+    gdal_save(ndvi, msi_file, filename, gdal.GDT_Float32)
 
 
 def save_ndsm(ndsm, dsm_file, filename):
     """
     Save a normalized DSM image using the same metadata as the source DSM
     """
-    ndsm_file = save_gdal(ndsm, dsm_file, filename, gdal.GDT_Float32)
+    ndsm_file = gdal_save(ndsm, dsm_file, filename, gdal.GDT_Float32)
     no_data_val = dsm_file.GetRasterBand(1).GetNoDataValue()
     ndsm_file.GetRasterBand(1).SetNoDataValue(no_data_val)
 
@@ -103,7 +103,7 @@ def rasterize_file_thin_line(vector_filename_in, reference_file,
     features.
     """
     size = reference_file.RasterYSize, reference_file.RasterXSize
-    save_gdal(numpy.zeros(size, dtype=numpy.uint8),
+    gdal_save(numpy.zeros(size, dtype=numpy.uint8),
               reference_file, raster_filename_out, gdal.GDT_Byte)
     subprocess.run(['gdal_rasterize', '-burn', '255']
                    + ([] if query is None else ['-where', query])
@@ -303,7 +303,7 @@ def main(args):
     # create the mask image
     print("Create destination mask of size:({}, {}) ..."
           .format(dsm_file.RasterXSize, dsm_file.RasterYSize))
-    save_gdal(cls, dsm_file, args.destination_mask, gdal.GDT_Byte,
+    gdal_save(cls, dsm_file, args.destination_mask, gdal.GDT_Byte,
               options=['COMPRESS=DEFLATE'])
 
 
