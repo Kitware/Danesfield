@@ -80,12 +80,12 @@ def save_ndsm(ndsm, dsm_file, filename):
     ndsm_file.GetRasterBand(1).SetNoDataValue(no_data_val)
 
 
-def gdal_open(filename):
+def gdal_open(filename, access=gdal.GA_ReadOnly):
     """
     Like gdal.Open, but always read-only and raises an OSError instead
     of returning None
     """
-    rv = gdal.Open(filename, gdal.GA_ReadOnly)
+    rv = gdal.Open(filename, access)
     if rv is None:
         raise OSError("Unable to open {!r}".format(filename))
     return rv
