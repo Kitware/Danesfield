@@ -217,8 +217,8 @@ def main(args):
         road_bridges = road_bridge_file.GetRasterBand(1).ReadAsArray()
 
         # Dilate the roads to make the width more realistic
-        roads = morphology.binary_dilation(roads, numpy.ones((11, 11)), iterations=4)
-        road_bridges = morphology.binary_dilation(road_bridges, numpy.ones((11, 11)), iterations=4)
+        roads = morphology.binary_dilation(roads, numpy.ones((3, 3)), iterations=20)
+        road_bridges = morphology.binary_dilation(road_bridges, numpy.ones((3, 3)), iterations=20)
         # Remove building candidates that overlap with a road
         mask[roads] = False
         seeds[roads] = False
