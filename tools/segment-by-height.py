@@ -114,6 +114,32 @@ def rasterize_file_thin_line(vector_filename_in, reference_file,
                    stderr=subprocess.PIPE)
 
 
+def rasterize_file(
+        vector_filename_in, reference_file, thin_line_raster_filename_out,
+        dilation_structure=None, dilation_iterations=1, query=None,
+):
+    """
+    Rasterize the vector geometry at vector_filename_in, returning an
+    ndarray.  Use the image dimensions, boundary, and other metadata
+    from reference_file (an in-memory object).  A rasterization with
+    only 1px-thick lines is written to thin_line_raster_filename_out.
+
+    The lines are thickened with binary dilation, with the structuring
+    element and iteration count provided by the dilation_structure and
+    dilation_iterations arguments respectively.
+
+    If query is passed, it is used as a SQL where-clause to select
+    certain features.
+    """
+    rasterize_file_thin_line(vector_filename_in, reference_file,
+                             thin_line_raster_filename_out, query)
+    thin_line_file = gdal_open(thin_line_raster_filename_out)
+    return morphology.binary_dilation(
+        thin_line_file.GetRasterBand(1).ReadAsArray(),
+        dilation_structure, dilation_iterations,
+    )
+
+
 def estimate_object_scale(img):
     """
     Given a binary (boolean) image, return a pair estimating the large
