@@ -1,9 +1,10 @@
+#!/usr/bin/env python
 
 import argparse
 import gdal
 import gdalnumeric
+import logging
 import numpy
-import sys
 import scipy.ndimage.measurements as ndm
 import scipy.ndimage.morphology as morphology
 import cv2
@@ -26,8 +27,7 @@ def compute_ndvi(msi_file):
         red_idx = 3
         nir_idx = 4
     else:
-        print("Unknown Red/NIR channels in {}-band image".format(num_bands))
-        sys.exit(1)
+        raise RuntimeError("Unknown Red/NIR channels in {}-band image".format(num_bands))
 
     red_band = msi_file.GetRasterBand(red_idx)
     red = red_band.ReadAsArray()
@@ -61,8 +61,7 @@ def save_ndvi(ndvi, msi_file, filename):
 
         gdalnumeric.CopyDatasetInfo(msi_file, ndvi_file)
     else:
-        print("Driver {} does not supports Create().".format(driver))
-        sys.exit(1)
+        raise RuntimeError("Driver {} does not supports Create().".format(driver))
 
     ndvi_band = ndvi_file.GetRasterBand(1)
     ndvi_band.WriteArray(ndvi)
@@ -84,8 +83,7 @@ def save_ndsm(ndsm, dsm_file, filename):
 
         gdalnumeric.CopyDatasetInfo(dsm_file, ndsm_file)
     else:
-        print("Driver {} does not supports Create().".format(driver))
-        sys.exit(1)
+        raise RuntimeError("Driver {} does not supports Create().".format(driver))
 
     ndsm_band = ndsm_file.GetRasterBand(1)
     ndsm_band.WriteArray(ndsm)
@@ -113,7 +111,7 @@ def main(args):
                         help="Enable debug output and visualization")
     parser.add_argument("destination_mask",
                         help="Building mask output image")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # For now assume the input DSM and DTM are in the same resolution,
     # aligned, and in the same coordinates.  Later we can warp the DTM
@@ -231,12 +229,16 @@ def main(args):
 
         gdalnumeric.CopyDatasetInfo(dsm_file, dest_file)
     else:
-        print("Driver {} does not supports Create().".format(driver))
-        sys.exit(1)
+        raise RuntimeError("Driver {} does not supports Create().".format(driver))
 
     dest_band = dest_file.GetRasterBand(1)
     dest_band.WriteArray(cls)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    import sys
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)
