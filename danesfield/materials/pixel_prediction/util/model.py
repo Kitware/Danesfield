@@ -12,7 +12,7 @@ from collections import OrderedDict
 
 
 class Classifier():
-    def __init__(self, cuda, save_ouput_path, AOI, batch_size=256,
+    def __init__(self, cuda, output_path, batch_size=256,
                  model_path='best_model.pth.tar', aux_out=False):
         # Model
         self.model = RN.resnet18(num_classes=12)
@@ -40,23 +40,16 @@ class Classifier():
         self.batch_size = batch_size
 
         # Folder where to save output
-        self.test_dir = save_ouput_path
+        self.test_dir = output_path
 
         # If true will output debug image
         self.aux_out = aux_out
 
-        # IMD file path
-        self.imd_folder_path = os.path.dirname(
-            __file__) + '/../IMD_files/'
-        self.AOI = AOI
-
-    def Evaluate(self, img_path):
+    def Evaluate(self, img_path, imd_path):
         # Load image and convert to tensor
         img = np.transpose(
             gdal.Open(img_path, gdal.GA_ReadOnly).ReadAsArray(), (1, 2, 0))
 
-        imd_path = misc.find_IMD_file(
-            img_path, self.imd_folder_path, self.AOI)
         mask = misc.get_mask(img)
         img = misc.calibrate_img(img, imd_path)
         tensor_img = misc.image_to_tensor(img)

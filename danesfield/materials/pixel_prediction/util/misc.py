@@ -1,10 +1,7 @@
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import torch
-from glob import glob
-import sys
 from .image_calibration import Image_Calibration as IC
-import os
 from scipy import stats
 from PIL import Image
 
@@ -77,28 +74,6 @@ def ColorImage(img):
             color_image[x, y, :] = np.array([255, 255, 255])
     print(" "*100, end="\r")
     return color_image
-
-
-def find_IMD_file(img_path, imd_folder_path, AOI):
-    file_name = os.path.split(img_path)[1]
-    imd_filenames = []
-    for imd_path in glob(imd_folder_path + "*.IMD"):
-        name = os.path.split(imd_path)[1]
-        imd_filenames.append(name)
-
-    if(AOI == 'D3'):
-        if(len(file_name) < 50):
-            imd_subname = file_name[:13]
-        else:
-            imd_subname = file_name[16:29]
-    else:
-        imd_subname = file_name[16:29]
-    for imd_fn in imd_filenames:
-        if imd_subname == imd_fn[:13]:
-            return imd_folder_path + imd_fn
-
-    print("Could not find the IMD file for this image!")
-    sys.exit()
 
 
 def get_mask(img):
