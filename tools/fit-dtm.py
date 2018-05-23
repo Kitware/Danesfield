@@ -3,6 +3,7 @@
 import argparse
 import gdal
 import gdalnumeric
+import logging
 import sys
 
 import danesfield.dtm
@@ -21,7 +22,7 @@ def main(args):
     parser.add_argument('-t', "--tension", type=int, default=10,
                         help="Number of inner smoothing iterations, "
                              "greater values increase surface tension.")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # open the DSM
     dsm = gdal.Open(args.source_dsm, gdal.GA_ReadOnly)
@@ -64,4 +65,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)
