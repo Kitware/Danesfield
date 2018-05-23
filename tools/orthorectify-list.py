@@ -13,7 +13,8 @@ import re
 
 
 def orthoParamsToString(args_source_image, args_dsm, args_destination_image,
-                        args_occlusion_thresh, args_denoise_radius, args_raytheon_rpc):
+                        args_occlusion_thresh, args_denoise_radius, args_raytheon_rpc,
+                        args_dtm):
     ret = "orthorectify.py " + args_source_image + " " + args_dsm +\
       " " + args_destination_image
     if args_occlusion_thresh is not None:
@@ -21,6 +22,7 @@ def orthoParamsToString(args_source_image, args_dsm, args_destination_image,
     if args_denoise_radius is not None:
         ret = ret + " -d " + str(args_denoise_radius)
     ret = ret + " --raytheon-rpc " + args_raytheon_rpc if args_raytheon_rpc else ret
+    ret = ret + " --dtm " + args_dtm if args_dtm else ret
     return ret
 
 
@@ -37,8 +39,9 @@ def intersection(a, b):
 def main(args):
     parser = argparse.ArgumentParser(
         description='Orthorectify a list of images to cover all DSMs. '
-        'The image chosen is the one with maximum coverage of the DSM and '
-        'the smallest NITF_CSEXRA_OBLIQUITY_ANGLE (off-nadir angle). The output has the '
+        'The image chosen is the one with largest coverage of the DSM, '
+        'smallest cloud coverage (NITF_PIAIMC_CLOUDCVR) and '
+        'smallest off-nadir angle (NITF_CSEXRA_OBLIQUITY_ANGLE). The output has the '
         'same name as the source image with postfix or_pan (if image_folders '
         'contain PAN) or or_msi')
     parser.add_argument("dsm_folder",
@@ -54,6 +57,9 @@ def main(args):
     parser.add_argument("--rpc_folder", type=str,
                         help="Raytheon RPC folder. If not provided, "
                         "the RPC is read from the source_image")
+    parser.add_argument("--dtm_folder", type=str,
+                        help="Optional folder for DTMs which follow name_ii_jj.tif pattern. "
+                        "DTMs are used to replace nodata areas in the orthorectified images")
     parser.add_argument("--dense_ids", type=str,
                         help="Process only the DSMs with the specified IDs. "
                         "IDs are listed in the specified file using the format name_000ii_000jj. "
@@ -70,11 +76,13 @@ def main(args):
 
     images = numpy.array(imagesList)
     angles = numpy.zeros(len(images))
+    cloudCover = numpy.zeros(len(images))
     bounds = numpy.zeros([len(images), 4])
     for i, f in enumerate(images):
         sourceImage = gdal.Open(f, gdal.GA_ReadOnly)
         metaData = sourceImage.GetMetadata()
         angles[i] = metaData['NITF_CSEXRA_OBLIQUITY_ANGLE']
+        cloudCover[i] = metaData['NITF_PIAIMC_CLOUDCVR']
         bounds[i] = gdal_utils.bounding_box(sourceImage)
 
     # list of dsms
@@ -115,17 +123,19 @@ def main(args):
             # area of DSM not covered
             areas[i] = dsmArea - areaImageIntersectDsm
         # sort images by areas and angle
-        sortIndex = numpy.lexsort((angles, areas))
+        sortIndex = numpy.lexsort((angles, cloudCover, areas))
         images = images[sortIndex]
         angles = angles[sortIndex]
+        cloudCover = cloudCover[sortIndex]
         bounds = bounds[sortIndex]
         areas = areas[sortIndex]
         if args.debug:
             print("========== Sorted list of images ==========")
             for i in range(len(images)):
-                print("{} {}: {} {} (dsmBounds: {}, bounds: {}) {}".format(
-                    index[0], index[1], os.path.basename(images[i]), areas[i] / dsmArea,
-                    dsmBounds, bounds[i], angles[i]))
+                print("{} {}: {} area not covered: {} (dsmBounds: {}, bounds: {}) "
+                      "cloudCover: {} angle: {}".format(
+                        index[0], index[1], os.path.basename(images[i]), areas[i] / dsmArea,
+                        dsmBounds, bounds[i], cloudCover[i], angles[i]))
 
         source_image = images[0]
         print("Using {} percentage not covered: {} angle: {}".format(
@@ -139,9 +149,13 @@ def main(args):
         oargs_destination_image =\
             destination_image + "_or_" + postfix + "_" + index[0] +\
             "_" + index[1] + ".tif"
-        ortho_params = (
+        ortho_params = [
             source_image, dsm, oargs_destination_image,
-            args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc)
+            args.occlusion_thresh, args.denoise_radius, oargs_raytheon_rpc]
+        if args.dtm_folder:
+            dtmList = glob.glob(args.dtm_folder + "/*_" + index[0] +
+                                "_" + index[1] + ".tif")
+            ortho_params.append(dtmList[0])
         print(orthoParamsToString(*ortho_params))
         ortho.orthorectify(*ortho_params)
 
