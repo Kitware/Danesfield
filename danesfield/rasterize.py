@@ -56,7 +56,7 @@ def rasterize_file_thin_line(vector_filename_in, reference_file,
     size = reference_file.RasterYSize, reference_file.RasterXSize
     gdal_utils.gdal_save(numpy.zeros(size, dtype=numpy.uint8),
                          reference_file, raster_filename_out, gdal.GDT_Byte)
-    subprocess.run(['gdal_rasterize', '-burn', '255']
+    subprocess.run(['gdal_rasterize', '-burn', '1']
                    + ([] if query is None else ['-where', query])
                    + [vector_filename_in, raster_filename_out],
                    check=True,
