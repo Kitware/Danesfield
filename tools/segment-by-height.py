@@ -91,11 +91,13 @@ def gdal_open(filename):
     return rv
 
 
-def rasterize_file(vector_filename_in, reference_file, raster_filename_out, query=None):
+def rasterize_file_thin_line(vector_filename_in, reference_file,
+                             raster_filename_out, query=None):
     """
     Rasterize the vector geometry at vector_filename_in to a file at
     raster_filename_out.  Get image dimensions, boundary, and other
-    metadata from reference_file (an in-memory object).
+    metadata from reference_file (an in-memory object).  Note that the
+    lines in the output file are only 1px thick.
 
     If query is passed, use it as a SQL where-clause to select certain
     features.
@@ -203,13 +205,15 @@ def main(args):
         if args.road_vector:
             # XXX Document that passing the vectorized image is only
             # necessary the first time
-            rasterize_file(args.road_vector, dsm_file, args.road_rasterized)
-            rasterize_file(args.road_vector, dsm_file, args.road_rasterized_bridge,
-                           "bridge = 1 and ("
-                           "    type = 'monorail'"
-                           "    or \"class\" = 'highway'"
-                           "        and type not in ('footway', 'pedestrian')"
-                           ")")
+            rasterize_file_thin_line(args.road_vector, dsm_file, args.road_rasterized)
+            rasterize_file_thin_line(
+                args.road_vector, dsm_file, args.road_rasterized_bridge,
+                "bridge = 1 and ("
+                "    type = 'monorail'"
+                "    or \"class\" = 'highway'"
+                "        and type not in ('footway', 'pedestrian')"
+                ")",
+            )
         road_file = gdal_open(args.road_rasterized)
         roads = road_file.GetRasterBand(1).ReadAsArray()
 
