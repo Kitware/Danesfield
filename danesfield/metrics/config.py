@@ -5,6 +5,7 @@ Configuration file utilities for CORE3D metrics.
 """
 
 import os
+import re
 
 from string import Template
 
@@ -38,14 +39,18 @@ def get_template():
     return contents
 
 
-def populate_template(contents, ref_prefix, test_dsm, test_cls):
+def populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl):
     """
     Populate metrics config template.
     """
     template = Template(contents)
 
-    return template.substitute({
+    template = template.substitute({
         'ref_prefix': ref_prefix,
         'test_dsm': os.path.basename(test_dsm),
-        'test_cls': os.path.basename(test_cls)
+        'test_cls': os.path.basename(test_cls),
+        'test_mtl': os.path.basename(test_mtl)
     })
+
+    # remove unset parameters (lines ending with '= ')
+    return re.sub('.*=[ \t]*\n','',template)
