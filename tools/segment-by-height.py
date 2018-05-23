@@ -6,11 +6,12 @@ import subprocess
 
 import cv2
 import gdal
-import gdalnumeric
 import numpy
 import numpy.linalg
 import scipy.ndimage.measurements as ndm
 import scipy.ndimage.morphology as morphology
+
+from danesfield.gdal_utils import gdal_open, gdal_save
 
 
 def compute_ndvi(msi_file):
@@ -46,24 +47,6 @@ def compute_ndvi(msi_file):
     return numpy.divide(nir - red, nir + red, where=mask)
 
 
-def gdal_save(arr, src_file, filename, eType, options=[]):
-    """
-    Save the 2D ndarray arr to filename using the same metadata as the
-    given source file.  Returns the new gdal file object in case
-    additional operations are desired.
-    """
-    driver = src_file.GetDriver()
-    if driver.GetMetadata().get(gdal.DCAP_CREATE) != "YES":
-        raise RuntimeError("Driver {} does not support Create().".format(driver))
-    arr_file = driver.Create(
-        filename, xsize=arr.shape[1], ysize=arr.shape[0],
-        bands=1, eType=eType, options=options,
-    )
-    gdalnumeric.CopyDatasetInfo(src_file, arr_file)
-    arr_file.GetRasterBand(1).WriteArray(arr)
-    return arr_file
-
-
 def save_ndvi(ndvi, msi_file, filename):
     """
     Save an NDVI image using the same metadata as the given MSI file
@@ -78,17 +61,6 @@ def save_ndsm(ndsm, dsm_file, filename):
     ndsm_file = gdal_save(ndsm, dsm_file, filename, gdal.GDT_Float32)
     no_data_val = dsm_file.GetRasterBand(1).GetNoDataValue()
     ndsm_file.GetRasterBand(1).SetNoDataValue(no_data_val)
-
-
-def gdal_open(filename, access=gdal.GA_ReadOnly):
-    """
-    Like gdal.Open, but always read-only and raises an OSError instead
-    of returning None
-    """
-    rv = gdal.Open(filename, access)
-    if rv is None:
-        raise OSError("Unable to open {!r}".format(filename))
-    return rv
 
 
 def rasterize_file_thin_line(vector_filename_in, reference_file,
