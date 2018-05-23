@@ -4,7 +4,6 @@ from danesfield import ortho
 
 import argparse
 import logging
-import sys
 
 
 def main(args):
@@ -31,10 +30,11 @@ def main(args):
                              args.occlusion_thresh, args.denoise_radius,
                              args.raytheon_rpc, args.dtm)
     if ret == ortho.ERROR:
-        raise RuntimeException("Error: orthorectification failed")
+        raise RuntimeError("Error: orthorectification failed")
 
 
 if __name__ == '__main__':
+    import sys
     try:
         main(sys.argv[1:])
     except Exception as e:

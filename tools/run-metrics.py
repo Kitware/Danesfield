@@ -10,7 +10,6 @@ import datetime
 import logging
 import os
 import shutil
-import sys
 
 import danesfield.metrics.config as config
 from danesfield.metrics.coordinate_system import get_coordinate_system, convert_coordinate_system
@@ -109,6 +108,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    import sys
     loglevel = os.environ.get('LOGLEVEL', 'WARNING').upper()
     logging.basicConfig(level=loglevel)
 

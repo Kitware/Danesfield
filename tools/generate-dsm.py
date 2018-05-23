@@ -5,7 +5,6 @@ import json
 import logging
 import numpy
 import subprocess
-import sys
 
 
 def getMinMax(json_string):
@@ -104,6 +103,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    import sys
     try:
         main(sys.argv[1:])
     except Exception as e:

@@ -4,7 +4,6 @@ import argparse
 import gdal
 import logging
 import numpy
-import sys
 
 
 def main(args):
@@ -177,6 +176,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    import sys
     try:
         main(sys.argv[1:])
     except Exception as e:

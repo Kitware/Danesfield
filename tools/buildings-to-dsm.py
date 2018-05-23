@@ -6,7 +6,6 @@ import glob
 import numpy
 import logging
 import os
-import sys
 import vtk
 from vtk.numpy_interface import dataset_adapter as dsa
 from vtk.util import numpy_support
@@ -279,6 +278,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    import sys
     try:
         main(sys.argv[1:])
     except Exception as e:

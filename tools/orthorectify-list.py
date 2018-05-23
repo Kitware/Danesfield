@@ -10,7 +10,6 @@ import logging
 import numpy
 import os.path
 import re
-import sys
 
 
 def orthoParamsToString(args_source_image, args_dsm, args_destination_image,
@@ -148,6 +147,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    import sys
     try:
         main(sys.argv[1:])
     except Exception as e:
