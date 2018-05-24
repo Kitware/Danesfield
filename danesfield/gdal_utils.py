@@ -2,6 +2,7 @@ import gdal
 import gdalnumeric
 import numpy
 import pyproj
+import ogr
 import osr
 
 def bounding_box(raster):
@@ -45,6 +46,16 @@ def gdal_open(filename, access=gdal.GA_ReadOnly):
     of returning None
     """
     rv = gdal.Open(filename, access)
+    if rv is None:
+        raise OSError("Unable to open {!r}".format(filename))
+    return rv
+
+def ogr_open(filename, update=0):
+    """
+    Like ogr.Open, but raises an OSError instead
+    of returning None
+    """
+    rv = ogr.Open(filename, update)
     if rv is None:
         raise OSError("Unable to open {!r}".format(filename))
     return rv
