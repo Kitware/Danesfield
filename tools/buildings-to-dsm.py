@@ -100,18 +100,26 @@ def main(args):
 
     # read the buildings polydata, set Z as a scalar and project to XY plane
     print("Reading the buildings ...")
+    # labels for buildings and elevated roads
+    labels = [6, 17];
     if (os.path.isfile(args.input_buildings)):
         polyReader = vtk.vtkXMLPolyDataReader()
         polyReader.SetFileName(args.input_buildings)
         polyReader.Update()
-        polyBuildingsVtk = polyReader.GetOutput()
+        polyVtkList = [polyReader.GetOutput()]
     else:
-        # assume a folder with OBJ files
-        buildingsFiles = glob.glob(args.input_buildings + "/*.obj")
+        # assume a folder with OBJ files,
+        # buildings start with numbers
+        # optional elevated roads start with Road*.obj
+        files = [glob.glob(args.input_buildings + "/[0-9]*.obj"),
+                 glob.glob(args.input_buildings + "/Road*.obj")]
+        files = [x for x in files if x]
+        if not files:
+            raise RuntimeError("No OBJ files found in {}".format(args.input_buildings))
         offset = [0.0, 0.0, 0.0]
         axes = ['x', 'y', 'z']
         reFloatList = list("#. offset: ([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)")
-        with open(buildingsFiles[0]) as f:
+        with open(files[0][0]) as f:
             for i in range(3):
                 reFloatList[1] = axes[i]
                 reFloat = re.compile("".join(reFloatList))
@@ -122,28 +130,35 @@ def main(args):
                 else:
                     break
         print("Offset: {}".format(offset))
-        append = vtk.vtkAppendPolyData()
         transform = vtk.vtkTransform()
         transform.Translate(offset[0], offset[1], offset[2])
-        for i, buildingsFileName in enumerate(buildingsFiles):
-            objReader = vtk.vtkOBJReader()
-            objReader.SetFileName(buildingsFileName)
-            transformFilter = vtk.vtkTransformFilter()
-            transformFilter.SetTransform(transform)
-            transformFilter.SetInputConnection(objReader.GetOutputPort())
-            append.AddInputConnection(transformFilter.GetOutputPort())
-        append.Update()
-        polyBuildingsVtk = append.GetOutput()
+        polyVtkList = []
+        for category in range(len(files)):
+            append = vtk.vtkAppendPolyData()
+            for i, fileName in enumerate(files[category]):
+                objReader = vtk.vtkOBJReader()
+                objReader.SetFileName(fileName)
+                transformFilter = vtk.vtkTransformFilter()
+                transformFilter.SetTransform(transform)
+                transformFilter.SetInputConnection(objReader.GetOutputPort())
+                append.AddInputConnection(transformFilter.GetOutputPort())
+            append.Update()
+            polyVtkList.append(append.GetOutput())
 
     arrayName = "Elevation"
-    polyBuildings = dsa.WrapDataObject(polyBuildingsVtk)
-    polyElevation = polyBuildings.Points[:, 2]
-    if args.render_cls:
-        # label for buildings
-        polyElevation[:] = 6
-    polyElevationVtk = numpy_support.numpy_to_vtk(polyElevation)
-    polyElevationVtk.SetName(arrayName)
-    polyBuildings.PointData.SetScalars(polyElevationVtk)
+    append = vtk.vtkAppendPolyData()
+    for category in range(len(polyVtkList)):
+        poly = dsa.WrapDataObject(polyVtkList[category])
+        polyElevation = poly.Points[:, 2]
+        if args.render_cls:
+            # label for buildings
+            polyElevation[:] = labels[category]
+        polyElevationVtk = numpy_support.numpy_to_vtk(polyElevation)
+        polyElevationVtk.SetName(arrayName)
+        poly.PointData.SetScalars(polyElevationVtk)
+        append.AddInputDataObject(polyVtkList[category])
+    append.Update()
+
 
     # Create the RenderWindow, Renderer
     #
@@ -156,7 +171,7 @@ def main(args):
 
     # show the buildings
     trisBuildingsFilter = vtk.vtkTriangleFilter()
-    trisBuildingsFilter.SetInputDataObject(polyBuildingsVtk)
+    trisBuildingsFilter.SetInputDataObject(append.GetOutput())
     trisBuildingsFilter.Update()
 
     p2cBuildings = vtk.vtkPointDataToCellData()
