@@ -26,13 +26,13 @@ def create_working_dir():
     return working_dir
 
 
-def generate_config_file(working_dir, ref_prefix, test_dsm, test_cls):
+def generate_config_file(working_dir, ref_prefix, test_dsm, test_cls, test_mtl):
     """
     Generate metrics config file from a template.
     """
     # Populate config file template
     contents = config.get_template()
-    contents = config.populate_template(contents, ref_prefix, test_dsm, test_cls)
+    contents = config.populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl)
 
     # Write config file
     # TODO: When more files than the DSM and CLS are scored, a shorter name convention
@@ -61,12 +61,17 @@ def main(args):
         '--dsm',
         type=str,
         required=True,
-        help='Test DSM file')
+        help='Test Digital Surface Model (DSM) file')
     parser.add_argument(
         '--cls',
         type=str,
         required=True,
-        help='Test CLS file')
+        help='Test Class Label (CLS) file')
+    parser.add_argument(
+        '--mtl',
+        type=str,
+        required=False,
+        help='Test Material (MTL) file')
 
     # Parse arguments
     args = parser.parse_args(args)
@@ -83,8 +88,16 @@ def main(args):
     shutil.copyfile(args.dsm, test_dsm)
     shutil.copyfile(args.cls, test_cls)
 
+    # Handle optional inputs
+    if args.mtl is not None:
+        test_mtl = os.path.join(working_dir, os.path.basename(args.mtl))
+        shutil.copyfile(args.mtl, test_mtl)
+    else:
+        test_mtl = ''
+
     # Generate metrics config file
-    config_filename = generate_config_file(working_dir, args.ref_prefix, test_dsm, test_cls)
+    config_filename = generate_config_file(working_dir, args.ref_prefix,
+                                           test_dsm, test_cls, test_mtl)
 
     # Convert test images to use reference coordinate system.
     # This is necessary because align3d can fail ungracefully when the coordinate systems
@@ -92,6 +105,8 @@ def main(args):
     ref_proj4 = get_coordinate_system(ref_dsm)
     convert_coordinate_system(test_dsm, ref_proj4)
     convert_coordinate_system(test_cls, ref_proj4)
+    if test_mtl:
+        convert_coordinate_system(test_mtl, ref_proj4)
 
     # Ensure test DSM uses Float32 data type.
     # This is necessary because align3d doesn't read the Float64 data type.
