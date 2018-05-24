@@ -71,7 +71,6 @@ def main(args):
         '--mtl',
         type=str,
         required=False,
-        default="",
         help='Test Material (MTL) file')
 
     # Parse arguments
@@ -90,11 +89,11 @@ def main(args):
     shutil.copyfile(args.cls, test_cls)
 
     # Handle optional inputs
-    if args.mtl:
+    if args.mtl is not None:
         test_mtl = os.path.join(working_dir, os.path.basename(args.mtl))
         shutil.copyfile(args.mtl, test_mtl)
     else:
-        test_mtl = ""
+        test_mtl = ''
 
     # Generate metrics config file
     config_filename = generate_config_file(working_dir, args.ref_prefix,
