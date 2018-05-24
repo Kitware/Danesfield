@@ -53,4 +53,4 @@ def populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl):
     })
 
     # remove unset parameters (lines ending with '= ')
-    return re.sub('.*=[ \t]*\n','',template)
+    return re.sub('.*=[ \t]*\n', '', template)
