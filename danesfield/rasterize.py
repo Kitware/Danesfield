@@ -16,7 +16,7 @@ ELEVATED_ROADS_QUERY = (
 )
 
 
-def rasterize_file(
+def rasterize_file_dilated_line(
         vector_filename_in, reference_file, thin_line_raster_filename_out,
         dilation_structure=None, dilation_iterations=1, query=None,
 ):

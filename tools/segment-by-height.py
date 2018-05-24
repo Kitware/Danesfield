@@ -12,7 +12,7 @@ import scipy.ndimage.measurements as ndm
 import scipy.ndimage.morphology as morphology
 
 from danesfield.gdal_utils import gdal_open, gdal_save
-from danesfield.rasterize import ELEVATED_ROADS_QUERY, rasterize_file
+from danesfield.rasterize import ELEVATED_ROADS_QUERY, rasterize_file_dilated_line
 
 
 def compute_ndvi(msi_file):
@@ -154,9 +154,11 @@ def main(args):
             raise RuntimeError("All road path arguments must be provided if any is provided")
 
         # The dilation is intended to create semi-realistic widths
-        roads = rasterize_file(args.road_vector, dsm_file, args.road_rasterized,
-                               numpy.ones((3, 3)), dilation_iterations=20)
-        road_bridges = rasterize_file(
+        roads = rasterize_file_dilated_line(
+            args.road_vector, dsm_file, args.road_rasterized,
+            numpy.ones((3, 3)), dilation_iterations=20,
+        )
+        road_bridges = rasterize_file_dilated_line(
             args.road_vector, dsm_file, args.road_rasterized_bridge,
             numpy.ones((3, 3)), dilation_iterations=20,
             query=ELEVATED_ROADS_QUERY,
