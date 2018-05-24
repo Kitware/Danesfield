@@ -1,4 +1,5 @@
 import gdal
+import gdalnumeric
 import numpy
 import pyproj
 import osr
@@ -37,3 +38,31 @@ def bounding_box(raster):
     maxY = numpy.amax(arrayY)
     return [minX, minY, maxX, maxY]
 
+
+def gdal_open(filename, access=gdal.GA_ReadOnly):
+    """
+    Like gdal.Open, but always read-only and raises an OSError instead
+    of returning None
+    """
+    rv = gdal.Open(filename, access)
+    if rv is None:
+        raise OSError("Unable to open {!r}".format(filename))
+    return rv
+
+
+def gdal_save(arr, src_file, filename, eType, options=[]):
+    """
+    Save the 2D ndarray arr to filename using the same metadata as the
+    given source file.  Returns the new gdal file object in case
+    additional operations are desired.
+    """
+    driver = src_file.GetDriver()
+    if driver.GetMetadata().get(gdal.DCAP_CREATE) != "YES":
+        raise RuntimeError("Driver {} does not support Create().".format(driver))
+    arr_file = driver.Create(
+        filename, xsize=arr.shape[1], ysize=arr.shape[0],
+        bands=1, eType=eType, options=options,
+    )
+    gdalnumeric.CopyDatasetInfo(src_file, arr_file)
+    arr_file.GetRasterBand(1).WriteArray(arr)
+    return arr_file

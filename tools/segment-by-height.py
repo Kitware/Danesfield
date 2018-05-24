@@ -1,13 +1,18 @@
 #!/usr/bin/env python
 
 import argparse
-import gdal
-import gdalnumeric
 import logging
+import subprocess
+
+import cv2
+import gdal
 import numpy
+import numpy.linalg
 import scipy.ndimage.measurements as ndm
 import scipy.ndimage.morphology as morphology
-import cv2
+
+from danesfield.gdal_utils import gdal_open, gdal_save
+from danesfield.rasterize import ELEVATED_ROADS_QUERY, rasterize_file_dilated_line
 
 
 def compute_ndvi(msi_file):
@@ -15,8 +20,6 @@ def compute_ndvi(msi_file):
     Compute a normalized difference vegetation index (NVDI) image from an MSI file
     """
     num_bands = msi_file.RasterCount
-    red_idx = None
-    nir_idx = None
     # Guess band indices based on the number of bands
     if num_bands == 8:
         # for 8-band MSI from WV3 and WV2 the RGB bands have these indices
@@ -49,46 +52,31 @@ def save_ndvi(ndvi, msi_file, filename):
     """
     Save an NDVI image using the same metadata as the given MSI file
     """
-    driver = msi_file.GetDriver()
-    driver_metadata = driver.GetMetadata()
-    if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
-        options = []
-        ndvi_file = driver.Create(
-            filename, xsize=ndvi.shape[1],
-            ysize=ndvi.shape[0],
-            bands=1, eType=gdal.GDT_Float32,
-            options=options)
-
-        gdalnumeric.CopyDatasetInfo(msi_file, ndvi_file)
-    else:
-        raise RuntimeError("Driver {} does not supports Create().".format(driver))
-
-    ndvi_band = ndvi_file.GetRasterBand(1)
-    ndvi_band.WriteArray(ndvi)
+    gdal_save(ndvi, msi_file, filename, gdal.GDT_Float32)
 
 
 def save_ndsm(ndsm, dsm_file, filename):
     """
     Save a normalized DSM image using the same metadata as the source DSM
     """
-    driver = dsm_file.GetDriver()
-    driver_metadata = driver.GetMetadata()
-    if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
-        options = []
-        ndsm_file = driver.Create(
-            filename, xsize=ndsm.shape[1],
-            ysize=ndsm.shape[0],
-            bands=1, eType=gdal.GDT_Float32,
-            options=options)
-
-        gdalnumeric.CopyDatasetInfo(dsm_file, ndsm_file)
-    else:
-        raise RuntimeError("Driver {} does not supports Create().".format(driver))
-
-    ndsm_band = ndsm_file.GetRasterBand(1)
-    ndsm_band.WriteArray(ndsm)
+    ndsm_file = gdal_save(ndsm, dsm_file, filename, gdal.GDT_Float32)
     no_data_val = dsm_file.GetRasterBand(1).GetNoDataValue()
-    ndsm_band.SetNoDataValue(no_data_val)
+    ndsm_file.GetRasterBand(1).SetNoDataValue(no_data_val)
+
+
+def estimate_object_scale(img):
+    """
+    Given a binary (boolean) image, return a pair estimating the large
+    and small dimension of the object in img.  We currently use PCA
+    for this purpose.
+    """
+    points = numpy.transpose(img.nonzero())
+    points = points - points.mean(0)
+    s = numpy.linalg.svd(points, compute_uv=False) / len(points) ** 0.5
+    # If the object was a perfect rectangle, this would calculate the
+    # lengths of its axes.  (For an ellipse the value is 1/16)
+    VARIANCE_RATIO = 1 / 12
+    return s / VARIANCE_RATIO ** 0.5
 
 
 def main(args):
@@ -107,6 +95,10 @@ def main(args):
     parser.add_argument("--ndvi",
                         help="Write out the Normalized Difference Vegetation "
                              "Index image")
+    parser.add_argument('--road-vector', help='Path to road vector file')
+    # XXX this is not ideal
+    parser.add_argument('--road-rasterized', help='Path to save rasterized road image')
+    parser.add_argument('--road-rasterized-bridge', help='Path to save rasterized bridge image')
     parser.add_argument("-d", "--debug", action="store_true",
                         help="Enable debug output and visualization")
     parser.add_argument("destination_mask",
@@ -118,26 +110,16 @@ def main(args):
     # to the DSM, if needed.
 
     # open the DSM
-    dsm_file = gdal.Open(args.source_dsm, gdal.GA_ReadOnly)
-    if not dsm_file:
-        print("Unable to open {}".format(args.source_dsm))
-        exit(1)
+    dsm_file = gdal_open(args.source_dsm)
     dsm_band = dsm_file.GetRasterBand(1)
-    dsm = dsm_band.ReadAsArray(
-        xoff=0, yoff=0,
-        win_xsize=dsm_file.RasterXSize, win_ysize=dsm_file.RasterYSize)
+    dsm = dsm_band.ReadAsArray()
     dsm_nodata_value = dsm_band.GetNoDataValue()
     print("DSM raster shape {}".format(dsm.shape))
 
     # open the DTM
-    dtm_file = gdal.Open(args.source_dtm, gdal.GA_ReadOnly)
-    if not dtm_file:
-        print("Unable to open {}".format(args.source_dtm))
-        exit(1)
+    dtm_file = gdal_open(args.source_dtm)
     dtm_band = dtm_file.GetRasterBand(1)
-    dtm = dtm_band.ReadAsArray(
-        xoff=0, yoff=0,
-        win_xsize=dtm_file.RasterXSize, win_ysize=dtm_file.RasterYSize)
+    dtm = dtm_band.ReadAsArray()
     print("DTM raster shape {}".format(dtm.shape))
 
     # Compute the normalized DSM by subtracting the terrain
@@ -155,10 +137,7 @@ def main(args):
 
     # if an MSI images was specified, use it to filter by NDVI
     if args.msi:
-        msi_file = gdal.Open(args.msi, gdal.GA_ReadOnly)
-        if not msi_file:
-            print("Unable to open {}".format(args.msi))
-            exit(1)
+        msi_file = gdal_open(args.msi)
         # Compute normalized difference vegetation index (NDVI)
         ndvi = compute_ndvi(msi_file)
         # if requested, write out the NDVI image
@@ -168,6 +147,26 @@ def main(args):
         mask[ndvi > 0.2] = False
         # reduce seeds to areas with high confidence non-vegetation
         seeds[ndvi > 0.1] = False
+
+    use_roads = args.road_vector or args.road_rasterized or args.road_rasterized_bridge
+    if use_roads:
+        if not (args.road_vector and args.road_rasterized and args.road_rasterized_bridge):
+            raise RuntimeError("All road path arguments must be provided if any is provided")
+
+        # The dilation is intended to create semi-realistic widths
+        roads = rasterize_file_dilated_line(
+            args.road_vector, dsm_file, args.road_rasterized,
+            numpy.ones((3, 3)), dilation_iterations=20,
+        )
+        road_bridges = rasterize_file_dilated_line(
+            args.road_vector, dsm_file, args.road_rasterized_bridge,
+            numpy.ones((3, 3)), dilation_iterations=20,
+            query=ELEVATED_ROADS_QUERY,
+        )
+
+        # Remove building candidates that overlap with a road
+        mask[roads] = False
+        seeds[roads] = False
 
     # use morphology to clean up the mask
     mask = morphology.binary_opening(mask, numpy.ones((3, 3)), iterations=1)
@@ -195,10 +194,17 @@ def main(args):
     label_img = ndm.label(mask)[0]
     # extract the unique labels that match the seeds
     selected = numpy.unique(numpy.extract(seeds, label_img))
-    print("Keeping {} connected components".format(len(selected)))
+    # filter out very oblong objects
+    subselected = []
+    for i in selected:
+        dim_large, dim_small = estimate_object_scale(label_img == i)
+        if dim_large / dim_small < 6:
+            subselected.append(i)
+
+    print("Keeping {} connected components".format(len(subselected)))
 
     # keep only the mask components selected above
-    good_mask = numpy.isin(label_img, selected)
+    good_mask = numpy.isin(label_img, subselected)
 
     # a final mask cleanup
     good_mask = morphology.binary_closing(good_mask, numpy.ones((3, 3)), iterations=3)
@@ -209,30 +215,18 @@ def main(args):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    # convert the mask to label map with value 2 (background) and 6 (building)
+    # convert the mask to label map with value 2 (background),
+    # 6 (building), and 17 (elevated roadway)
     cls = numpy.full(good_mask.shape, 2)
     cls[good_mask] = 6
+    if use_roads:
+        cls[road_bridges] = 17
 
     # create the mask image
-    driver = dsm_file.GetDriver()
-    driver_metadata = driver.GetMetadata()
-    if driver_metadata.get(gdal.DCAP_CREATE) == "YES":
-        print("Create destination mask of "
-              "size:({}, {}) ...".format(dsm_file.RasterXSize,
-                                         dsm_file.RasterYSize))
-        options = ["COMPRESS=DEFLATE"]
-        dest_file = driver.Create(
-            args.destination_mask, xsize=cls.shape[1],
-            ysize=cls.shape[0],
-            bands=1, eType=gdal.GDT_Byte,
-            options=options)
-
-        gdalnumeric.CopyDatasetInfo(dsm_file, dest_file)
-    else:
-        raise RuntimeError("Driver {} does not supports Create().".format(driver))
-
-    dest_band = dest_file.GetRasterBand(1)
-    dest_band.WriteArray(cls)
+    print("Create destination mask of size:({}, {}) ..."
+          .format(dsm_file.RasterXSize, dsm_file.RasterYSize))
+    gdal_save(cls, dsm_file, args.destination_mask, gdal.GDT_Byte,
+              options=['COMPRESS=DEFLATE'])
 
 
 if __name__ == '__main__':
