@@ -349,12 +349,17 @@ def main(args):
         rasterize_args = ["gdal_rasterize", "-ot", "Byte", "-init", "2",
                           "-burn", "6",
                           "-ts", str(inputImage.RasterXSize),
-                          str(inputImage.RasterYSize)]
+                          str(inputImage.RasterYSize),
+                          "-te", str(inputImageCorners[0]), str(inputImageCorners[2]),
+                          str(inputImageCorners[1]), str(inputImageCorners[3])]
     else:
         rasterize_args = ["gdal_rasterize", "-ot", "Byte",
                           "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
                           "-ts", str(inputImage.RasterXSize),
-                          str(inputImage.RasterYSize)]
+                          str(inputImage.RasterYSize),
+                          "-te", str(inputImageCorners[0]), str(inputImageCorners[2]),
+                          str(inputImageCorners[1]), str(inputImageCorners[3])]
+
     outputNoExt = os.path.splitext(args.output_mask)[0]
     rasterize_args.extend([outputNoExt + ".shp", outputNoExt + ".tif"])
     print("Rasterizing {} -> {}".format(os.path.basename(outputNoExt + ".shp"),
