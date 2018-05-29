@@ -114,7 +114,11 @@ def main(args):
         files = [glob.glob(args.input_buildings + "/[0-9]*.obj"),
                  glob.glob(args.input_buildings + "/Road*.obj")]
         files = [x for x in files if x]
-        if not files:
+        if len(files) >= 2:
+            print("Found {} buildings and {} roads".format(len(files[0]), len(files[1])))
+        elif len(files) == 1:
+            print("Found {} buildings".format(len(files[0])))
+        else:
             raise RuntimeError("No OBJ files found in {}".format(args.input_buildings))
         offset = [0.0, 0.0, 0.0]
         axes = ['x', 'y', 'z']
