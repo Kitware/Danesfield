@@ -67,13 +67,19 @@ def gdal_save(arr, src_file, filename, eType, options=[]):
     given source file.  Returns the new gdal file object in case
     additional operations are desired.
     """
+    if isinstance(arr, list):
+        numberOfBands = len(arr)
+    else:
+        numberOfBands = 1
+        arr = [arr]
     driver = src_file.GetDriver()
     if driver.GetMetadata().get(gdal.DCAP_CREATE) != "YES":
         raise RuntimeError("Driver {} does not support Create().".format(driver))
     arr_file = driver.Create(
-        filename, xsize=arr.shape[1], ysize=arr.shape[0],
-        bands=1, eType=eType, options=options,
+        filename, xsize=arr[0].shape[1], ysize=arr[0].shape[0],
+        bands=numberOfBands, eType=eType, options=options,
     )
     gdalnumeric.CopyDatasetInfo(src_file, arr_file)
-    arr_file.GetRasterBand(1).WriteArray(arr)
+    for i,a in enumerate(arr):
+        arr_file.GetRasterBand(i + 1).WriteArray(a)
     return arr_file

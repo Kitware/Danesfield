@@ -376,6 +376,7 @@ def main(args):
                                   "-te", str(inputImageCorners[0]), str(inputImageCorners[2]),
                                   str(inputImageCorners[1]), str(inputImageCorners[3])]
             else:
+                # make buildings red
                 rasterize_args = ["gdal_rasterize", "-ot", "Byte",
                                   "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
                                   "-ts", str(inputImage.RasterXSize),
@@ -394,7 +395,6 @@ def main(args):
                 print(*rasterize_args)
                 print("{}\n{}".format(response.stdout, response.stderr))
         else:
-            if args.render_cls:
                 print("Rasterizing bridges ...")
                 outputNoExt = os.path.splitext(args.output_mask)[0]
                 input = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".shp")
@@ -405,13 +405,25 @@ def main(args):
                     query=rasterize.ELEVATED_ROADS_QUERY,
                 )
                 os.remove(output)
-                clsBuildings = gdal_utils.gdal_open(
+                buildingsData = gdal_utils.gdal_open(
                     os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"), gdal.GA_ReadOnly)
-                cls = clsBuildings.GetRasterBand(1).ReadAsArray()
-                cls[road_bridges] = 17
-                gdal_utils.gdal_save(cls, inputImage,
-                                     os.path.basename(outputNoExt + ".tif"),
-                                     gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
+                if args.render_cls:
+                    cls = buildingsData.GetRasterBand(1).ReadAsArray()
+                    cls[road_bridges] = 17
+                    gdal_utils.gdal_save(cls, inputImage,
+                                        os.path.basename(outputNoExt + ".tif"),
+                                        gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
+                else:
+                    red = buildingsData.GetRasterBand(1).ReadAsArray()
+                    green = buildingsData.GetRasterBand(2).ReadAsArray()
+                    blue = buildingsData.GetRasterBand(3).ReadAsArray()
+                    blue[road_bridges] = 255
+                    opacity = buildingsData.GetRasterBand(4).ReadAsArray()
+                    opacity[road_bridges] = 255
+                    gdal_utils.gdal_save([red, green, blue, opacity], inputImage,
+                                         os.path.basename(outputNoExt + ".tif"),
+                                         gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
+                os.remove(os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"))
 
 
 
