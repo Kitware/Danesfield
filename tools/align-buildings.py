@@ -4,21 +4,58 @@ import argparse
 import cv2
 import gdal
 import logging
-import numpy as np
+import numpy
 import ogr
 import osr
 import os
 import subprocess
 import shutil
 from danesfield import gdal_utils
+from danesfield import rasterize
+
+VECTOR_TYPES = ["buildings", "roads"]
+
+def shift_vector(inputFeatures, outputVectorFile, outputLayerName, outProjection, offsetGeo):
+    outDriver = ogr.GetDriverByName("ESRI Shapefile")
+    print("Shifting vector -> {}".format(os.path.basename(outputVectorFile)))
+    outVector = outDriver.CreateDataSource(outputVectorFile)
+    outSrs = osr.SpatialReference(outProjection)
+    # create layer
+    outLayer = outVector.CreateLayer(os.path.basename(outputLayerName),
+                                     srs=outSrs, geom_type=ogr.wkbPolygon)
+    outFeatureDef = outLayer.GetLayerDefn()
+    # create rings from input rings by shifting points
+    for feature in inputFeatures:
+        # create the poly
+        outPoly = ogr.Geometry(ogr.wkbPolygon)
+        multipoly = feature.GetGeometryRef()
+        if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
+            poly = multipoly.GetGeometryRef(0)
+        else:
+            poly = multipoly
+        for ring_idx in range(poly.GetGeometryCount()):
+            ring = poly.GetGeometryRef(ring_idx)
+            # create the ring
+            outRing = ogr.Geometry(ogr.wkbLinearRing)
+            for i in range(0, ring.GetPointCount()):
+                pt = ring.GetPoint(i)
+                outRing.AddPoint(pt[0] + offsetGeo[0], pt[1] + offsetGeo[1])
+            outPoly.AddGeometry(outRing)
+        # create feature
+        outFeature = ogr.Feature(outFeatureDef)
+        outFeature.SetGeometry(outPoly)
+        outLayer.CreateFeature(outFeature)
 
 
-def copy_shapefile(inputNoExt, outputNoExt):
+def copy_shapefile(input, output):
+    inputNoExt = os.path.splitext(input)[0]
+    outputNoExt = os.path.splitext(output)[0]
     for ext in ['.dbf', '.prj', '.shp', '.shx']:
         shutil.copyfile(inputNoExt + ext, outputNoExt + ext)
 
 
-def remove_shapefile(inputNoExt):
+def remove_shapefile(input):
+    inputNoExt = os.path.splitext(input)[0]
     for ext in ['.dbf', '.prj', '.shp', '.shx']:
         os.remove(inputNoExt + ext)
 
@@ -46,88 +83,101 @@ def computeMatchingPoints(check_point_list, edge_img, dx, dy):
     return total_value
 
 
-def readAndClipVectorFile(inputVectorFileName, outputMaskFileName,
-                          inputImageCorners, inputImageSrs, debug=False):
-    inputVector = gdal_utils.ogr_open(inputVectorFileName)
-    layerCount = inputVector.GetLayerCount()
-    for i in range(layerCount):
-        inputLayer = inputVector.GetLayerByIndex(i)
-        inputLayerName = inputLayer.GetName()
-        type = inputLayer.GetGeomType()
-        if (type == ogr.wkbMultiPolygon or type == ogr.wkbPolygon):
-            break
-    if i == layerCount:
-        raise RuntimeError("No polygon or multipolygon layer found")
-    inputVectorSrs = inputLayer.GetSpatialRef()
-    imageVectorDifferentSrs = False if inputVectorSrs.IsSame(inputImageSrs) else True
+def spat_vectors(inputVectorFileNames, inputImageCorners, inputImageSrs,
+                outputMaskFileName, debug=False):
+    """
+    Returns building features and optionally road features.
+    """
+    global VECTOR_TYPES
+    geometryTypes = [ogr.wkbPolygon, ogr.wkbLineString]
+    resultList = []
+    for typeIndex in range(len(inputVectorFileNames)):
+        inputVectorFileName = inputVectorFileNames[typeIndex]
+        inputVector = gdal_utils.ogr_open(inputVectorFileName)
+        layerCount = inputVector.GetLayerCount()
+        for i in range(layerCount):
+            inputLayer = inputVector.GetLayerByIndex(i)
+            inputLayerName = inputLayer.GetName()
+            type = inputLayer.GetGeomType()
+            if (type == geometryTypes[i]):
+                break
+        if i == layerCount:
+            raise RuntimeError("No polygon or multipolygon layer found")
+        inputVectorSrs = inputLayer.GetSpatialRef()
+        imageVectorDifferentSrs = False if inputVectorSrs.IsSame(inputImageSrs) else True
 
-    layerDefinition = inputLayer.GetLayerDefn()
-    hasBuildingField = False
-    for i in range(layerDefinition.GetFieldCount()):
-        if layerDefinition.GetFieldDefn(i).GetName() == "building":
-            hasBuildingField = True
-            break
+        layerDefinition = inputLayer.GetLayerDefn()
+        hasBuildingField = False
+        for i in range(layerDefinition.GetFieldCount()):
+            if layerDefinition.GetFieldDefn(i).GetName() == "building":
+                hasBuildingField = True
+                break
 
-    # clip the shape file first
-    outputNoExt = os.path.splitext(outputMaskFileName)[0]
-    if imageVectorDifferentSrs:
-        destinationVectorFile = outputNoExt + "_original.shp"
-    else:
-        destinationVectorFile = outputNoExt + "_spat_not_aligned.shp"
-    ogr2ogr_args = ["ogr2ogr", "-spat",
-                    str(inputImageCorners[0]), str(inputImageCorners[2]),
-                    str(inputImageCorners[1]), str(inputImageCorners[3])]
-    if imageVectorDifferentSrs:
-        ogr2ogr_args.extend(["-spat_srs", str(inputImageSrs)])
-    if hasBuildingField:
-        ogr2ogr_args.extend(["-where", "building is not null"])
-    ogr2ogr_args.extend([destinationVectorFile, inputVectorFileName])
-    if inputLayerName:
-        ogr2ogr_args.append(inputLayerName)
-    print("Spatial query (clip): {} -> {}".format(
-        os.path.basename(inputVectorFileName), os.path.basename(destinationVectorFile)))
-    response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if debug:
-        print(*ogr2ogr_args)
-        print("{}\n{}".format(response.stdout, response.stderr))
-    if imageVectorDifferentSrs:
-        # convert to the same SRS as the image file
-        inputVectorFileName = outputNoExt + "_original.shp"
-        destinationVectorFile = outputNoExt + "_spat_not_aligned.shp"
-        ogr2ogr_args = ["ogr2ogr", "-t_srs", str(inputImageSrs),
-                        destinationVectorFile, inputVectorFileName]
-        print("Convert SRS: {} -> {}".format(
-            os.path.basename(inputVectorFileName), os.path.basename(destinationVectorFile)))
+        # clip the shape file first
+        outputNoExt = os.path.splitext(outputMaskFileName)[0]
+        if imageVectorDifferentSrs:
+            outputVectorFile = outputNoExt + "_" + VECTOR_TYPES[typeIndex] + "_original.shp"
+        else:
+            outputVectorFile = outputNoExt + "_" + VECTOR_TYPES[typeIndex] + "_spat_not_aligned.shp"
+        ogr2ogr_args = ["ogr2ogr", "-spat",
+                        str(inputImageCorners[0]), str(inputImageCorners[2]),
+                        str(inputImageCorners[1]), str(inputImageCorners[3])]
+        if imageVectorDifferentSrs:
+            ogr2ogr_args.extend(["-spat_srs", str(inputImageSrs)])
+        if hasBuildingField:
+            ogr2ogr_args.extend(["-where", "building is not null"])
+        ogr2ogr_args.extend([outputVectorFile, inputVectorFileName])
+        if inputLayerName:
+            ogr2ogr_args.append(inputLayerName)
+        print("Spatial query (clip): {} -> {}".format(
+            os.path.basename(inputVectorFileName), os.path.basename(outputVectorFile)))
         response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if debug:
             print(*ogr2ogr_args)
             print("{}\n{}".format(response.stdout, response.stderr))
-        else:
-            remove_shapefile(os.path.splitext(inputVectorFileName)[0])
+        if imageVectorDifferentSrs:
+            # convert to the same SRS as the image file
+            inputVectorFileName = outputNoExt + "_" + VECTOR_TYPES[typeIndex] + "_original.shp"
+            outputVectorFile = outputNoExt + "_" + VECTOR_TYPES[typeIndex] + "_spat_not_aligned.shp"
+            ogr2ogr_args = ["ogr2ogr", "-t_srs", str(inputImageSrs),
+                            outputVectorFile, inputVectorFileName]
+            print("Convert SRS: {} -> {}".format(
+                os.path.basename(inputVectorFileName), os.path.basename(outputVectorFile)))
+            response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if debug:
+                print(*ogr2ogr_args)
+                print("{}\n{}".format(response.stdout, response.stderr))
+            else:
+                remove_shapefile(inputVectorFileName)
 
-    inputVectorFileName = destinationVectorFile
-    inputLayerName = os.path.splitext(os.path.basename(inputVectorFileName))[0]
+        inputVectorFileName = outputVectorFile
+        inputLayerName = os.path.splitext(os.path.basename(inputVectorFileName))[0]
 
-    inputVector = gdal_utils.ogr_open(inputVectorFileName)
-    inputLayer = inputVector.GetLayer(inputLayerName)
-    inputList = list(inputLayer)
-    if len(inputList) == 0:
-        return None
-    return inputList
+        inputVector = gdal_utils.ogr_open(inputVectorFileName)
+        inputLayer = inputVector.GetLayer(inputLayerName)
+        inputList = list(inputLayer)
+        if len(inputList) == 0:
+            resultList.append(None)
+        resultList.append(inputList)
+    return resultList
 
 
 def main(args):
+    global VECTOR_TYPES
     parser = argparse.ArgumentParser(
         description="Generate building mask aligned with image. To do that we shift input "
                     "vector to match edges generated from image.")
-    parser.add_argument('input_image', help='Orthorectified 8-bit image file')
-    parser.add_argument('input_vector',
-                        help='Vector file with OSM or US Cities data '
-                             'A polygon or multipolygon layer is chosen for buildings.')
     parser.add_argument('output_mask',
                         help="Output image mask (tif and shp) generated from the input_vector "
                              "and aligned with input_image. A _spat.shp file is also "
                              "generated where buildings are not clipped at image boundaries.")
+    parser.add_argument('input_image', help='Orthorectified 8-bit image file')
+    parser.add_argument('input_vectors', nargs='+',
+                        help='Buildings and optionally road vector files with OSM or US Cities data.'
+                             'A polygon layer is chosen for buildings and a '
+                             'line string is chosen for roads. '
+                             'If both building and road layers are in the same vector file just '
+                             'pass the file twice.')
     parser.add_argument('--render_cls', action="store_true",
                         help='Output a CLS image')
     parser.add_argument('--scale', type=float, default=0.2,
@@ -161,9 +211,9 @@ def main(args):
 
     print("Resize and edge detection: {}".format(os.path.basename(args.input_image)))
     color_image = cv2.imread(args.input_image)
-    small_color_image = np.zeros(
+    small_color_image = numpy.zeros(
         (int(color_image.shape[0]*scale),
-         int(color_image.shape[1]*scale), 3), dtype=np.uint8)
+         int(color_image.shape[1]*scale), 3), dtype=numpy.uint8)
     if scale != 1.0:
         small_color_image = cv2.resize(color_image, None, fx=scale, fy=scale)
         color_image = small_color_image
@@ -178,16 +228,17 @@ def main(args):
     model['scale'] = scale
 
     inputImageCorners = [left, right, bottom, top]
-    building_cluster = readAndClipVectorFile(args.input_vector, args.output_mask,
-                                             inputImageCorners, inputImageSrs)
-    if not building_cluster:
+    features = spat_vectors(
+        args.input_vectors, inputImageCorners, inputImageSrs,
+        args.output_mask)
+    if not features[0]:
         print("No buildings in the clipped vector file")
         return
 
-    print("Aligning {} buildings ...".format(len(building_cluster)))
-    tmp_img = np.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
-                       dtype=np.uint8)
-    for feature in building_cluster:
+    print("Aligning {} buildings ...".format(len(features[0])))
+    tmp_img = numpy.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
+                       dtype=numpy.uint8)
+    for feature in features[0]:
         multipoly = feature.GetGeometryRef()
         if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
             poly = multipoly.GetGeometryRef(0)
@@ -199,7 +250,7 @@ def main(args):
             for i in range(0, ring.GetPointCount()):
                 pt = ring.GetPoint(i)
                 rp.append(ProjectPoint(model, pt))
-            ring_points = np.array(rp)
+            ring_points = numpy.array(rp)
             ring_points = ring_points.reshape((-1, 1, 2))
 
             # edge mask of the building cluster
@@ -288,85 +339,80 @@ def main(args):
         print("Using offset: {}".format(offsetGeo))
         offsetGeo = args.offset
 
-    outputNoExt = os.path.splitext(args.output_mask)[0]
-    destinationVectorFile = outputNoExt + "_spat.shp"
-    if not (offsetGeo[0] == 0.0 and offsetGeo[1] == 0.0):
-        outDriver = ogr.GetDriverByName("ESRI Shapefile")
-        print("Shifting vector -> {}".format(os.path.basename(destinationVectorFile)))
-        outVector = outDriver.CreateDataSource(destinationVectorFile)
-        outSrs = osr.SpatialReference(projection)
-        # create layer
-        outLayer = outVector.CreateLayer(os.path.basename(outputNoExt),
-                                         srs=outSrs, geom_type=ogr.wkbPolygon)
-        outFeatureDef = outLayer.GetLayerDefn()
-        # create rings from input rings by shifting points
-        for feature in building_cluster:
-            # create the poly
-            outPoly = ogr.Geometry(ogr.wkbPolygon)
-            multipoly = feature.GetGeometryRef()
-            if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
-                poly = multipoly.GetGeometryRef(0)
+    for i in range(len(features)):
+        outputNoExt = os.path.splitext(args.output_mask)[0]
+        outputVectorFile = outputNoExt + "_" + VECTOR_TYPES[i] + "_spat.shp"
+        if not (offsetGeo[0] == 0.0 and offsetGeo[1] == 0.0):
+            shift_vector(features[i], outputVectorFile, outputNoExt, projection, offsetGeo)
+        else:
+            inputVectorFileName = outputNoExt + "_" + VECTOR_TYPES[i] + "_spat_not_aligned.shp"
+            print("Copy vector -> {}".format(os.path.basename(outputVectorFile)))
+            copy_shapefile(inputVectorFileName, outputVectorFile)
+        if not args.debug:
+            remove_shapefile(outputNoExt + "_" + VECTOR_TYPES[i] + "_spat_not_aligned.shp")
+
+        ogr2ogr_args = ["ogr2ogr", "-clipsrc",
+                        str(inputImageCorners[0]), str(inputImageCorners[2]),
+                        str(inputImageCorners[1]), str(inputImageCorners[3])]
+        outputNoExt = os.path.splitext(args.output_mask)[0]
+        ogr2ogr_args.extend([outputNoExt + "_" + VECTOR_TYPES[i] + ".shp",
+                            outputNoExt + "_" + VECTOR_TYPES[i] + "_spat.shp"])
+        print("Clipping vector file {} -> {}".format(
+            os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + "_spat.shp"),
+            os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".shp")))
+        response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if args.debug:
+            print(*ogr2ogr_args)
+            print("{}\n{}".format(response.stdout, response.stderr))
+        remove_shapefile(outputNoExt + "_" + VECTOR_TYPES[i] + "_spat.shp")
+
+        if i == 0:
+            print("Rasterizing buildings ...")
+            if args.render_cls:
+                rasterize_args = ["gdal_rasterize", "-ot", "Byte", "-init", "2",
+                                  "-burn", "6",
+                                  "-ts", str(inputImage.RasterXSize),
+                                  str(inputImage.RasterYSize),
+                                  "-te", str(inputImageCorners[0]), str(inputImageCorners[2]),
+                                  str(inputImageCorners[1]), str(inputImageCorners[3])]
             else:
-                poly = multipoly
-            for ring_idx in range(poly.GetGeometryCount()):
-                ring = poly.GetGeometryRef(ring_idx)
-                # create the ring
-                outRing = ogr.Geometry(ogr.wkbLinearRing)
-                for i in range(0, ring.GetPointCount()):
-                    pt = ring.GetPoint(i)
-                    outRing.AddPoint(pt[0] + offsetGeo[0], pt[1] + offsetGeo[1])
-                outPoly.AddGeometry(outRing)
-            # create feature
-            outFeature = ogr.Feature(outFeatureDef)
-            outFeature.SetGeometry(outPoly)
-            outLayer.CreateFeature(outFeature)
-        outLayer = None
-        outVector = None
-    else:
-        inputVectorFileName = os.path.splitext(outputNoExt + "_spat_not_aligned.shp")[0]
-        destinationVectorFile = os.path.splitext(destinationVectorFile)[0]
-        print("Copy vector -> {}".format(os.path.basename(destinationVectorFile)))
-        copy_shapefile(inputVectorFileName, destinationVectorFile)
+                rasterize_args = ["gdal_rasterize", "-ot", "Byte",
+                                  "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
+                                  "-ts", str(inputImage.RasterXSize),
+                                  str(inputImage.RasterYSize),
+                                  "-te", str(inputImageCorners[0]), str(inputImageCorners[2]),
+                                  str(inputImageCorners[1]), str(inputImageCorners[3])]
 
-    if not args.debug:
-        remove_shapefile(os.path.splitext(outputNoExt + "_spat_not_aligned.shp")[0])
+            outputNoExt = os.path.splitext(args.output_mask)[0]
+            rasterize_args.extend([outputNoExt + "_" + VECTOR_TYPES[i] + ".shp",
+                                  outputNoExt + "_" + VECTOR_TYPES[i] + ".tif"])
+            print("Rasterizing {} -> {}".format(
+                os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".shp"),
+                os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".tif")))
+            response = subprocess.run(rasterize_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if args.debug:
+                print(*rasterize_args)
+                print("{}\n{}".format(response.stdout, response.stderr))
+        else:
+            if args.render_cls:
+                print("Rasterizing bridges ...")
+                outputNoExt = os.path.splitext(args.output_mask)[0]
+                input = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".shp")
+                output = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + "_thin.tif")
+                road_bridges = rasterize.rasterize_file_dilated_line(
+                    input, inputImage, output,
+                    numpy.ones((3, 3)), dilation_iterations=20,
+                    query=rasterize.ELEVATED_ROADS_QUERY,
+                )
+                os.remove(output)
+                clsBuildings = gdal_utils.gdal_open(
+                    os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"), gdal.GA_ReadOnly)
+                cls = clsBuildings.GetRasterBand(1).ReadAsArray()
+                cls[road_bridges] = 17
+                gdal_utils.gdal_save(cls, inputImage,
+                                     os.path.basename(outputNoExt + ".tif"),
+                                     gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
 
-    ogr2ogr_args = ["ogr2ogr", "-clipsrc",
-                    str(inputImageCorners[0]), str(inputImageCorners[2]),
-                    str(inputImageCorners[1]), str(inputImageCorners[3])]
-    outputNoExt = os.path.splitext(args.output_mask)[0]
-    ogr2ogr_args.extend([outputNoExt + ".shp", outputNoExt + "_spat.shp"])
-    print("Clipping vector file {} -> {}".format(
-        os.path.basename(outputNoExt + "_spat.shp"),
-        os.path.basename(outputNoExt + ".shp")))
-    response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if args.debug:
-        print(*ogr2ogr_args)
-        print("{}\n{}".format(response.stdout, response.stderr))
-
-    if args.render_cls:
-        rasterize_args = ["gdal_rasterize", "-ot", "Byte", "-init", "2",
-                          "-burn", "6",
-                          "-ts", str(inputImage.RasterXSize),
-                          str(inputImage.RasterYSize),
-                          "-te", str(inputImageCorners[0]), str(inputImageCorners[2]),
-                          str(inputImageCorners[1]), str(inputImageCorners[3])]
-    else:
-        rasterize_args = ["gdal_rasterize", "-ot", "Byte",
-                          "-burn", "255", "-burn", "0", "-burn", "0", "-burn", "255",
-                          "-ts", str(inputImage.RasterXSize),
-                          str(inputImage.RasterYSize),
-                          "-te", str(inputImageCorners[0]), str(inputImageCorners[2]),
-                          str(inputImageCorners[1]), str(inputImageCorners[3])]
-
-    outputNoExt = os.path.splitext(args.output_mask)[0]
-    rasterize_args.extend([outputNoExt + ".shp", outputNoExt + ".tif"])
-    print("Rasterizing {} -> {}".format(os.path.basename(outputNoExt + ".shp"),
-                                        os.path.basename(outputNoExt + ".tif")))
-    response = subprocess.run(rasterize_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if args.debug:
-        print(*rasterize_args)
-        print("{}\n{}".format(response.stdout, response.stderr))
 
 
 if __name__ == '__main__':
