@@ -26,13 +26,13 @@ def create_working_dir():
     return working_dir
 
 
-def generate_config_file(working_dir, ref_prefix, test_dsm, test_cls, test_mtl):
+def generate_config_file(working_dir, ref_prefix, test_dsm, test_cls, test_mtl, test_dtm):
     """
     Generate metrics config file from a template.
     """
     # Populate config file template
     contents = config.get_template()
-    contents = config.populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl)
+    contents = config.populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl, test_dtm)
 
     # Write config file
     # TODO: When more files than the DSM and CLS are scored, a shorter name convention
@@ -72,6 +72,11 @@ def main(args):
         type=str,
         required=False,
         help='Test Material (MTL) file')
+    parser.add_argument(
+        '--dtm',
+        type=str,
+        required=False,
+        help='Test Digital Terrain Model (DTM) file')
 
     # Parse arguments
     args = parser.parse_args(args)
@@ -94,10 +99,15 @@ def main(args):
         shutil.copyfile(args.mtl, test_mtl)
     else:
         test_mtl = ''
+    if args.dtm is not None:
+        test_dtm = os.path.join(working_dir, os.path.basename(args.dtm))
+        shutil.copyfile(args.dtm, test_dtm)
+    else:
+        test_dtm = ''
 
     # Generate metrics config file
     config_filename = generate_config_file(working_dir, args.ref_prefix,
-                                           test_dsm, test_cls, test_mtl)
+                                           test_dsm, test_cls, test_mtl, test_dtm)
 
     # Convert test images to use reference coordinate system.
     # This is necessary because align3d can fail ungracefully when the coordinate systems
@@ -107,6 +117,8 @@ def main(args):
     convert_coordinate_system(test_cls, ref_proj4)
     if test_mtl:
         convert_coordinate_system(test_mtl, ref_proj4)
+    if test_dtm:
+        convert_coordinate_system(test_dtm, ref_proj4)
 
     # Ensure test DSM uses Float32 data type.
     # This is necessary because align3d doesn't read the Float64 data type.
