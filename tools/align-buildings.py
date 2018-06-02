@@ -175,11 +175,14 @@ def main(args):
     parser.add_argument('input_vectors', nargs='+',
                         help='Buildings and optionally road vector files with OSM or US Cities data.'
                              'A polygon layer is chosen for buildings and a '
-                             'line string is chosen for roads. '
+                             'line string layer is chosen for roads. '
                              'If both building and road layers are in the same vector file just '
-                             'pass the file twice.')
+                             'pass the file twice. Only elevated bridges are rendered. If all '
+                             'roads need to be rendered pass --render_roads')
     parser.add_argument('--render_cls', action="store_true",
                         help='Output a CLS image')
+    parser.add_argument('--render_roads', action="store_true",
+                        help='Render all roads, not only elevated bridges')
     parser.add_argument('--scale', type=float, default=0.2,
                         help='Scale factor. '
                              'We cannot deal with the images with original resolution')
@@ -398,18 +401,28 @@ def main(args):
                 print("Rasterizing bridges ...")
                 outputNoExt = os.path.splitext(args.output_mask)[0]
                 input = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".shp")
-                output = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + "_thin.tif")
-                road_bridges = rasterize.rasterize_file_dilated_line(
+                output = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + "_bridges.tif")
+                bridges = rasterize.rasterize_file_dilated_line(
                     input, inputImage, output,
                     numpy.ones((3, 3)), dilation_iterations=20,
                     query=rasterize.ELEVATED_ROADS_QUERY,
                 )
-                os.remove(output)
+                if not args.debug:
+                    os.remove(output)
+                if args.render_roads:
+                    output = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + "_roads.tif")
+                    roads = rasterize.rasterize_file_dilated_line(
+                        input, inputImage, output,
+                        numpy.ones((3, 3)), dilation_iterations=20)
+                    if not args.debug:
+                        os.remove(output)
                 buildingsData = gdal_utils.gdal_open(
                     os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"), gdal.GA_ReadOnly)
                 if args.render_cls:
                     cls = buildingsData.GetRasterBand(1).ReadAsArray()
-                    cls[road_bridges] = 17
+                    if args.render_roads:
+                        cls[roads] = 11
+                    cls[bridges] = 17
                     gdal_utils.gdal_save(cls, inputImage,
                                         os.path.basename(outputNoExt + ".tif"),
                                         gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
@@ -417,13 +430,21 @@ def main(args):
                     red = buildingsData.GetRasterBand(1).ReadAsArray()
                     green = buildingsData.GetRasterBand(2).ReadAsArray()
                     blue = buildingsData.GetRasterBand(3).ReadAsArray()
-                    blue[road_bridges] = 255
                     opacity = buildingsData.GetRasterBand(4).ReadAsArray()
-                    opacity[road_bridges] = 255
+                    if args.render_roads:
+                        red[roads] = 0
+                        green[roads] = 255
+                        blue[roads] = 0
+                        opacity[roads] = 255
+                    red[bridges] = 0
+                    green[bridges] = 0
+                    blue[bridges] = 255
+                    opacity[bridges] = 255
                     gdal_utils.gdal_save([red, green, blue, opacity], inputImage,
                                          os.path.basename(outputNoExt + ".tif"),
                                          gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
-                os.remove(os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"))
+                if not args.debug:
+                    os.remove(os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"))
 
 
 
