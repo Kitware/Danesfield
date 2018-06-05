@@ -12,10 +12,9 @@ channels:
 
 dependencies:
 - pubgeo-core3d-metrics
-- pdal
 - gdal
+- pdal
 - texture-atlas
-- opencv
 - gaia
 - pyproj
 - scipy
@@ -24,3 +23,4 @@ dependencies:
 - geojson
 - flake8
 - pytest
+- opencv
