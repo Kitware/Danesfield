@@ -50,16 +50,6 @@ def gdal_open(filename, access=gdal.GA_ReadOnly):
         raise OSError("Unable to open {!r}".format(filename))
     return rv
 
-def ogr_open(filename, update=0):
-    """
-    Like ogr.Open, but raises an OSError instead
-    of returning None
-    """
-    rv = ogr.Open(filename, update)
-    if rv is None:
-        raise OSError("Unable to open {!r}".format(filename))
-    return rv
-
 
 def gdal_save(arr, src_file, filename, eType, options=[]):
     """
@@ -83,3 +73,29 @@ def gdal_save(arr, src_file, filename, eType, options=[]):
     for i,a in enumerate(arr):
         arr_file.GetRasterBand(i + 1).WriteArray(a)
     return arr_file
+
+
+def ogr_open(filename, update=0):
+    """
+    Like ogr.Open, but raises an OSError instead
+    of returning None
+    """
+    rv = ogr.Open(filename, update)
+    if rv is None:
+        raise OSError("Unable to open {!r}".format(filename))
+    return rv
+
+def ogr_get_layer(vectorFile, geometryType):
+    """
+    Returns the layer with geometry type matching 'layerGeometryType'
+    from 'vectorFile'
+    """
+    layerCount = vectorFile.GetLayerCount()
+    for i in range(layerCount):
+        layer = vectorFile.GetLayerByIndex(i)
+        type = layer.GetGeomType()
+        if (type == geometryType):
+            break
+    if i == layerCount:
+        raise RuntimeError("No layer with type {} found".format(geometryType))
+    return layer

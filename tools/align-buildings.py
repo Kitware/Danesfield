@@ -28,11 +28,7 @@ def shift_vector(inputFeatures, outputVectorFile, outputLayerName, outProjection
     for feature in inputFeatures:
         # create the poly
         outPoly = ogr.Geometry(ogr.wkbPolygon)
-        multipoly = feature.GetGeometryRef()
-        if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
-            poly = multipoly.GetGeometryRef(0)
-        else:
-            poly = multipoly
+        poly = feature.GetGeometryRef()
         for ring_idx in range(poly.GetGeometryCount()):
             ring = poly.GetGeometryRef(ring_idx)
             # create the ring
@@ -94,15 +90,7 @@ def spat_vectors(inputVectorFileNames, inputImageCorners, inputImageSrs,
     for typeIndex in range(len(inputVectorFileNames)):
         inputVectorFileName = inputVectorFileNames[typeIndex]
         inputVector = gdal_utils.ogr_open(inputVectorFileName)
-        layerCount = inputVector.GetLayerCount()
-        for i in range(layerCount):
-            inputLayer = inputVector.GetLayerByIndex(i)
-            inputLayerName = inputLayer.GetName()
-            type = inputLayer.GetGeomType()
-            if (type == geometryTypes[i]):
-                break
-        if i == layerCount:
-            raise RuntimeError("No polygon or multipolygon layer found")
+        inputLayer = gdal_utils.ogr_get_layer(inputVector, geometryTypes[typeIndex])
         inputVectorSrs = inputLayer.GetSpatialRef()
         imageVectorDifferentSrs = False if inputVectorSrs.IsSame(inputImageSrs) else True
 
@@ -127,8 +115,7 @@ def spat_vectors(inputVectorFileNames, inputImageCorners, inputImageSrs,
         if hasBuildingField:
             ogr2ogr_args.extend(["-where", "building is not null"])
         ogr2ogr_args.extend([outputVectorFile, inputVectorFileName])
-        if inputLayerName:
-            ogr2ogr_args.append(inputLayerName)
+        ogr2ogr_args.append(inputLayer.GetName())
         print("Spatial query (clip): {} -> {}".format(
             os.path.basename(inputVectorFileName), os.path.basename(outputVectorFile)))
         response = subprocess.run(ogr2ogr_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -242,11 +229,7 @@ def main(args):
     tmp_img = numpy.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
                        dtype=numpy.uint8)
     for feature in features[0]:
-        multipoly = feature.GetGeometryRef()
-        if multipoly.GetGeometryType() == ogr.wkbMultiPolygon:
-            poly = multipoly.GetGeometryRef(0)
-        else:
-            poly = multipoly
+        poly = feature.GetGeometryRef()
         for ring_idx in range(poly.GetGeometryCount()):
             ring = poly.GetGeometryRef(ring_idx)
             rp = []
