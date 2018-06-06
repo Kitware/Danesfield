@@ -19,8 +19,10 @@ dependencies:
 - pyproj
 - scipy
 - vtk
+- opencv
+- jsoncpp=1.8.3
 - jsonschema
 - geojson
 - flake8
 - pytest
-- opencv
+
