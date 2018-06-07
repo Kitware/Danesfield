@@ -5,6 +5,7 @@ import pyproj
 import ogr
 import osr
 
+
 def gdal_bounding_box(raster, outProj=None):
     """
     Computes the bounding box for an open GDAL raster file.
@@ -71,7 +72,7 @@ def gdal_save(arr, src_file, filename, eType, options=[]):
         bands=numberOfBands, eType=eType, options=options,
     )
     gdalnumeric.CopyDatasetInfo(src_file, arr_file)
-    for i,a in enumerate(arr):
+    for i, a in enumerate(arr):
         arr_file.GetRasterBand(i + 1).WriteArray(a)
     return arr_file
 
@@ -85,6 +86,7 @@ def ogr_open(filename, update=0):
     if rv is None:
         raise OSError("Unable to open {!r}".format(filename))
     return rv
+
 
 def ogr_get_layer(vectorFile, geometryType):
     """
