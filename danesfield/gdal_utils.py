@@ -5,11 +5,12 @@ import pyproj
 import ogr
 import osr
 
-def bounding_box(raster):
+def gdal_bounding_box(raster, outProj=None):
     """
     Computes the bounding box for an open GDAL raster file.
 
-    The format is [minX, minY, maxX, maxY] in lat/lon coordinates.
+    The format is [minX, minY, maxX, maxY] in outProj coordinates.
+    For instance outProj for lat/lon is pyproj.Proj('+proj=longlat +datum=WGS84')
     Returns None in case of an error.
     """
     projection = raster.GetProjection()
@@ -27,11 +28,11 @@ def bounding_box(raster):
     arrayX = transform[0] + pixels * transform[1] + lines * transform[2]
     arrayY = transform[3] + pixels * transform[4] + lines * transform[5]
 
-    srs = osr.SpatialReference(wkt=projection)
-    proj_srs = srs.ExportToProj4()
-    inProj = pyproj.Proj(proj_srs)
-    outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
-    arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
+    if outProj:
+        srs = osr.SpatialReference(wkt=projection)
+        proj_srs = srs.ExportToProj4()
+        inProj = pyproj.Proj(proj_srs)
+        arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
 
     minX = numpy.amin(arrayX)
     minY = numpy.amin(arrayY)

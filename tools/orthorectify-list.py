@@ -9,6 +9,7 @@ import glob
 import logging
 import numpy
 import os.path
+import pyproj
 import re
 
 
@@ -83,7 +84,8 @@ def main(args):
         metaData = sourceImage.GetMetadata()
         angles[i] = metaData['NITF_CSEXRA_OBLIQUITY_ANGLE']
         cloudCover[i] = metaData['NITF_PIAIMC_CLOUDCVR']
-        bounds[i] = gdal_utils.bounding_box(sourceImage)
+        outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
+        bounds[i] = gdal_utils.gdal_bounding_box(sourceImage, outProj)
 
     # list of dsms
     dsmList = glob.glob(args.dsm_folder + "/dsm_*.tif")
@@ -113,7 +115,8 @@ def main(args):
         print("Processing {}".format(dsmBasename))
         index = reIndex.findall(dsm)
         dsmImage = gdal.Open(dsm, gdal.GA_ReadOnly)
-        dsmBounds = gdal_utils.bounding_box(dsmImage)
+        outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
+        dsmBounds = gdal_utils.gdal_bounding_box(dsmImage, outProj)
         dsmArea = (dsmBounds[2] - dsmBounds[0]) * (dsmBounds[3] - dsmBounds[1])
         areas = numpy.zeros(len(images))
         for i, source_image in enumerate(images):
