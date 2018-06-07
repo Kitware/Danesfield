@@ -8,8 +8,8 @@ import os
 import osr
 import pyproj
 
+
 def main(args):
-    global VECTOR_TYPES
     parser = argparse.ArgumentParser(
         description='Convert polygons into WAMI-Viewer kw18 format. A polygon is '
                     'a list of points pixel value coordinates. ')
@@ -30,7 +30,7 @@ def main(args):
     # get imageProj
     projection = inputImage.GetProjection()
     if not projection:
-        projection = raster.GetGCPProjection()
+        projection = inputImage.GetGCPProjection()
     imageSrs = osr.SpatialReference(wkt=projection)
     imageProj = pyproj.Proj(imageSrs.ExportToProj4())
 
@@ -72,7 +72,7 @@ def main(args):
                 polygonId += 1
     gen_kw18.gen_kw18(polygons, None, args.output_base)
     if args.debug:
-        import vtk        
+        import vtk
         numberOfPixels = inputImage.RasterXSize * inputImage.RasterYSize
         scalars = vtk.vtkUnsignedCharArray()
         scalars.SetNumberOfComponents(4)
@@ -91,8 +91,8 @@ def main(args):
                 for x in range(-3, 4, 1):
                     for y in range(-3, 4, 1):
                         p = [point[0] + x, point[1] + y]
-                        if (p[0] >= 0 and p[0] < inputImage.RasterXSize and
-                            p[1] >= 0 and p[1] < inputImage.RasterYSize):
+                        if p[0] >= 0 and p[0] < inputImage.RasterXSize and \
+                           p[1] >= 0 and p[1] < inputImage.RasterYSize:
                             # black opaque 7x7 blocks
                             image.SetScalarComponentFromFloat(p[0], p[1], 0, 0, 0)
                             image.SetScalarComponentFromFloat(p[0], p[1], 0, 1, 0)
@@ -103,7 +103,6 @@ def main(args):
         writer.SetFileName(outputNoExt + '.png')
         writer.SetInputDataObject(image)
         writer.Write()
-
 
 
 if __name__ == '__main__':
