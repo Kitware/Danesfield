@@ -95,6 +95,7 @@ def main(args):
         image.GetPointData().SetScalars(scalars)
         for i, polygon in polygons.items():
             for point in polygon:
+                point = [point[0], inputImage.RasterYSize - point[1] - 1]
                 for x in range(-3, 4, 1):
                     for y in range(-3, 4, 1):
                         p = [point[0] + x, point[1] + y]
@@ -105,9 +106,8 @@ def main(args):
                             image.SetScalarComponentFromFloat(p[0], p[1], 0, 1, 0)
                             image.SetScalarComponentFromFloat(p[0], p[1], 0, 2, 0)
                             image.SetScalarComponentFromFloat(p[0], p[1], 0, 3, 255)
-        outputNoExt = os.path.splitext(args.output)[0]
         writer = vtk.vtkPNGWriter()
-        writer.SetFileName(outputNoExt + '.png')
+        writer.SetFileName(args.output_noext + '.png')
         writer.SetInputDataObject(image)
         writer.Write()
 
