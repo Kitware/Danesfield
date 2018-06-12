@@ -5,11 +5,13 @@ import pyproj
 import ogr
 import osr
 
-def bounding_box(raster):
+
+def gdal_bounding_box(raster, outProj=None):
     """
     Computes the bounding box for an open GDAL raster file.
 
-    The format is [minX, minY, maxX, maxY] in lat/lon coordinates.
+    The format is [minX, minY, maxX, maxY] in outProj coordinates.
+    For instance outProj for lat/lon is pyproj.Proj('+proj=longlat +datum=WGS84')
     Returns None in case of an error.
     """
     projection = raster.GetProjection()
@@ -27,11 +29,11 @@ def bounding_box(raster):
     arrayX = transform[0] + pixels * transform[1] + lines * transform[2]
     arrayY = transform[3] + pixels * transform[4] + lines * transform[5]
 
-    srs = osr.SpatialReference(wkt=projection)
-    proj_srs = srs.ExportToProj4()
-    inProj = pyproj.Proj(proj_srs)
-    outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
-    arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
+    if outProj:
+        srs = osr.SpatialReference(wkt=projection)
+        proj_srs = srs.ExportToProj4()
+        inProj = pyproj.Proj(proj_srs)
+        arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
 
     minX = numpy.amin(arrayX)
     minY = numpy.amin(arrayY)
@@ -46,16 +48,6 @@ def gdal_open(filename, access=gdal.GA_ReadOnly):
     of returning None
     """
     rv = gdal.Open(filename, access)
-    if rv is None:
-        raise OSError("Unable to open {!r}".format(filename))
-    return rv
-
-def ogr_open(filename, update=0):
-    """
-    Like ogr.Open, but raises an OSError instead
-    of returning None
-    """
-    rv = ogr.Open(filename, update)
     if rv is None:
         raise OSError("Unable to open {!r}".format(filename))
     return rv
@@ -80,6 +72,33 @@ def gdal_save(arr, src_file, filename, eType, options=[]):
         bands=numberOfBands, eType=eType, options=options,
     )
     gdalnumeric.CopyDatasetInfo(src_file, arr_file)
-    for i,a in enumerate(arr):
+    for i, a in enumerate(arr):
         arr_file.GetRasterBand(i + 1).WriteArray(a)
     return arr_file
+
+
+def ogr_open(filename, update=0):
+    """
+    Like ogr.Open, but raises an OSError instead
+    of returning None
+    """
+    rv = ogr.Open(filename, update)
+    if rv is None:
+        raise OSError("Unable to open {!r}".format(filename))
+    return rv
+
+
+def ogr_get_layer(vectorFile, geometryType):
+    """
+    Returns the layer with geometry type matching 'layerGeometryType'
+    from 'vectorFile'
+    """
+    layerCount = vectorFile.GetLayerCount()
+    for i in range(layerCount):
+        layer = vectorFile.GetLayerByIndex(i)
+        type = layer.GetGeomType()
+        if (type == geometryType):
+            break
+    if i == layerCount:
+        raise RuntimeError("No layer with type {} found".format(geometryType))
+    return layer
