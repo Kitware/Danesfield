@@ -32,7 +32,8 @@ def generate_config_file(working_dir, ref_prefix, test_dsm, test_cls, test_mtl, 
     """
     # Populate config file template
     contents = config.get_template()
-    contents = config.populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl, test_dtm)
+    contents = config.populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl,
+                                        test_dtm)
 
     # Write config file
     # TODO: When more files than the DSM and CLS are scored, a shorter name convention
