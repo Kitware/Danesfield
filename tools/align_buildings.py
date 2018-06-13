@@ -15,6 +15,7 @@ from danesfield import rasterize
 
 VECTOR_TYPES = ["buildings", "roads"]
 
+
 def shift_vector(inputFeatures, outputVectorFile, outputLayerName, outProjection, offsetGeo):
     outDriver = ogr.GetDriverByName("ESRI Shapefile")
     print("Shifting vector -> {}".format(os.path.basename(outputVectorFile)))
@@ -80,7 +81,7 @@ def computeMatchingPoints(check_point_list, edge_img, dx, dy):
 
 
 def spat_vectors(inputVectorFileNames, inputImageCorners, inputImageSrs,
-                outputMaskFileName, debug=False):
+                 outputMaskFileName, debug=False):
     """
     Returns building features and optionally road features.
     """
@@ -155,17 +156,18 @@ def main(args):
         description="Generate building mask aligned with image. To do that we shift input "
                     "vector to match edges generated from image.")
     parser.add_argument('output_mask',
-                        help="Output image mask (tif and shp) generated from the input_vector "
-                             "and aligned with input_image. A _spat.shp file is also "
-                             "generated where buildings are not clipped at image boundaries.")
+                        help="Output image mask base name. <output_mask>_buildings.shp, "
+                             "<output_mask>_buildings.tif are generated. Optionally "
+                             "<output_mask>_roads.tif and <output_mask>_roads.shp are "
+                             "also generated. See --input_vectors parameter.")
     parser.add_argument('input_image', help='Orthorectified 8-bit image file')
     parser.add_argument('input_vectors', nargs='+',
-                        help='Buildings and optionally road vector files with OSM or US Cities data.'
-                             'A polygon layer is chosen for buildings and a '
+                        help='Buildings and optionally road vector files with OSM or '
+                             'US Cities data. A polygon layer is chosen for buildings and a '
                              'line string layer is chosen for roads. '
                              'If both building and road layers are in the same vector file just '
-                             'pass the file twice. Only elevated bridges are rendered. If all '
-                             'roads need to be rendered pass --render_roads')
+                             'pass the file twice. Only elevated bridges are rendered '
+                             'by default. If all roads need to be rendered pass --render_roads')
     parser.add_argument('--render_cls', action="store_true",
                         help='Output a CLS image')
     parser.add_argument('--render_roads', action="store_true",
@@ -227,7 +229,7 @@ def main(args):
 
     print("Aligning {} buildings ...".format(len(features[0])))
     tmp_img = numpy.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
-                       dtype=numpy.uint8)
+                          dtype=numpy.uint8)
     for feature in features[0]:
         poly = feature.GetGeometryRef()
         for ring_idx in range(poly.GetGeometryCount()):
@@ -376,7 +378,8 @@ def main(args):
             print("Rasterizing {} -> {}".format(
                 os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".shp"),
                 os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + ".tif")))
-            response = subprocess.run(rasterize_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            response = subprocess.run(
+                rasterize_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if args.debug:
                 print(*rasterize_args)
                 print("{}\n{}".format(response.stdout, response.stderr))
@@ -400,15 +403,16 @@ def main(args):
                     if not args.debug:
                         os.remove(output)
                 buildingsData = gdal_utils.gdal_open(
-                    os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"), gdal.GA_ReadOnly)
+                    os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"),
+                    gdal.GA_ReadOnly)
                 if args.render_cls:
                     cls = buildingsData.GetRasterBand(1).ReadAsArray()
                     if args.render_roads:
                         cls[roads] = 11
                     cls[bridges] = 17
                     gdal_utils.gdal_save(cls, inputImage,
-                                        os.path.basename(outputNoExt + ".tif"),
-                                        gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
+                                         os.path.basename(outputNoExt + ".tif"),
+                                         gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
                 else:
                     red = buildingsData.GetRasterBand(1).ReadAsArray()
                     green = buildingsData.GetRasterBand(2).ReadAsArray()
@@ -428,7 +432,6 @@ def main(args):
                                          gdal.GDT_Byte, options=['COMPRESS=DEFLATE'])
                 if not args.debug:
                     os.remove(os.path.basename(outputNoExt + "_" + VECTOR_TYPES[0] + ".tif"))
-
 
 
 if __name__ == '__main__':
