@@ -155,16 +155,17 @@ def main(args):
         description="Generate building mask aligned with image. To do that we shift input "
                     "vector to match edges generated from image.")
     parser.add_argument('output_mask',
-                        help="Output image mask (tif and shp) generated from the input_vector "
-                             "and aligned with input_image. A _spat.shp file is also "
-                             "generated where buildings are not clipped at image boundaries.")
+                        help="Output image mask base name. <output_mask>_buildings.shp, "
+                             "<output_mask>_buildings.tif are generated. Optionally "
+                             "<output_mask>_roads.tif and <output_mask>_roads.shp are "
+                             "also generated. See --input_vectors parameter.")
     parser.add_argument('input_image', help='Orthorectified 8-bit image file')
     parser.add_argument('input_vectors', nargs='+',
                         help='Buildings and optionally road vector files with OSM or US Cities data.'
                              'A polygon layer is chosen for buildings and a '
                              'line string layer is chosen for roads. '
                              'If both building and road layers are in the same vector file just '
-                             'pass the file twice. Only elevated bridges are rendered. If all '
+                             'pass the file twice. Only elevated bridges are rendered by default. If all '
                              'roads need to be rendered pass --render_roads')
     parser.add_argument('--render_cls', action="store_true",
                         help='Output a CLS image')
