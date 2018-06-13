@@ -19,7 +19,7 @@ Material classification from Rutgers University.
 
 ### Tools
 
-- `material-classifier.py`
+- `material_classifier.py`
 
 ### Prerequisites
 
@@ -30,5 +30,5 @@ https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5ab3b3a18d7
 ### Usage
 
 ```bash
-python material-classifier.py <image_path> <imd_path> <output_path>
+python material_classifier.py <image_path> <imd_path> <output_path>
 ```
