@@ -1,7 +1,6 @@
 import math
 import tarfile
 import os
-import sys
 import numpy as np
 import gdal
 
@@ -24,9 +23,7 @@ def read_tar(file_path):
         if len(IMD_path) >= 1:
             IMD_path = IMD_path[0]
         else:
-            print("No IMD file found in tar file.")
-            print("Exiting ...")
-            sys.exit()
+            raise RuntimeError('No IMD file found in tar file.')
 
         # Read contents of tarfile
         imd_member = tar.getmember(IMD_path)
@@ -81,9 +78,8 @@ class Image_Calibration(object):
         elif imd_ext == '.tar':
             content = read_tar(imd_path)
         else:
-            print("IMD file extension {} is not supported.".format(imd_ext))
-            print("Exiting ...")
-            sys.exit()
+            raise RuntimeError(
+                'IMD file extension {} is not supported.'.format(imd_ext))
 
         # Get calibration parameters
         absCalFactor = []
@@ -108,8 +104,11 @@ class Image_Calibration(object):
 
         # Calculate sun-earth distance
         firstLineTime = firstLineTime[0]
-        year, month, day, UT = int(firstLineTime[:4]), int(firstLineTime[5:7]), int(firstLineTime[8:10]), int(
-            firstLineTime[11:13])+float(firstLineTime[14:16])/60+float(firstLineTime[17:26])/3600
+        year = int(firstLineTime[:4])
+        month = int(firstLineTime[5:7])
+        day = int(firstLineTime[8:10])
+        UT = int(firstLineTime[11:13]) + float(firstLineTime[14:16]) / 60 \
+            + float(firstLineTime[17:26])/3600
         if month <= 2:
             year -= 1
             month += 12
@@ -130,7 +129,7 @@ class Image_Calibration(object):
     def _get_zero_mask(self, img):
         # Zero mask equal to 1 where there are 0 values
         img_zero = img.any(axis=-1)
-        x, y = np.where(img_zero == False)
+        x, y = np.where(img_zero == False)  # noqa: E712
         mask = np.zeros((img.shape[0], img.shape[1]))
         mask[x, y] = 1
         return mask
@@ -156,8 +155,9 @@ class Image_Calibration(object):
         return corrected_img
 
     def _top_of_atmosphere_reflectance(self, img, metadata):
-        spectral_irradiance = [1757.89, 2004.61, 1830.18, 1712.07, 1535.33, 1348.08, 1055.94, 858.77, 479.02,
-                               263.797, 225.28, 197.55, 90.41, 85.06, 76.95, 68.10]
+        spectral_irradiance = [1757.89, 2004.61, 1830.18, 1712.07, 1535.33,
+                               1348.08, 1055.94, 858.77, 479.02, 263.797,
+                               225.28, 197.55, 90.41, 85.06, 76.95, 68.10]
 
         theta = metadata['theta']
         D = metadata['dES']
