@@ -170,7 +170,6 @@ def main(args):
         append.AddInputDataObject(polyVtkList[category])
     append.Update()
 
-
     # Create the RenderWindow, Renderer
     ren = vtk.vtkRenderer()
     renWin = vtk.vtkRenderWindow()
