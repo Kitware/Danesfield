@@ -87,4 +87,4 @@ def save_output(img, out_path, aux=False):
     else:
         Image.fromarray(img.astype('uint8')).save(out_path + '.png')
         Image.fromarray(ColorImage(img).astype(
-            'uint8')).save(out_path + '.png')
+            'uint8')).save(out_path + '_color.png')
