@@ -1,2 +1,5 @@
 [flake8]
+exclude =
+    # Examples that aren't part of this distribution
+    examples,
 max-line-length: 100

@@ -6,7 +6,6 @@ from danesfield import gdal_utils
 from danesfield import gen_kw18
 import logging
 import ogr
-import os
 import osr
 import pyproj
 
