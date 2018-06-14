@@ -4,6 +4,7 @@ import argparse
 import gdal
 from danesfield import gdal_utils
 from danesfield import gen_kw18
+from danesfield import mtl_polygon
 import logging
 import ogr
 import osr
@@ -25,6 +26,8 @@ def main(args):
                         help='Output with no extension for files in WAMI-Viewer kw18 format')
     parser.add_argument('--scale_half', action="store_true",
                         help='The kw18 polygon coordinates have half the resolution of input_image')
+    parser.add_argument('--label_img_path',
+                        help='Path to labeled verion of input image.')
     parser.add_argument('--debug', action='store_true',
                         help='Print debugging information')
     args = parser.parse_args(args)
@@ -78,7 +81,11 @@ def main(args):
             if len(points) > 0:
                 polygons[polygonId] = points
                 polygonId += 1
-    gen_kw18.gen_kw18(polygons, None, args.output_noext)
+    if args.label_img_path:
+        polygon_labels = mtl_polygon.assign_mtl_polygon_label(polygons, inputImage, args.label_img_path)
+    else:
+        polygon_labels = None
+    gen_kw18.gen_kw18(polygons, polygon_labels, args.output_noext)
     if args.debug:
         import vtk
         numberOfPixels = inputImage.RasterXSize * inputImage.RasterYSize
