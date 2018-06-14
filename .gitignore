@@ -5,4 +5,5 @@ __pycache__/
 # Distribution / packaging
 *.egg-info/
 
-
+# Rutgers material classification
+/danesfield/materials/pixel_prediction/architecture/RN18_All.pth.tar

@@ -47,6 +47,12 @@ To remove the core3d-dev environment, run:
    source deactivate (if core3d-dev is activated before)
    conda remove --name core3d-dev --all
 
+To update the core3d-dev environment when new packages have been added, run:
+
+.. code-block:: bash
+
+   source activate core3d-dev
+   conda env update -f deployment/conda/conda_env.yml
 
 ###################################
 Test Core3D Development Environment
