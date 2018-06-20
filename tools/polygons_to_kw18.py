@@ -4,6 +4,7 @@ import argparse
 import gdal
 from danesfield import gdal_utils
 from danesfield import gen_kw18
+from danesfield import mtl_polygon
 import logging
 import ogr
 import osr
@@ -25,11 +26,14 @@ def main(args):
                         help='Output with no extension for files in WAMI-Viewer kw18 format')
     parser.add_argument('--scale_half', action="store_true",
                         help='The kw18 polygon coordinates have half the resolution of input_image')
+    parser.add_argument('--label_img_path',
+                        help='Path to labeled version of input image. (.tif)')
     parser.add_argument('--debug', action='store_true',
                         help='Print debugging information')
     args = parser.parse_args(args)
 
-    inputImage = gdal_utils.gdal_open(args.input_image, gdal.GA_ReadOnly)
+    inputImage = gdal_utils.gdal_open(
+        args.input_image, gdal.GA_ReadOnly)
     # get imageProj
     projection = inputImage.GetProjection()
     if not projection:
@@ -38,7 +42,8 @@ def main(args):
     imageProj = pyproj.Proj(imageSrs.ExportToProj4())
 
     # BB in image geo coordinates
-    [minX, minY, maxX, maxY] = gdal_utils.gdal_bounding_box(inputImage)
+    [minX, minY, maxX, maxY] = gdal_utils.gdal_bounding_box(
+        inputImage)
     pixelSizeX = (maxX - minX) / inputImage.RasterXSize
     pixelSizeY = (maxY - minY) / inputImage.RasterYSize
     print("Image size ({},{}), BB({}, {}, {}, {}), pixel size ({}, {})".format(
@@ -63,22 +68,32 @@ def main(args):
                 p = ring.GetPoint(pointId)
                 # transform to image geo coords
                 pImage = [0.0, 0.0]
-                pImage[0], pImage[1] = pyproj.transform(vectorProj, imageProj, p[0], p[1])
+                pImage[0], pImage[1] = pyproj.transform(
+                    vectorProj, imageProj, p[0], p[1])
                 # transform to pixels
                 scale = 1.0
                 if args.scale_half:
                     scale = 0.5
                 pPixels = [int((pImage[0] - minX) * scale / pixelSizeX + 0.5),
                            int((maxY - pImage[1]) * scale / pixelSizeY + 0.5)]
-                rasterSize = [inputImage.RasterXSize, inputImage.RasterYSize]
+                rasterSize = [inputImage.RasterXSize,
+                              inputImage.RasterYSize]
                 for i in [0, 1]:
-                    pPixels[i] = pPixels[i] - 1 if pPixels[i] >= rasterSize[i] else pPixels[i]
+                    pPixels[i] = pPixels[i] - \
+                        1 if pPixels[i] >= rasterSize[i] else pPixels[i]
                     pPixels[i] = 0 if pPixels[i] < 0 else pPixels[i]
                 points.append(pPixels)
             if len(points) > 0:
                 polygons[polygonId] = points
                 polygonId += 1
-    gen_kw18.gen_kw18(polygons, None, args.output_noext)
+    if args.label_img_path:
+        polygon_labels = mtl_polygon.assign_mtl_polygon_label(
+            polygons,
+            inputImage,
+            args.label_img_path)
+    else:
+        polygon_labels = None
+    gen_kw18.gen_kw18(polygons, polygon_labels, args.output_noext)
     if args.debug:
         import vtk
         numberOfPixels = inputImage.RasterXSize * inputImage.RasterYSize
@@ -90,23 +105,29 @@ def main(args):
             scalars.FillComponent(i, 255)
         scalars.FillComponent(3, 0)
         image = vtk.vtkImageData()
-        image.SetDimensions(inputImage.RasterXSize, inputImage.RasterYSize, 1)
+        image.SetDimensions(inputImage.RasterXSize,
+                            inputImage.RasterYSize, 1)
         image.SetSpacing(1, 1, 1)
         image.SetOrigin(0, 0, 0)
         image.GetPointData().SetScalars(scalars)
         for i, polygon in polygons.items():
             for point in polygon:
-                point = [point[0], inputImage.RasterYSize - point[1] - 1]
+                point = [
+                    point[0], inputImage.RasterYSize - point[1] - 1]
                 for x in range(-3, 4, 1):
                     for y in range(-3, 4, 1):
                         p = [point[0] + x, point[1] + y]
                         if p[0] >= 0 and p[0] < inputImage.RasterXSize and \
                            p[1] >= 0 and p[1] < inputImage.RasterYSize:
                             # black opaque 7x7 blocks
-                            image.SetScalarComponentFromFloat(p[0], p[1], 0, 0, 0)
-                            image.SetScalarComponentFromFloat(p[0], p[1], 0, 1, 0)
-                            image.SetScalarComponentFromFloat(p[0], p[1], 0, 2, 0)
-                            image.SetScalarComponentFromFloat(p[0], p[1], 0, 3, 255)
+                            image.SetScalarComponentFromFloat(
+                                p[0], p[1], 0, 0, 0)
+                            image.SetScalarComponentFromFloat(
+                                p[0], p[1], 0, 1, 0)
+                            image.SetScalarComponentFromFloat(
+                                p[0], p[1], 0, 2, 0)
+                            image.SetScalarComponentFromFloat(
+                                p[0], p[1], 0, 3, 255)
         writer = vtk.vtkPNGWriter()
         writer.SetFileName(args.output_noext + '.png')
         writer.SetInputDataObject(image)
