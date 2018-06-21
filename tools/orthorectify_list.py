@@ -78,17 +78,16 @@ def main(args):
     for oneFolder in args.image_folders:
         imagesInFolder = glob.glob(oneFolder + "/*.NTF")
         imagesList.extend(imagesInFolder)
-    if len(imagesList) == 0:
+    if not imagesList:
         raise RuntimeError("No images found in {}".format(args.image_folders))
 
     print("{} images".format(len(imagesList)))
-    if len(args.exclude_images) > 0:
-        tempList = []
-        for image in imagesList:
-            for prefix in args.exclude_images:
-                if image.find(prefix) == -1:
-                    tempList.append(image)
-        imagesList = tempList
+    if args.exclude_images:
+        imagesList = [
+            image
+            for image in imagesList
+            if not os.path.basename(image).startswith(tuple(args.exclude_images))
+        ]
         print("Remove exclude_images: {} images".format(len(imagesList)))
 
     images = numpy.array(imagesList)
