@@ -66,6 +66,10 @@ def main(args):
                         "IDs are listed in the specified file using the format name_000ii_000jj. "
                         "Comments are prefixed by #. "
                         "Otherwise process all DSMs in the image_folders.")
+    parser.add_argument("--exclude_images", nargs="+",
+                        help="Prefixes for images excluded from the list of images that could "
+                             "be used for orthorectification, because of snow for instance. "
+                             "(14DEC, 01JAN)")
     parser.add_argument("--debug", action="store_true",
                         help="Print additional information")
     args = parser.parse_args(args)
@@ -74,6 +78,17 @@ def main(args):
     for oneFolder in args.image_folders:
         imagesInFolder = glob.glob(oneFolder + "/*.NTF")
         imagesList.extend(imagesInFolder)
+    if not imagesList:
+        raise RuntimeError("No images found in {}".format(args.image_folders))
+
+    print("{} images".format(len(imagesList)))
+    if args.exclude_images:
+        imagesList = [
+            image
+            for image in imagesList
+            if not os.path.basename(image).startswith(tuple(args.exclude_images))
+        ]
+        print("Remove exclude_images: {} images".format(len(imagesList)))
 
     images = numpy.array(imagesList)
     angles = numpy.zeros(len(images))
