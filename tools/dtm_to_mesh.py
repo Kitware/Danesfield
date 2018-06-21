@@ -1,10 +1,13 @@
+#!/usr/bin/env python
+
 import argparse
 import gdal
 import gdalconst
 import numpy as np
-import cv2
 import scipy.ndimage
 import scipy.misc
+import cv2
+
 
 # This script generates a mesh from a DTM.
 # The DTM is downsampled by the parameter --downsample (40 by default)
@@ -40,12 +43,12 @@ initial_dtm_shape = dtm.shape
 # smooth and downsample the DTM
 smooth_size = int(reduction_factor / 4)
 smooth_kernel = np.full((smooth_size, smooth_size),
-                        1.0/(smooth_size*smooth_size))
+                        1.0 / (smooth_size * smooth_size))
 dtm = scipy.ndimage.filters.convolve(dtm, smooth_kernel)
 nb_u_samples = int(dtm.shape[1] / reduction_factor)
 nb_v_samples = int(dtm.shape[0] / reduction_factor)
-downsampled_u = np.linspace(0, dtm.shape[1]-1, nb_u_samples)
-downsampled_v = np.linspace(0, dtm.shape[0]-1, nb_v_samples)
+downsampled_u = np.linspace(0, dtm.shape[1] - 1, nb_u_samples)
+downsampled_v = np.linspace(0, dtm.shape[0] - 1, nb_v_samples)
 dtm = dtm[downsampled_v.astype(int), :]
 dtm = dtm[:, downsampled_u.astype(int)]
 
@@ -69,10 +72,10 @@ xyz -= mesh_offset
 faces = []
 for j in range(nb_v_samples-1):
     for i in range(nb_u_samples-1):
-        id0 = j*nb_u_samples+i
-        id1 = id0+1
-        id2 = id0+nb_u_samples
-        id3 = id2+1
+        id0 = j * nb_u_samples + i
+        id1 = id0 + 1
+        id2 = id0 + nb_u_samples
+        id3 = id2 + 1
         faces.append([id0, id2, id1])
         faces.append([id2, id3, id1])
 
@@ -80,8 +83,8 @@ for j in range(nb_v_samples-1):
 # write DTM mesh to OBJ file
 file = open(output_file, "w")
 for pt in xyz:
-    file.write("v "+str(pt[0])+" "+str(pt[1])+" "+str(pt[2])+"\n")
+    file.write("v " + str(pt[0]) + " " + str(pt[1]) + " " + str(pt[2]) + "\n")
 for f in faces:
-    file.write("f "+str(f[0]+1)+" "+str(f[1]+1)+" "+str(f[2]+1)+"\n")
+    file.write("f " + str(f[0]+1) + " " + str(f[1]+1) + " " + str(f[2]+1) + "\n")
 file.close()
 print("Done.")
