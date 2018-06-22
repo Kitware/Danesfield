@@ -18,7 +18,7 @@ def main(args):
     parser = argparse.ArgumentParser(
         description='Transform a DTM into a mesh')
     parser.add_argument("dtm_file", help="DTM image (.tif)")
-    parser.add_argument("offset_file", help="Text file containing the offset used"
+    parser.add_argument("offset_file", help="Text file containing the offset used "
                                             "in x, y and z (one value per line)")
     parser.add_argument("output_file", help="Output mesh file (.obj)")
     parser.add_argument("--downsample", action="store", type=int, default=40,
