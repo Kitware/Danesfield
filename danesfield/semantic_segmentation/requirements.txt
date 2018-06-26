@@ -1,0 +1,11 @@
+PyTorch
+pencv-python
+sklearn
+ubelt
+tensorboardX
+sympy
+tqdm
+numpy
+scipy
+gdal
+pdal
