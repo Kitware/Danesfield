@@ -8,7 +8,7 @@ def _get_label(image, x, y):
     labels = image[x, y]
     material_index = int(mode(labels)[0][0])
     materials = ['Undefined', 'Asphalt', 'Concrete', 'Glass', 'Tree',
-                 'Non-Tree Veg', 'Metal', 'Soil', 'Ceramic', 'Solar Panel',
+                 'Non_Tree_Veg', 'Metal', 'Soil', 'Ceramic', 'Solar_Panel',
                  'Water', 'Polymer']
     return materials[material_index]
 
