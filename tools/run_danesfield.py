@@ -6,10 +6,12 @@ Run the Danesfield processing pipeline on an AOI from start to finish.
 
 import configparser
 import datetime
+import gdal
+import gdalconst
+import glob
 import logging
 import os
 import re
-import glob
 import subprocess
 import sys
 
@@ -412,6 +414,82 @@ def main(config_fpath):
 
     # Collaborate with Bastien Jacquet on what to run here
     # Dan Lipsa is helping with conda packaging
+    logging.info("Prepare images for texture mapping")
+
+    # Prepare the images
+    input_dir = "xxxx/"         # this directory should contains the cropped MSI and PAN images
+    output_dir = "xxxx/"        # pansharpene images will be generated in this directory
+    # check that output_dir exists and create it otherwise
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+
+    # Associate the corresponding PAN and MSI by looking at the NITF_CSDIDA_PROCESS_TIME tag
+    dico = {}
+    for s in glob.glob(os.path.join(input_dir, "*.tif")):
+        dataset = gdal.Open(s, gdalconst.GA_ReadOnly)
+        metadata = dataset.GetMetadata_Dict()
+        tag = metadata["NITF_CSDIDA_PROCESS_TIME"]
+        if dataset.RasterCount == 8 or dataset.RasterCount == 4:
+            image_type = "M1BS"
+        elif dataset.RasterCount == 1:
+            image_type = "P1BS"
+        else:
+            print("Not 1, 4 or 8 bands. The image is ignored.")
+            continue
+        if tag in dico.keys():
+            dico[tag][image_type] = s
+        else:
+            dico[tag] = {image_type: s}
+        if image_type == "M1BS":
+            dico[tag]["nb_bands"] = dataset.RasterCount
+
+    # Process the pairs of images
+    for day in dico.keys():
+        # check if MSI and PAN exist for that day
+        if "M1BS" not in dico[day].keys() or "P1BS" not in dico[day].keys():
+            print("Error: one image is missing")
+            continue
+        msi = dico[day]["M1BS"]
+        pan = dico[day]["P1BS"]
+        out = os.path.join(output_dir, os.path.basename(pan)[:-4]
+                           + "_pansharpen_" + str(dico[day]["nb_bands"]) + ".tif")
+        print(os.path.basename(pan)[:-4])
+        try:
+            # pansharpen
+            args = ["gdal_pansharpen.py", pan, msi, out]
+            subprocess.call(args)
+            # copy metdata from PAN to the new pansharpen image
+            print("Copy TIF information")
+            img_pan = gdal.Open(pan)
+            img_out = gdal.Open(out, gdal.GA_Update)
+            # default metadata
+            metadata_dico = img_pan.GetMetadata_Dict()
+            for key, val in metadata_dico.items():
+                img_out.SetMetadataItem(key, val, None)
+            # RPC metadata
+            rpc_info = img_pan.GetMetadata_Dict("RPC")
+            for key, val in rpc_info.items():
+                img_out.SetMetadataItem(key, val, "RPC")
+            del img_out
+        except Exception as e:
+            print("Error: ", e, " (file ", pan, ")")
+
+    # the config file contains information required for texture mapping (utm zone, image resolution,
+    # images directory and th list of the images to use)
+    config_file = "xxxx.conf"
+
+    # Prepare the mesh
+    mesh_file = "xxxx.obj"
+    x_offset = 0    # need to be set
+    y_offset = 0
+    z_offset = 0
+
+    # Run texture mapping
+    logging.info("---- Running texture_mapping ----")
+    call_args = ["run_texture_mapping", config_file, mesh_file,
+                 working_dir, str(x_offset), str(y_offset), str(z_offset)]
+    subprocess.call(call_args)
+    print("Texture Mapping done")
 
     #############################################
     # Buildings to DSM
