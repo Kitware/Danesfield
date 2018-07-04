@@ -462,15 +462,14 @@ def main(config_fpath):
             print("Copy TIF information")
             img_pan = gdal.Open(pan)
             img_out = gdal.Open(out, gdal.GA_Update)
-            # default metadata
-            metadata_dico = img_pan.GetMetadata_Dict()
-            for key, val in metadata_dico.items():
-                img_out.SetMetadataItem(key, val, None)
-            # RPC metadata
-            rpc_info = img_pan.GetMetadata_Dict("RPC")
-            for key, val in rpc_info.items():
-                img_out.SetMetadataItem(key, val, "RPC")
-            del img_out
+            metadata_domains = img_pan.GetMetadataDomainList()
+            for domain in metadata_domains:
+                dico = img_pan.GetMetadata_Dict(domain)
+                for key, val in dico.items():
+                    img_out.SetMetadataItem(key, val, domain)
+            img_out.SetProjection(img_pan.GetProjection())
+            img_out.SetGeoTransform(img_pan.GetGeoTransform())
+
         except Exception as e:
             print("Error: ", e, " (file ", pan, ")")
 
