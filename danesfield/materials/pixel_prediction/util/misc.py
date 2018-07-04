@@ -4,8 +4,6 @@ import torch
 from .image_calibration import Image_Calibration as IC
 from scipy import stats
 from PIL import Image
-import pickle
-import os
 
 
 class TestDataLoader(Dataset):
@@ -80,11 +78,30 @@ def create_mode_img(stacked_img, save_path):
     color_image.save(save_path+'mode_color.png')
 
 
-def save_output(img, out_path, aux=False):
-    if aux:
-        out_path = os.path.splitext(out_path)[0] + '.p'
-        pickle.dump(img, open(out_path, 'wb'))
-    else:
-        Image.fromarray(img.astype('uint8')).save(out_path + '.png')
-        Image.fromarray(ColorImage(img).astype(
-            'uint8')).save(out_path + '_color.png')
+def save_output(img, out_path):
+    Image.fromarray(img.astype('uint8')).save(out_path + '.png')
+    Image.fromarray(ColorImage(img).astype(
+        'uint8')).save(out_path + '_color.png')
+
+
+class Combine_Result(object):
+    def __init__(self, merge_type):
+        self.merge_type = merge_type
+        self.update_count = 0
+
+        if self.merge_type != 'mean':
+            raise RuntimeError('Other type of merge {} is not added yet.'.format(self.merge_type))
+
+    def update(self, result):
+        if self.merge_type == 'mean':
+            if self.update_count == 0:
+                self.merge_result = result
+            else:
+                self.merge_result += result
+                self.update_count += 1
+
+    def call(self):
+        if self.merge_type == 'mean':
+            class_probs = self.merge_result[:, :, 1:]
+            mean_image = np.argmax(class_probs, axis=2) + 1
+            return mean_image

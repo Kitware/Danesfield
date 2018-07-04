@@ -4,19 +4,16 @@ import torch.nn as nn
 import numpy as np
 from ..util import misc
 from ..architecture import ResNet as RN
-import os
-# from osgeo import gdal
 from collections import OrderedDict
 
 
 class Classifier():
-    def __init__(self, cuda, batch_size,
-                 model_path="/../architecture/RN18_All.pth.tar"):
+    def __init__(self, cuda, batch_size, model_path):
         # Model
         self.model = RN.resnet18(num_classes=12)
 
         # Load the weights from the saved network
-        checkpoint = torch.load(os.path.dirname(__file__) + model_path,
+        checkpoint = torch.load(model_path,
                                 map_location=lambda storage,
                                 loc: storage)['state_dict']
 
@@ -37,9 +34,9 @@ class Classifier():
         # Hyperparameter
         self.batch_size = batch_size
 
-    def Evaluate(self, img_path, imd_path):
+    def Evaluate(self, img_path, info_path):
         # Caibrate image
-        img = misc.calibrate_img(img_path, imd_path)
+        img = misc.calibrate_img(img_path, info_path)
 
         # Make a dataloader object out of image in order to put in CNN
         loader = misc.getTestDataLoader(
