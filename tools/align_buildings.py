@@ -144,8 +144,6 @@ def spat_vectors(inputVectorFileNames, inputImageCorners, inputImageSrs,
         inputVector = gdal_utils.ogr_open(inputVectorFileName)
         inputLayer = inputVector.GetLayer(inputLayerName)
         inputList = list(inputLayer)
-        if len(inputList) == 0:
-            resultList.append(None)
         resultList.append(inputList)
     return resultList
 
@@ -223,10 +221,6 @@ def main(args):
     features = spat_vectors(
         args.input_vectors, inputImageCorners, inputImageSrs,
         args.output_mask)
-    if not features[0]:
-        print("No buildings in the clipped vector file")
-        return
-
     print("Aligning {} buildings ...".format(len(features[0])))
     tmp_img = numpy.zeros([int(color_image.shape[0]), int(color_image.shape[1])],
                           dtype=numpy.uint8)
@@ -243,8 +237,8 @@ def main(args):
 
             # edge mask of the building cluster
             cv2.polylines(tmp_img, [ring_points], True, (255), thickness=2)
-            check_point_list = []
 
+    check_point_list = []
     # build a sparse set to fast process
     for y in range(0, tmp_img.shape[0]):
         for x in range(0, tmp_img.shape[1]):
