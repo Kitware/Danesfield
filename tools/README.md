@@ -32,3 +32,17 @@ https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5ab3b3a18d7
 ```bash
 python material_classifier.py <image_path> <imd_path> <output_path>
 ```
+
+## Third-party tools
+
+### Core3D JSON data representation and parser
+
+A data representation and meshing utility for CORE3D deliverables. See
+https://github.com/CORE3D/data_rep_c3d.
+
+Includes the following tools:
+
+- `json2obj.py`
+- `meshIO.py`
+- `paramCounter.py`
+- `primitiveMeshGen.py`
