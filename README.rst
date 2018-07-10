@@ -14,6 +14,25 @@ are written in Python or at least provide a Python interface.
 Getting Started
 ===============
 
+Clone repository
+----------------
+
+Clone this repository with its submodules by running:
+
+.. code-block::
+
+    git clone --recursive git@gitlab.kitware.com:core3d/danesfield.git
+
+To fetch the latest version of this repository and its submodules, run:
+
+.. code-block::
+
+    git pull
+    git submodule update --init --recursive
+
+Create Conda environment
+------------------------
+
 The first step in running or developing Danesfield code is to obtain the
 correct development environment.  The Danesfield algorithms require a number of
 dependencies on geospatial and computer vision libraries.  Provided with this
