@@ -16,6 +16,7 @@ def parse_version(package):
     with open(init_fpath) as file_:
         sourcecode = file_.read()
     pt = ast.parse(sourcecode)
+
     class VersionVisitor(ast.NodeVisitor):
         def visit_Assign(self, node):
             for target in node.targets:

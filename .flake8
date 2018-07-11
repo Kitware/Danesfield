@@ -1,0 +1,12 @@
+[flake8]
+exclude =
+    # Examples that aren't part of this distribution
+    examples,
+    # Third-party repositories
+    third_party,
+    # Third-party tools
+    tools/json2obj.py,
+    tools/meshIO.py,
+    tools/paramCounter.py,
+    tools/primitiveMeshGen.py,
+max-line-length: 100
