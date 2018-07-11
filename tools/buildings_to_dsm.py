@@ -15,7 +15,14 @@ from vtk.util import numpy_support
 def main(args):
     parser = argparse.ArgumentParser(
         description='Render a DSM from a DTM and polygons representing buildings.')
-    parser.add_argument("input_buildings", help="Input buildings polygonal file")
+    parser.add_argument("input_buildings",
+                        help="Input buildings polygonal file (.vtp) or folder "
+                             "containing .obj files. Building object files start "
+                             "with a digit, road object files start with \"Road\". "
+                             "All obj files start with comments specifying the offsets "
+                             "that are added the coordinats. There are three comment lines, "
+                             "one for each coordinate: "
+                             "\"#c offset: value\" where c is x, y and z.")
     parser.add_argument("input_dtm", help="Input digital terain model (DTM)")
     parser.add_argument("output_dsm", help="Output digital surface model (DSM)")
     parser.add_argument("--render_png", action="store_true",
@@ -101,7 +108,7 @@ def main(args):
     # read the buildings polydata, set Z as a scalar and project to XY plane
     print("Reading the buildings ...")
     # labels for buildings and elevated roads
-    labels = [6, 17];
+    labels = [6, 17]
     if (os.path.isfile(args.input_buildings)):
         polyReader = vtk.vtkXMLPolyDataReader()
         polyReader.SetFileName(args.input_buildings)
@@ -114,7 +121,11 @@ def main(args):
         files = [glob.glob(args.input_buildings + "/[0-9]*.obj"),
                  glob.glob(args.input_buildings + "/Road*.obj")]
         files = [x for x in files if x]
-        if not files:
+        if len(files) >= 2:
+            print("Found {} buildings and {} roads".format(len(files[0]), len(files[1])))
+        elif len(files) == 1:
+            print("Found {} buildings".format(len(files[0])))
+        else:
             raise RuntimeError("No OBJ files found in {}".format(args.input_buildings))
         offset = [0.0, 0.0, 0.0]
         axes = ['x', 'y', 'z']
@@ -159,9 +170,7 @@ def main(args):
         append.AddInputDataObject(polyVtkList[category])
     append.Update()
 
-
     # Create the RenderWindow, Renderer
-    #
     ren = vtk.vtkRenderer()
     renWin = vtk.vtkRenderWindow()
     renWin.OffScreenRenderingOn()

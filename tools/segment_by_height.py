@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import subprocess
 
 import cv2
 import gdal

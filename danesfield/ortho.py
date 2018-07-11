@@ -6,7 +6,7 @@ import numpy
 import osr
 import pyproj
 from scipy.ndimage import morphology
-import sys
+
 
 def circ_structure(n):
     """generate a circular binary mask of radius n for morphology
@@ -16,14 +16,16 @@ def circ_structure(n):
     x, y = numpy.meshgrid(a, a)
     return (x**2 + y**2) <= n**2
 
+
 COMPLETE_DSM_INTERSECTION = 0
 PARTIAL_DSM_INTERSECTION = 1
 EMPTY_DSM_INTERSECTION = 2
 ERROR = 10
 
+
 def orthorectify(args_source_image, args_dsm, args_destination_image,
-                 args_occlusion_thresh = 1.0, args_denoise_radius = 2,
-                 args_raytheon_rpc = None, args_dtm = None):
+                 args_occlusion_thresh=1.0, args_denoise_radius=2,
+                 args_raytheon_rpc=None, args_dtm=None):
     """
     Orthorectify an image given the DSM
 
@@ -149,7 +151,6 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
         print("Driver {} does not supports Create().".format(driver))
         return ERROR
 
-
     # convert coordinates to Long/Lat
     srs = osr.SpatialReference(wkt=projection)
     proj_srs = srs.ExportToProj4()
@@ -181,11 +182,11 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
     # coumpute the bound of the relevant AOI in the source image
     print("Source Image size: ", [sourceImage.RasterXSize, sourceImage.RasterYSize])
     minPoint = numpy.maximum([0, 0], numpy.min(intImgPoints, 1))
-    print("AOI min: ",minPoint)
+    print("AOI min: ", minPoint)
     maxPoint = numpy.minimum(numpy.max(intImgPoints, 1),
                              [sourceImage.RasterXSize,
                               sourceImage.RasterYSize])
-    print("AOI max: ",maxPoint)
+    print("AOI max: ", maxPoint)
     cropSize = maxPoint - minPoint
     if numpy.any(cropSize < 1):
         print("DSM does not intersect source image")
@@ -220,7 +221,7 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
         # get a mask of points that locally are (approximately)
         # the highest point in the map
         is_max_height = height_map[intImgPoints[1], intImgPoints[0]] \
-                        <= valid_arrayZ + args_occlusion_thresh
+            <= valid_arrayZ + args_occlusion_thresh
         num_occluded = numpy.size(is_max_height) - numpy.count_nonzero(is_max_height)
         print("Skipped {} occluded points".format(num_occluded))
 

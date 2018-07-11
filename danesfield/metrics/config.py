@@ -39,7 +39,7 @@ def get_template():
     return contents
 
 
-def populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl):
+def populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl, test_dtm):
     """
     Populate metrics config template.
     """
@@ -49,7 +49,8 @@ def populate_template(contents, ref_prefix, test_dsm, test_cls, test_mtl):
         'ref_prefix': ref_prefix,
         'test_dsm': os.path.basename(test_dsm),
         'test_cls': os.path.basename(test_cls),
-        'test_mtl': os.path.basename(test_mtl)
+        'test_mtl': os.path.basename(test_mtl),
+        'test_dtm': os.path.basename(test_dtm)
     })
 
     # remove unset parameters (lines ending with '= ')

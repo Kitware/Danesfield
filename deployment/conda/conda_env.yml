@@ -7,6 +7,7 @@ name: core3d-dev
 
 channels:
 - kitware-geospatial
+- pytorch
 - conda-forge
 - defaults
 
@@ -14,13 +15,15 @@ dependencies:
 - pubgeo-core3d-metrics
 - gdal
 - pdal
+- texture-atlas
 - gaia
 - pyproj
 - scipy
 - vtk
-- jsoncpp=1.8.3
+- opencv
 - jsonschema
 - geojson
 - flake8
 - pytest
-- opencv
+- pytorch=0.3.*
+- shapely
