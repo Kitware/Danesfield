@@ -23,7 +23,7 @@ def main(args):
     parser.add_argument("output_file", help="Output mesh file (.obj)")
     parser.add_argument("--downsample", action="store", type=int, default=40,
                         help="Downsampling factor for the DTM")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     dtm_file = args.dtm_file
     offset_file = args.offset_file
