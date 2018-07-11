@@ -20,6 +20,7 @@ class DenseLayer(nn.Sequential):
     self = DenseLayer(32, 32, 4)
 
     """
+
     def __init__(self, num_input_features, growth_rate, bn_size, drop_rate=0):
         super(DenseLayer, self).__init__()
         self.bn_size = bn_size
@@ -30,17 +31,18 @@ class DenseLayer(nn.Sequential):
         self.add_module('norm.1', nn.BatchNorm2d(num_input_features)),
         self.add_module('noli.1', default_nonlinearity()),
         self.add_module('conv.1', nn.Conv2d(num_input_features, bn_size *
-                        growth_rate, kernel_size=1, stride=1, bias=False)),
+                                            growth_rate, kernel_size=1, stride=1, bias=False)),
         self.add_module('norm.2', nn.BatchNorm2d(self.n_feat_internal)),
         self.add_module('noli.2', default_nonlinearity()),
         self.add_module('conv.2', nn.Conv2d(self.n_feat_internal, growth_rate,
-                        kernel_size=3, stride=1, padding=1, bias=False)),
+                                            kernel_size=3, stride=1, padding=1, bias=False)),
         self.drop_rate = drop_rate
 
     def forward(self, x):
         new_features = super(DenseLayer, self).forward(x)
         if self.drop_rate > 0:
-            new_features = F.dropout(new_features, p=self.drop_rate, training=self.training)
+            new_features = F.dropout(
+                new_features, p=self.drop_rate, training=self.training)
         return torch.cat([x, new_features], 1)
 
     def activation_shapes(self, input_shape):
@@ -77,11 +79,13 @@ class DenseBlock(nn.Sequential):
     """
     self = DenseBlock(4, 32)
     """
+
     def __init__(self, num_layers, num_input_features, bn_size=4, growth_rate=32, drop_rate=0):
         super(DenseBlock, self).__init__()
         self.num_layers = num_layers
         for i in range(num_layers):
-            layer = DenseLayer(num_input_features + i * growth_rate, growth_rate, bn_size, drop_rate)
+            layer = DenseLayer(num_input_features + i *
+                               growth_rate, growth_rate, bn_size, drop_rate)
             self.add_module('denselayer%d' % (i + 1), layer)
         self.n_feat_out = layer.n_feat_out
 
@@ -99,6 +103,7 @@ class Transition(nn.Sequential):
     """
     self = Transition(64, 32)
     """
+
     def __init__(self, num_input_features, num_output_features):
         super(Transition, self).__init__()
         self.add_module('norm', nn.BatchNorm2d(num_input_features))
@@ -174,7 +179,7 @@ class PadToAgree(nn.Module):
 
 
 class DenseUNetUp(nn.Module):
-    
+
     def __init__(self, in_size1, in_size2, compress=.5, num_layers=2,
                  growth_rate=4, is_deconv=True):
         super(DenseUNetUp, self).__init__()
@@ -189,7 +194,7 @@ class DenseUNetUp(nn.Module):
         bneck_size = int(in_size1 * compress)
         self.pad = PadToAgree()
         self.conv = DenseBlock(num_layers, in_size, growth_rate=growth_rate,
-                                bn_size=4)
+                               bn_size=4)
         self.bottleneck = nn.Conv2d(self.conv.n_feat_out, bneck_size,
                                     kernel_size=1, stride=1, bias=False)
         self.n_feat_out = bneck_size
@@ -198,18 +203,18 @@ class DenseUNetUp(nn.Module):
         output2_shape = OutputShapeFor(self.up)(input2_shape)
         output2_shape = OutputShapeFor(self.pad)(output2_shape, input1_shape)
 
-        cat_shape   = OutputShapeFor(torch.cat)([input1_shape, output2_shape], 1)
-        conv_shape  = OutputShapeFor(self.conv)(cat_shape)
-        output_shape  = OutputShapeFor(self.bottleneck)(conv_shape)
+        cat_shape = OutputShapeFor(torch.cat)([input1_shape, output2_shape], 1)
+        conv_shape = OutputShapeFor(self.conv)(cat_shape)
+        output_shape = OutputShapeFor(self.bottleneck)(conv_shape)
         return output_shape
 
     def activation_shapes(self, input1_shape, input2_shape):
         up2_shape = OutputShapeFor(self.up)(input2_shape)
         pad2_shape = OutputShapeFor(self.pad)(up2_shape, input1_shape)
 
-        cat_shape   = OutputShapeFor(torch.cat)([input1_shape, pad2_shape], 1)
-        conv_shape  = OutputShapeFor(self.conv)(cat_shape)
-        output_shape  = OutputShapeFor(self.bottleneck)(conv_shape)
+        cat_shape = OutputShapeFor(torch.cat)([input1_shape, pad2_shape], 1)
+        conv_shape = OutputShapeFor(self.conv)(cat_shape)
+        output_shape = OutputShapeFor(self.bottleneck)(conv_shape)
 
         activations = [up2_shape]
         activations += self.pad.activation_shapes(up2_shape, input1_shape)
@@ -234,6 +239,7 @@ class DenseUNet(nn.Module):
     dims, so the input should be mirrored with
 
     """
+
     def __init__(self, n_classes=21, in_channels=3,
                  bn_size=2, growth_rate=16, is_deconv=True):
         super(DenseUNet, self).__init__()
@@ -262,10 +268,12 @@ class DenseUNet(nn.Module):
         densekw = dict(bn_size=bn_size, growth_rate=growth_rate)
 
         for i, num_layers in enumerate(block_config[0:-1]):
-            down.append(('denseblock%d' % (i + 1), DenseBlock(num_layers=num_layers, num_input_features=n_feat, **densekw)))
+            down.append(('denseblock%d' % (
+                i + 1), DenseBlock(num_layers=num_layers, num_input_features=n_feat, **densekw)))
             n_feat = n_feat + num_layers * growth_rate
             n_feat_compress = int(n_feat * compress)
-            down.append(('transition%d' % (i + 1), Transition(num_input_features=n_feat, num_output_features=n_feat_compress)))
+            down.append(('transition%d' % (
+                i + 1), Transition(num_input_features=n_feat, num_output_features=n_feat_compress)))
             n_feat = n_feat_compress
 
         self.denseblock1 = down[0][1]
@@ -278,15 +286,20 @@ class DenseUNet(nn.Module):
         self.transition4 = down[7][1]
 
         num_layers = block_config[-1]
-        center5 = DenseBlock(num_layers=num_layers, num_input_features=n_feat, **densekw)
+        center5 = DenseBlock(num_layers=num_layers,
+                             num_input_features=n_feat, **densekw)
         n_feat = n_feat + num_layers * growth_rate
 
         center5.n_feat_out
 
-        up_concat4 = DenseUNetUp(self.denseblock4.n_feat_out, center5.n_feat_out, is_deconv=is_deconv)
-        up_concat3 = DenseUNetUp(self.denseblock3.n_feat_out, up_concat4.n_feat_out, is_deconv=is_deconv)
-        up_concat2 = DenseUNetUp(self.denseblock2.n_feat_out, up_concat3.n_feat_out, is_deconv=is_deconv)
-        up_concat1 = DenseUNetUp(self.denseblock1.n_feat_out, up_concat2.n_feat_out, is_deconv=is_deconv)
+        up_concat4 = DenseUNetUp(
+            self.denseblock4.n_feat_out, center5.n_feat_out, is_deconv=is_deconv)
+        up_concat3 = DenseUNetUp(
+            self.denseblock3.n_feat_out, up_concat4.n_feat_out, is_deconv=is_deconv)
+        up_concat2 = DenseUNetUp(
+            self.denseblock2.n_feat_out, up_concat3.n_feat_out, is_deconv=is_deconv)
+        up_concat1 = DenseUNetUp(
+            self.denseblock1.n_feat_out, up_concat2.n_feat_out, is_deconv=is_deconv)
 
         self.features = features
         self.center5 = center5
@@ -297,7 +310,8 @@ class DenseUNet(nn.Module):
         self.up_concat1 = up_concat1
 
         # final conv (without any concat)
-        self.final1 = nn.Conv2d(up_concat1.n_feat_out, n_classes, 3, padding=1) #To be the same as ResnetUNet
+        # To be the same as ResnetUNet
+        self.final1 = nn.Conv2d(up_concat1.n_feat_out, n_classes, 3, padding=1)
         self.final2 = nn.Conv2d(up_concat1.n_feat_out, n_classes, 1)
         self._cache = {}
 
@@ -335,7 +349,6 @@ class DenseUNet(nn.Module):
         conn = self.connectivity()
         conn.io_shapes(self, input_shape)
         return conn.output_shapes
-
 
     def activation_shapes(self, input_shape):
         conn = self.connectivity()
@@ -385,12 +398,12 @@ class DenseUNet(nn.Module):
         up1 = self.up_concat1.forward(conv1, up2)
 
         final1 = self.final1.forward(up1)
-        final2 = self.final2.forward(up1)
-        
-        #return final1, final2
-        
+        # final2 = self.final2.forward(up1)
+
+        # return final1, final2
+
         return final1
-    
+
     @property
     def first_layer_params_names(self):
         return ['features.conv0.weight', 'features.norm0.weight', 'features.norm0.bias']

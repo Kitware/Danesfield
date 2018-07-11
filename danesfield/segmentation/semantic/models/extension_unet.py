@@ -36,11 +36,13 @@ class ExtensionUNet(unet.UNet):
         >>> print('outputs.shape = {!r}'.format(outputs.shape))
         >>> print(np.array(inputs.shape) - np.array(outputs.shape))
     """
+
     def __init__(self, **kwargs):
         super(ExtensionUNet, self).__init__(**kwargs)
 
         self.final
-        self.final2 = torch.nn.Conv2d(self.final.in_channels, self.n_classes, 1)
+        self.final2 = torch.nn.Conv2d(
+            self.final.in_channels, self.n_classes, 1)
 
     def raw_forward2(self, inputs):
         conv1 = self.conv1(inputs)
@@ -90,8 +92,8 @@ class ExtensionUNet(unet.UNet):
         final1, final2 = self.raw_forward2(mirrored)
 
         cropped1 = self.postcrop(final1, crop_wh)
-        cropped2 = self.postcrop(final2, crop_wh)
-        
-        #return cropped1, cropped2
-        
+        # cropped2 = self.postcrop(final2, crop_wh)
+
+        # return cropped1, cropped2
+
         return cropped1

@@ -12,6 +12,7 @@ import tqdm
 
 from matplotlib import pyplot as plt
 
+
 def rlencode(x, dropna=False):
     """
     Run length encoding.
@@ -48,6 +49,7 @@ def rlencode(x, dropna=False):
 
     return starts, lengths, values
 
+
 def rldecode(starts, lengths, values, minlength=None):
     """
     Decode a run-length encoding of a 1D array.
@@ -73,6 +75,7 @@ def rldecode(starts, lengths, values, minlength=None):
     for lo, hi, val in zip(starts, ends, values):
         x[lo:hi] = val
     return x
+
 
 def rle_to_string(rle):
     (starts, lengths, values) = rle
@@ -100,11 +103,12 @@ def make_submission(prediction_dir, test_dsmdata_dir, submission_file):
     threshold = 0.03
     f_submit = open(submission_file, "w")
     strings = []
-    predictions = sorted([f.split('/')[-1] for f in glob.glob(prediction_dir + '/*_Prob.tif')])
+    predictions = sorted([f.split('/')[-1]
+                          for f in glob.glob(prediction_dir + '/*_Prob.tif')])
     print('prediction_dir: {}'.format(prediction_dir))
     print('prediction: {}'.format(predictions))
 
-    #test_dsmdata_dir = '/data/CORE3D/AOIS/4AOIs/data/'
+    # test_dsmdata_dir = '/data/CORE3D/AOIS/4AOIs/data/'
 
     for f in tqdm.tqdm(predictions):
         if 'xml' in f:
@@ -123,7 +127,7 @@ def make_submission(prediction_dir, test_dsmdata_dir, submission_file):
         srs.ImportFromWkt(wkt)
 
         mask_img = mask_ds.ReadAsArray()
-        mask_img[dsm==nodata] = 0
+        mask_img[dsm == nodata] = 0
 
         img_copy = np.copy(mask_img)
         img_copy[mask_img <= threshold + 0.4] = 0
@@ -142,10 +146,12 @@ def make_submission(prediction_dir, test_dsmdata_dir, submission_file):
         cls_mask[labeled_array > 0] = 6
         cls_mask[labeled_array == 0] = 2
 
-        cls_path_geo = os.path.join(prediction_dir, f.replace('_Prob.tif', '_CLS.tif'))
+        cls_path_geo = os.path.join(
+            prediction_dir, f.replace('_Prob.tif', '_CLS.tif'))
 
         driver = gdal.GetDriverByName('GTiff')
-        outRaster = driver.Create(cls_path_geo, mask_img.shape[1], mask_img.shape[0], 1, gdal.GDT_Byte)
+        outRaster = driver.Create(
+            cls_path_geo, mask_img.shape[1], mask_img.shape[0], 1, gdal.GDT_Byte)
         outRaster.SetGeoTransform(geotrans)
         outRaster.SetProjection(srs.ExportToWkt())
 
@@ -153,18 +159,17 @@ def make_submission(prediction_dir, test_dsmdata_dir, submission_file):
         outband.WriteArray(cls_mask)
         outRaster.FlushCache()
 
-        plt.imshow(labeled_array>0)
-       # plt.show()
+        plt.imshow(labeled_array > 0)
+        # plt.show()
         pngfname = cls_path_geo.replace('.tif', '.png')
         plt.savefig(pngfname)
         plt.close()
 
         # labeled_array = remove_on_boundary(labeled_array)
         rle_str = rle_to_string(rlencode(labeled_array.flatten()))
-        s = "{tile_id}\n2048,2048\n{rle}\n".format(tile_id=tile_id, rle=rle_str)
+        s = "{tile_id}\n2048,2048\n{rle}\n".format(
+            tile_id=tile_id, rle=rle_str)
         strings.append(s)
 
     f_submit.writelines(strings)
     f_submit.close()
-
-

@@ -2,10 +2,12 @@ import os
 from .abstract_image_type import AbstractImageType
 from typing import Type, Dict, AnyStr, Callable
 
+
 class AbstractImageProvider:
     """
     base class for image providers
     """
+
     def __init__(self, image_type: Type[AbstractImageType], has_alpha=False):
         self.image_type = image_type
         self.has_alpha = has_alpha
@@ -17,17 +19,17 @@ class AbstractImageProvider:
         raise NotImplementedError
 
 
-
 class ImageProvider(AbstractImageProvider):
     """
     provides images for dataset from disk
     """
+
     def __init__(self, image_type, paths, border=12, image_suffix=None, has_alpha=False):
         super(ImageProvider, self).__init__(image_type, has_alpha=has_alpha)
         self.im_names = os.listdir(paths['images'])
         if image_suffix is not None:
             self.im_names = [n for n in self.im_names if image_suffix in n]
-        
+
         self.paths = paths
         self.border = border
 

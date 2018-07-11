@@ -24,5 +24,3 @@ Config = namedtuple("Config", [
     "results_dir",
     "iter_size"
 ])
-
-

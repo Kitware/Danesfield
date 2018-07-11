@@ -4,6 +4,7 @@ import os
 import numpy as np
 from tensorboardX import SummaryWriter
 
+
 class Callback(object):
     """
     Abstract base class used to build new callbacks.
@@ -98,9 +99,11 @@ class StepLR(Callback):
         self.lr_decay_factor = lr_decay_factor
 
     def on_epoch_begin(self, epoch, step):
-        lr = self.init_lr * (self.lr_decay_factor ** (epoch // self.num_epochs_per_decay))
+        lr = self.init_lr * (self.lr_decay_factor **
+                             (epoch // self.num_epochs_per_decay))
         for param_group in self.estimator.optimizer.param_groups:
             param_group['lr'] = lr
+
 
 class InverseLR(Callback):
     def __init__(self, init_lr=0.1, decay_rate=0.5, decay_steps=1.0):
@@ -110,14 +113,16 @@ class InverseLR(Callback):
         self.decay_steps = decay_steps
 
     def on_step_begin(self, epoch, step):
-        lr = self.init_lr /(1.0 + self.decay_rate*np.floor(step // self.decay_steps))
+        lr = self.init_lr / (1.0 + self.decay_rate *
+                             np.floor(step // self.decay_steps))
         for param_group in self.estimator.optimizer.param_groups:
             param_group['lr'] = lr
 
 
 # @deprecated, todo rewrite as lr_scheduler
 class CyclicLR(Callback):
-    def __init__(self, save_name, init_lr=1e-4, num_epochs_per_cycle=5, cycle_epochs_decay=2, lr_decay_factor=0.5):
+    def __init__(self, save_name, init_lr=1e-4, num_epochs_per_cycle=5,
+                 cycle_epochs_decay=2, lr_decay_factor=0.5):
         super().__init__()
         self.init_lr = init_lr
         self.num_epochs_per_cycle = num_epochs_per_cycle
@@ -129,10 +134,10 @@ class CyclicLR(Callback):
     def on_epoch_begin(self, epoch, step):
         ep = epoch - self.estimator.start_epoch
         epoch_in_cycle = ep % self.num_epochs_per_cycle
-        lr = self.init_lr * (self.lr_decay_factor ** (epoch_in_cycle // self.cycle_epochs_decay))
+        lr = self.init_lr * (self.lr_decay_factor **
+                             (epoch_in_cycle // self.cycle_epochs_decay))
         for param_group in self.estimator.optimizer.param_groups:
             param_group['lr'] = lr
-
 
     def on_epoch_end(self, epoch, step, best_val_bce, best_val_dice):
         ep = epoch - self.estimator.start_epoch
@@ -145,7 +150,8 @@ class CyclicLR(Callback):
             self.best_loss = loss
 
             torch.save(deepcopy(self.estimator.model.module),
-                       os.path.join(self.estimator.save_path, self.weights_name)
+                       os.path.join(self.estimator.save_path,
+                                    self.weights_name)
                        .format(cycle=cycle_num))
 
 
@@ -165,7 +171,8 @@ class ModelSaver(Callback):
                 self.metrics_collection.best_epoch = epoch
 
                 torch.save(deepcopy(self.estimator.model.module),
-                           os.path.join(self.estimator.save_path, self.save_name)
+                           os.path.join(self.estimator.save_path,
+                                        self.save_name)
                            .format(epoch=epoch, loss="{:.2}".format(loss)))
 
     def on_step_end(self, epoch, step, best_val_bce, best_val_dice):
@@ -176,11 +183,13 @@ class ModelSaver(Callback):
                 self.metrics_collection.best_epoch = epoch
 
                 torch.save(deepcopy(self.estimator.model.module),
-                           os.path.join(self.estimator.save_path, self.save_name)
+                           os.path.join(self.estimator.save_path,
+                                        self.save_name)
                            .format(epoch=epoch, loss="{:.2}".format(loss)))
 
 
-def save_checkpoint(epoch, step, best_val_bce, best_val_dice, model_state_dict, optimizer_state_dict, path):
+def save_checkpoint(epoch, step, best_val_bce, best_val_dice,
+                    model_state_dict, optimizer_state_dict, path):
     torch.save({
         'epoch': epoch + 1,
         'step': step + 1,
@@ -189,7 +198,6 @@ def save_checkpoint(epoch, step, best_val_bce, best_val_dice, model_state_dict, 
         'state_dict': model_state_dict,
         'optimizer': optimizer_state_dict,
     }, path)
-
 
 
 class CheckpointSaver(Callback):
@@ -202,25 +210,28 @@ class CheckpointSaver(Callback):
     def on_epoch_end(self, epoch, step, best_val_bce, best_val_dice):
         if epoch % self.save_every_epochs == 0:
             loss = float(self.metrics_collection.val_metrics['loss'])
+            save_file = os.path.join(self.estimator.save_path, self.save_name)
+            save_file = save_file.format(epoch=epoch, loss="{:.2}".format(loss))
             save_checkpoint(epoch,
                             step,
                             best_val_bce,
                             best_val_dice,
                             self.estimator.model.module.state_dict(),
                             self.estimator.optimizer.state_dict(),
-                            os.path.join(self.estimator.save_path, self.save_name).format(epoch=epoch, loss="{:.2}".format(loss)))
+                            save_file)
 
     def on_step_end(self, epoch, step, best_val_bce, best_val_dice):
         if step % self.save_every_steps == 0:
             loss = float(self.metrics_collection.val_metrics['loss'])
+            save_file = os.path.join(self.estimator.save_path, self.save_name)
+            save_file = save_file.format(epoch=epoch, loss="{:.2}".format(loss))
             save_checkpoint(epoch,
                             step,
                             best_val_bce,
                             best_val_dice,
                             self.estimator.model.module.state_dict(),
                             self.estimator.optimizer.state_dict(),
-                            os.path.join(self.estimator.save_path, self.save_name).format(epoch=epoch, loss="{:.2}".format(loss)))
-
+                            save_file)
 
 
 class EarlyStopper(Callback):
@@ -236,6 +247,7 @@ class EarlyStopper(Callback):
         if epoch - self.metrics_collection.best_epoch >= self.patience:
             self.metrics_collection.stop_training = True
 
+
 class TensorBoard(Callback):
     def __init__(self, logdir):
         super().__init__()
@@ -248,35 +260,43 @@ class TensorBoard(Callback):
 
     def on_epoch_end(self, epoch, step, best_val_bce, best_val_dice):
         for k, v in self.metrics_collection.train_metrics.items():
-            self.writer.add_scalar('train/{}'.format(k), float(v), global_step=epoch)
+            self.writer.add_scalar('train/{}'.format(k),
+                                   float(v), global_step=epoch)
 
         for k, v in self.metrics_collection.val_metrics.items():
-            self.writer.add_scalar('val/{}'.format(k), float(v), global_step=epoch)
+            self.writer.add_scalar(
+                'val/{}'.format(k), float(v), global_step=epoch)
 
         for idx, param_group in enumerate(self.estimator.optimizer.param_groups):
             lr = param_group['lr']
-            self.writer.add_scalar('group{}/lr'.format(idx), float(lr), global_step=epoch)
+            self.writer.add_scalar(
+                'group{}/lr'.format(idx), float(lr), global_step=epoch)
 
     def on_step_end(self, epoch, step, best_val_bce, best_val_dice):
         for k, v in self.metrics_collection.train_metrics.items():
-            self.writer.add_scalar('train_step/{}'.format(k), float(v), global_step=step)
+            self.writer.add_scalar(
+                'train_step/{}'.format(k), float(v), global_step=step)
 
         for k, v in self.metrics_collection.val_metrics.items():
-            self.writer.add_scalar('val_step/{}'.format(k), float(v), global_step=step)
+            self.writer.add_scalar(
+                'val_step/{}'.format(k), float(v), global_step=step)
 
         for idx, param_group in enumerate(self.estimator.optimizer.param_groups):
             lr = param_group['lr']
-            self.writer.add_scalar('group_step{}/lr'.format(idx), float(lr), global_step=step)
+            self.writer.add_scalar(
+                'group_step{}/lr'.format(idx), float(lr), global_step=step)
 
     def on_train_end(self):
         self.writer.close()
+
 
 class TelegramSender(Callback):
     def on_train_end(self):
         from telegram_send import send as send_telegram
         message = "Finished on {} with best loss {} on epoch {}".format(
             self.trainer.devices,
-            self.trainer.metrics_collection.best_loss or self.metrics_collection.val_metrics['loss'],
+            self.trainer.metrics_collection.best_loss or self.metrics_collection.val_metrics[
+                'loss'],
             self.trainer.metrics_collection.best_epoch or 'last')
         try:
             send_telegram(messages=message, conf='tg_config.conf')

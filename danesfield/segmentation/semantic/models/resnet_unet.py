@@ -12,6 +12,7 @@ encoder_params = {
          'url': resnet.model_urls['resnet34']}
 }
 
+
 class ConvBottleneck(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -53,11 +54,14 @@ class AbstractModel(nn.Module):
     def initialize_encoder(self, model, model_url):
         pretrained_dict = model_zoo.load_url(model_url)
         model_dict = model.state_dict()
-        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+        pretrained_dict = {k: v for k,
+                           v in pretrained_dict.items() if k in model_dict}
         model.load_state_dict(pretrained_dict)
+
 
 def _get_layers_params(layers):
     return sum((list(l.parameters()) for l in layers), [])
+
 
 class EncoderDecoder(AbstractModel):
     def __init__(self, num_classes, num_channels=3, encoder_name='resnet34'):
@@ -66,18 +70,25 @@ class EncoderDecoder(AbstractModel):
         self.filters = encoder_params[encoder_name]['filters']
         self.num_channels = num_channels
 
-        self.bottlenecks = nn.ModuleList([ConvBottleneck(f * 2, f) for f in reversed(self.filters[:-1])]) #todo init from type
-        self.decoder_stages = nn.ModuleList([self.get_decoder(idx) for idx in range(1, len(self.filters))])
+        self.bottlenecks = nn.ModuleList([ConvBottleneck(
+            f * 2, f) for f in reversed(self.filters[:-1])])  # todo init from type
+        self.decoder_stages = nn.ModuleList(
+            [self.get_decoder(idx) for idx in range(1, len(self.filters))])
 
-        self.last_upsample = UnetDecoderBlock(self.filters[0], self.filters[0] // 2)
-        self.final = self.make_final_classifier(self.filters[0] // 2, num_classes)
+        self.last_upsample = UnetDecoderBlock(
+            self.filters[0], self.filters[0] // 2)
+        self.final = self.make_final_classifier(
+            self.filters[0] // 2, num_classes)
 
         self._initialize_weights()
 
-        encoder = encoder_params[encoder_name]['init_op'](in_channels=num_channels)
-        self.encoder_stages = nn.ModuleList([self.get_encoder(encoder, idx) for idx in range(len(self.filters))])
+        encoder = encoder_params[encoder_name]['init_op'](
+            in_channels=num_channels)
+        self.encoder_stages = nn.ModuleList(
+            [self.get_encoder(encoder, idx) for idx in range(len(self.filters))])
         if num_channels == 3 and encoder_params[encoder_name]['url'] is not None:
-            self.initialize_encoder(encoder, encoder_params[encoder_name]['url'])
+            self.initialize_encoder(
+                encoder, encoder_params[encoder_name]['url'])
 
     # noinspection PyCallingNonCallable
     def forward(self, x):
@@ -113,7 +124,6 @@ class EncoderDecoder(AbstractModel):
         raise NotImplementedError
 
 
-
 class ResnetEncoder(EncoderDecoder):
     def __init__(self, num_classes, num_channels, encoder_name):
         super().__init__(num_classes, num_channels, encoder_name)
@@ -139,8 +149,7 @@ class ResnetEncoder(EncoderDecoder):
     def first_layer_params_names(self):
         return ['encoder.conv1', 'encoder.bn1', 'encoder_stages.0']
 
+
 class ResnetUNet(ResnetEncoder):
     def __init__(self, num_classes, num_channels=3):
         super().__init__(num_classes, num_channels, encoder_name='resnet34')
-
-

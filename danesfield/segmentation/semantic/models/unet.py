@@ -44,7 +44,6 @@ class UNetConv2(nn.Module):
         return output_shape
 
 
-
 class PadToAgree(nn.Module):
     def __init__(self):
         super(PadToAgree, self).__init__()
@@ -92,10 +91,12 @@ class PadToAgree(nn.Module):
 class UNetUp(nn.Module):
     """
     """
+
     def __init__(self, in_size, out_size, is_deconv=True, nonlinearity='relu'):
         super(UNetUp, self).__init__()
         if is_deconv:
-            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=2, stride=2)
+            self.up = nn.ConvTranspose2d(
+                in_size, out_size, kernel_size=2, stride=2)
         else:
             self.up = nn.UpsamplingBilinear2d(scale_factor=2)
         self.pad = PadToAgree()
@@ -117,8 +118,9 @@ class UNetUp(nn.Module):
         """
         output2_shape = OutputShapeFor(self.up)(input2_shape)
         output1_shape = OutputShapeFor(self.pad)(input1_shape, output2_shape)
-        cat_shape     = OutputShapeFor(torch.cat)([output1_shape, output2_shape], 1)
-        output_shape  = OutputShapeFor(self.conv)(cat_shape)
+        cat_shape = OutputShapeFor(torch.cat)(
+            [output1_shape, output2_shape], 1)
+        output_shape = OutputShapeFor(self.conv)(cat_shape)
         return output_shape
 
     def forward(self, inputs1, inputs2):
@@ -175,6 +177,7 @@ class UNet(nn.Module):
         >>> print('outputs.size() = {!r}'.format(outputs.size()))
         >>> print(np.array(inputs.size()) - np.array(outputs.size()))
     """
+
     def __init__(self, feature_scale=4, n_classes=21, is_deconv=True,
                  in_channels=3, is_batchnorm=True, nonlinearity='relu'):
         super(UNet, self).__init__()
@@ -189,25 +192,34 @@ class UNet(nn.Module):
         filters = [int(x // self.feature_scale) for x in filters]
 
         # downsampling
-        self.conv1 = UNetConv2(self.in_channels, filters[0], self.is_batchnorm, self.nonlinearity)
+        self.conv1 = UNetConv2(
+            self.in_channels, filters[0], self.is_batchnorm, self.nonlinearity)
         self.maxpool1 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv2 = UNetConv2(filters[0], filters[1], self.is_batchnorm, self.nonlinearity)
+        self.conv2 = UNetConv2(
+            filters[0], filters[1], self.is_batchnorm, self.nonlinearity)
         self.maxpool2 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv3 = UNetConv2(filters[1], filters[2], self.is_batchnorm, self.nonlinearity)
+        self.conv3 = UNetConv2(
+            filters[1], filters[2], self.is_batchnorm, self.nonlinearity)
         self.maxpool3 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv4 = UNetConv2(filters[2], filters[3], self.is_batchnorm, self.nonlinearity)
+        self.conv4 = UNetConv2(
+            filters[2], filters[3], self.is_batchnorm, self.nonlinearity)
         self.maxpool4 = nn.MaxPool2d(kernel_size=2)
 
-        self.center = UNetConv2(filters[3], filters[4], self.is_batchnorm, self.nonlinearity)
+        self.center = UNetConv2(
+            filters[3], filters[4], self.is_batchnorm, self.nonlinearity)
 
         # upsampling
-        self.up_concat4 = UNetUp(filters[4], filters[3], self.is_deconv, self.nonlinearity)
-        self.up_concat3 = UNetUp(filters[3], filters[2], self.is_deconv, self.nonlinearity)
-        self.up_concat2 = UNetUp(filters[2], filters[1], self.is_deconv, self.nonlinearity)
-        self.up_concat1 = UNetUp(filters[1], filters[0], self.is_deconv, self.nonlinearity)
+        self.up_concat4 = UNetUp(
+            filters[4], filters[3], self.is_deconv, self.nonlinearity)
+        self.up_concat3 = UNetUp(
+            filters[3], filters[2], self.is_deconv, self.nonlinearity)
+        self.up_concat2 = UNetUp(
+            filters[2], filters[1], self.is_deconv, self.nonlinearity)
+        self.up_concat1 = UNetUp(
+            filters[1], filters[0], self.is_deconv, self.nonlinearity)
 
         # final conv (without any concat)
         self.final = nn.Conv2d(filters[0], n_classes, 3, padding=1)
@@ -317,6 +329,7 @@ class UNet(nn.Module):
             solve_for = pad_in
 
             fixed_expr = expr.subs(fixed).simplify()
+
             def func(a1):
                 expr_value = float(fixed_expr.subs({solve_for: a1}).evalf())
                 return expr_value - target
@@ -381,10 +394,10 @@ class UNet(nn.Module):
 
         self._cache[input_shape] = (prepad, postcrop)
 
-        import tqdm
-        print = tqdm.tqdm.write
-        #print('prepad = {!r}'.format(prepad))
-        #print('postcrop = {!r}'.format(postcrop))
+        # import tqdm
+        # print = tqdm.tqdm.write
+        # print('prepad = {!r}'.format(prepad))
+        # print('postcrop = {!r}'.format(postcrop))
         return prepad, postcrop
 
     def prepad(self, inputs):
@@ -520,7 +533,8 @@ class UNet(nn.Module):
                         nninit.he_normal(self_state[key])
 
                         # Transfer as much as possible
-                        min_size = np.minimum(self_state[key].shape, other_value.shape)
+                        min_size = np.minimum(
+                            self_state[key].shape, other_value.shape)
                         sl = tuple([slice(0, s) for s in min_size])
                         self_state[key][sl] = other_value[sl]
 

@@ -34,8 +34,10 @@ class OutputShapeFor(object):
     def __call__(self, *args, **kwargs):
         if isinstance(self.module, nn.Module):
             # bound methods dont need module
-            is_bound  = hasattr(self._func, '__func__') and getattr(self._func, '__func__', None) is not None
-            is_bound |= hasattr(self._func, 'im_func') and getattr(self._func, 'im_func', None) is not None
+            is_bound = hasattr(self._func, '__func__') and getattr(
+                self._func, '__func__', None) is not None
+            is_bound |= hasattr(self._func, 'im_func') and getattr(
+                self._func, 'im_func', None) is not None
             if is_bound:
                 output_shape = self._func(*args, **kwargs)
             else:
@@ -69,7 +71,7 @@ class OutputShapeFor(object):
         math = OutputShapeFor.math
         (N, C, H_in, W_in) = input_shape
         H_out = math.floor(H_in * module.scale_factor)
-        W_out = math.floor(W_in  * module.scale_factor)
+        W_out = math.floor(W_in * module.scale_factor)
         output_shape = (N, C, H_out, W_out)
         return output_shape
 
@@ -174,8 +176,10 @@ class OutputShapeFor(object):
         """
           - Input: :math:`(N, C_{in}, H_{in}, W_{in})`
           - Output: :math:`(N, C_{out}, H_{out}, W_{out})` where
-            :math:`H_{out} = (H_{in} - 1) * stride[0] - 2 * padding[0] + kernel\_size[0] + output\_padding[0]`
-            :math:`W_{out} = (W_{in} - 1) * stride[1] - 2 * padding[1] + kernel\_size[1] + output\_padding[1]`
+            :math:`H_{out} = (H_{in} - 1) * stride[0] - 2 * padding[0]
+                             + kernel\_size[0] + output\_padding[0]`
+            :math:`W_{out} = (W_{in} - 1) * stride[1] - 2 * padding[1]
+                             + kernel\_size[1] + output\_padding[1]`
 
         Example:
             >>> from clab.torch.models.output_shape_for import *
@@ -202,7 +206,8 @@ class OutputShapeFor(object):
         output_padding = module.output_padding
         padding = module.padding
         DIMS_out = [
-            (D_in - 1) * stride[i] - 2 * padding[i] + kernel_size[i] + output_padding[i]
+            (D_in - 1) * stride[i] - 2 * padding[i] +
+            kernel_size[i] + output_padding[i]
             for i, D_in in enumerate(DIMS_in)
         ]
         output_shape = tuple([N, C_out] + DIMS_out)
@@ -214,8 +219,12 @@ class OutputShapeFor(object):
         Notes:
             - Input: :math:`(N, C_{in}, H_{in}, W_{in})`
             - Output: :math:`(N, C_{out}, H_{out}, W_{out})` where
-                :math:`H_{out} = floor((H_{in}  + 2 * padding[0] - dilation[0] * (kernel\_size[0] - 1) - 1) / stride[0] + 1)`
-                :math:`W_{out} = floor((W_{in}  + 2 * padding[1] - dilation[1] * (kernel\_size[1] - 1) - 1) / stride[1] + 1)`
+                :math:`H_{out} = floor((H_{in}  + 2 * padding[0]
+                                        - dilation[0] * (kernel\_size[0] - 1) - 1)
+                                        / stride[0] + 1)`
+                :math:`W_{out} = floor((W_{in}  + 2 * padding[1]
+                                        - dilation[1] * (kernel\_size[1] - 1) - 1)
+                                        / stride[1] + 1)`
 
         Example:
             >>> from clab.torch.models.output_shape_for import *
@@ -234,7 +243,8 @@ class OutputShapeFor(object):
         kernel_size = module.kernel_size
 
         DIMS_out = [
-            math.floor((D_in  + 2 * padding[i] - dilation[i] * (kernel_size[i] - 1) - 1) / stride[i] + 1)
+            math.floor(
+                (D_in + 2 * padding[i] - dilation[i] * (kernel_size[i] - 1) - 1) / stride[i] + 1)
             for i, D_in in enumerate(DIMS_in)
         ]
         output_shape = tuple([N, C_out] + DIMS_out)
@@ -257,8 +267,12 @@ class OutputShapeFor(object):
             Same as conv2 forumla except C2 = C1
             - Input: :math:`(N, C, H_{in}, W_{in})`
             - Output: :math:`(N, C, H_{out}, W_{out})` where
-            :math:`H_{out} = floor((H_{in}  + 2 * padding[0] - dilation[0] * (kernel\_size[0] - 1) - 1) / stride[0] + 1)`
-            :math:`W_{out} = floor((W_{in}  + 2 * padding[1] - dilation[1] * (kernel\_size[1] - 1) - 1) / stride[1] + 1)`
+            :math:`H_{out} = floor((H_{in}  + 2 * padding[0]
+                                   - dilation[0] * (kernel\_size[0] - 1) - 1)
+                                   / stride[0] + 1)`
+            :math:`W_{out} = floor((W_{in}  + 2 * padding[1]
+                                   - dilation[1] * (kernel\_size[1] - 1) - 1)
+                                   / stride[1] + 1)`
         """
         math = OutputShapeFor.math
         N, C, *DIMS_in = input_shape
@@ -269,7 +283,8 @@ class OutputShapeFor(object):
         kernel_size = ensure_iterablen(module.kernel_size, n)
 
         DIMS_out = [
-            math.floor((D_in  + 2 * padding[i] - dilation[i] * (kernel_size[i] - 1) - 1) / stride[i] + 1)
+            math.floor(
+                (D_in + 2 * padding[i] - dilation[i] * (kernel_size[i] - 1) - 1) / stride[i] + 1)
             for i, D_in in enumerate(DIMS_in)
         ]
         output_shape = tuple([N, C] + DIMS_out)
@@ -282,8 +297,10 @@ class OutputShapeFor(object):
           Shape:
               - Input: :math:`(N, C, H_{in}, W_{in})`
               - Output: :math:`(N, C, H_{out}, W_{out})` where
-                :math:`H_{out} = floor((H_{in}  + 2 * padding[0] - kernel\_size[0]) / stride[0] + 1)`
-                :math:`W_{out} = floor((W_{in}  + 2 * padding[1] - kernel\_size[1]) / stride[1] + 1)`
+                :math:`H_{out} = floor((H_{in}  + 2 * padding[0]
+                                        - kernel\_size[0]) / stride[0] + 1)`
+                :math:`W_{out} = floor((W_{in}  + 2 * padding[1]
+                                        - kernel\_size[1]) / stride[1] + 1)`
         """
         math = OutputShapeFor.math
         N, C, *DIMS_in = input_shape
@@ -293,7 +310,8 @@ class OutputShapeFor(object):
         kernel_size = ensure_iterablen(module.kernel_size, n)
 
         DIMS_out = [
-            math.floor((D_in + 2 * padding[i] - kernel_size[i]) / stride[i] + 1)
+            math.floor(
+                (D_in + 2 * padding[i] - kernel_size[i]) / stride[i] + 1)
             for i, D_in in enumerate(DIMS_in)
         ]
         output_shape = tuple([N, C] + DIMS_out)
@@ -363,7 +381,8 @@ class OutputShapeFor(object):
         if module.downsample is not None:
             residual_shape = OutputShapeFor(module.downsample)(residual_shape)
 
-        # assert residual_shape[-2:] == shape[-2:], 'cannot add residual {} {}'.format(residual_shape, shape)
+        # assert residual_shape[-2:] == shape[-2:],
+        #        'cannot add residual {} {}'.format(residual_shape, shape)
         # out += residual
         shape = OutputShapeFor(module.relu)(shape)
         # print('BASIC residual_shape = {!r}'.format(residual_shape[-2:]))
@@ -391,7 +410,8 @@ class OutputShapeFor(object):
         if module.downsample is not None:
             residual_shape = OutputShapeFor(module.downsample)(input_shape)
 
-        assert residual_shape[-2:] == shape[-2:], 'cannot add residual {} {}'.format(residual_shape, shape)
+        assert residual_shape[-2:] == shape[-2:], 'cannot add residual {} {}'.format(
+            residual_shape, shape)
         # out += residual
         shape = OutputShapeFor(module.relu)(shape)
         # print('bottle downsample     = {!r}'.format(module.downsample))
@@ -478,7 +498,8 @@ class OutputShapeFor(object):
                     if i == dim:
                         output_shape[i] += v
                     else:
-                        assert output_shape[i] == v, 'inconsistent dims {}'.format(input_shapes)
+                        assert output_shape[i] == v, 'inconsistent dims {}'.format(
+                            input_shapes)
         return output_shape
 
 

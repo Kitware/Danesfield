@@ -2,10 +2,12 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class ImageCropper:
     """
     generates crops from image
     """
+
     def __init__(self, target_rows, target_cols, pad, use_crop=True):
         self.target_rows = target_rows
         self.target_cols = target_cols
@@ -18,25 +20,26 @@ class ImageCropper:
 
         x = random.randint(0, image_rows - self.target_rows)
         y = random.randint(0, image_cols - self.target_cols)
-        
+
         return x, y
 
     def crop_image(self, image, x, y):
-        if self.use_crop == False:
+        if not self.use_crop:
             return image
 
         image_cols = image.shape[0]
         image_rows = image.shape[1]
 
-        b_use_crop = (image_rows != self.target_rows) or (image_cols != self.target_cols)
+        b_use_crop = (image_rows != self.target_rows) or (
+            image_cols != self.target_cols)
 
-        return image[y: y+self.target_rows, x: x+self.target_cols,...] if b_use_crop else image
+        return image[y: y+self.target_rows, x: x+self.target_cols, ...] if b_use_crop else image
 
     def sequential_starts(self, image, axis=0):
         image_cols = image.shape[0]
         image_rows = image.shape[1]
 
-        #dumb thing
+        # dumb thing
         best_dist = float('inf')
         best_starts = None
         big_segment = image_cols if axis else image_rows
@@ -49,28 +52,35 @@ class ImageCropper:
                 best_dist = minval
                 best_starts = r
             else:
-                starts = best_starts[:opt_val].tolist() + [big_segment - small_segment]
+                starts = best_starts[:opt_val].tolist(
+                ) + [big_segment - small_segment]
                 return starts
 
     def sequential_crops(self, img):
-        self.starts_y = self.sequential_starts(img, axis=0) if self.use_crop else [0]
-        self.starts_x = self.sequential_starts(img, axis=1) if self.use_crop else [0]
+        self.starts_y = self.sequential_starts(
+            img, axis=0) if self.use_crop else [0]
+        self.starts_x = self.sequential_starts(
+            img, axis=1) if self.use_crop else [0]
         for startx in self.starts_x:
             for starty in self.starts_y:
                 yield self.crop_image(img, startx, starty)
-    
+
     def cropper_positions(self, img):
-        self.starts_y = self.sequential_starts(img, axis=0) if self.use_crop else [0]
-        self.starts_x = self.sequential_starts(img, axis=1) if self.use_crop else [0]
+        self.starts_y = self.sequential_starts(
+            img, axis=0) if self.use_crop else [0]
+        self.starts_x = self.sequential_starts(
+            img, axis=1) if self.use_crop else [0]
         positions = [(x, y) for x in self.starts_x for y in self.starts_y]
-        
+
         return positions
 
-#dbg functions
+# dbg functions
+
+
 def starts_to_mpl(starts, t):
     ends = np.array(starts) + t
     data = []
-    prev_e = None
+    # prev_e = None
     for idx, (s, e) in enumerate(zip(starts, ends)):
         # if prev_e is not None:
         #     data.append((prev_e, s))
@@ -83,7 +93,7 @@ def starts_to_mpl(starts, t):
         data.append((idx, idx))
         data.append('r')
 
-        prev_e = e
+        # prev_e = e
         if idx > 0:
             data.append((s, s))
             data.append((idx-1, idx))
@@ -94,6 +104,7 @@ def starts_to_mpl(starts, t):
             data.append('g--')
 
     return data
+
 
 def calc_starts_and_visualize(c, tr, tc):
     starts_rows = c.sequential_starts(axis=0)

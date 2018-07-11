@@ -5,10 +5,12 @@ import numpy as np
 class AlphaNotAvailableException(Exception):
     pass
 
+
 class AbstractImageType:
     """
     base class for image types
     """
+
     def __init__(self, paths, fn, fn_mapping, has_alpha=False):
         self.paths = paths
         self.fn = fn
@@ -51,12 +53,11 @@ class AbstractImageType:
     def pad_image(self, image, rows, cols):
         channels = image.shape[2] if len(image.shape) > 2 else None
         if image.shape[:2] != (rows, cols):
-            empty_x = np.zeros((rows, cols, channels), dtype=image.dtype) if channels else np.zeros((rows, cols), dtype=image.dtype)
-            empty_x[0:image.shape[0],0:image.shape[1],...] = image
+            empty_x = np.zeros((rows, cols, channels), dtype=image.dtype) if channels else np.zeros(
+                (rows, cols), dtype=image.dtype)
+            empty_x[0:image.shape[0], 0:image.shape[1], ...] = image
             image = empty_x
         return image
 
     def finalyze(self, image):
         return self.reflect_border(image)
-
-
