@@ -27,7 +27,8 @@ def uniform(tensor, a=0, b=1):
 
 
 def normal(tensor, mean=0, std=1):
-    """Fills the input Tensor or Variable with values drawn from a normal distribution with the given mean and std
+    """Fills the input Tensor or Variable with values drawn from a normal
+       distribution with the given mean and std
 
     Args:
         tensor: a n-dimension torch.Tensor
@@ -65,7 +66,8 @@ def constant(tensor, val):
 
 def _calculate_fan_in_and_fan_out(tensor):
     if tensor.ndimension() < 2:
-        raise ValueError("fan in and fan out can not be computed for tensor of size ", tensor.size())
+        raise ValueError(
+            "fan in and fan out can not be computed for tensor of size ", tensor.size())
 
     if tensor.ndimension() == 2:  # Linear
         fan_in = tensor.size(1)
@@ -86,7 +88,8 @@ def xavier_uniform(tensor, gain=1):
     described in "Understanding the difficulty of training deep feedforward
     neural networks" - Glorot, X. and Bengio, Y., using a uniform distribution.
 
-    The resulting tensor will have values sampled from U(-a, a) where a = gain * sqrt(2/(fan_in + fan_out))
+    The resulting tensor will have values sampled from U(-a, a) where
+    a = gain * sqrt(2/(fan_in + fan_out))
 
     Args:
         tensor: a n-dimension torch.Tensor
@@ -107,8 +110,10 @@ def xavier_uniform(tensor, gain=1):
 
 
 def xavier_normal(tensor, gain=1):
-    """Fills the input Tensor or Variable with values according to the method described in "Understanding the difficulty of training
-       deep feedforward neural networks" - Glorot, X. and Bengio, Y., using a normal distribution.
+    """Fills the input Tensor or Variable with values according to the method
+       described in "Understanding the difficulty of training
+       deep feedforward neural networks" - Glorot, X. and Bengio, Y., using
+       a normal distribution.
 
        The resulting tensor will have values sampled from normal distribution with mean=0 and
        std = gain * sqrt(2/(fan_in + fan_out))
@@ -186,11 +191,15 @@ def he_normal(tensor, gain=1):
 
 
 def orthogonal(tensor, gain=1):
-    """Fills the input Tensor or Variable with a (semi) orthogonal matrix. The input tensor must have at least 2 dimensions,
-       and for tensors with more than 2 dimensions the trailing dimensions are flattened. viewed as 2D representation with
-       rows equal to the first dimension and columns equal to the product of  as a sparse matrix, where the non-zero elements
+    """Fills the input Tensor or Variable with a (semi) orthogonal matrix.
+       The input tensor must have at least 2 dimensions,
+       and for tensors with more than 2 dimensions the trailing dimensions
+       are flattened. viewed as 2D representation with
+       rows equal to the first dimension and columns equal to the product of
+       as a sparse matrix, where the non-zero elements
        will be drawn from a normal distribution with mean=0 and std=`std`.
-       Reference: "Exact solutions to the nonlinear dynamics of learning in deep linear neural networks" - Saxe, A. et al.
+       Reference: "Exact solutions to the nonlinear dynamics of learning in
+       deep linear neural networks" - Saxe, A. et al.
 
     Args:
         tensor: a n-dimension torch.Tensor, where n >= 2
@@ -205,10 +214,13 @@ def orthogonal(tensor, gain=1):
         return tensor
     else:
         if tensor.ndimension() < 2:
-            raise ValueError("Only tensors with 2 or more dimensions are supported.")
+            raise ValueError(
+                "Only tensors with 2 or more dimensions are supported.")
 
-        flattened_shape = (tensor.size(0), int(np.prod(tensor.numpy().shape[1:])))
-        flattened = torch.Tensor(flattened_shape[0], flattened_shape[1]).normal_(0, 1)
+        flattened_shape = (tensor.size(0), int(
+            np.prod(tensor.numpy().shape[1:])))
+        flattened = torch.Tensor(
+            flattened_shape[0], flattened_shape[1]).normal_(0, 1)
 
         u, s, v = np.linalg.svd(flattened.numpy(), full_matrices=False)
         if u.shape == flattened.numpy().shape:
@@ -221,7 +233,8 @@ def orthogonal(tensor, gain=1):
 
 
 def sparse(tensor, sparsity, std=0.01):
-    """Fills the 2D input Tensor or Variable as a sparse matrix, where the non-zero elements will be drawn from a
+    """Fills the 2D input Tensor or Variable as a sparse matrix,
+       where the non-zero elements will be drawn from a
        normal distribution with mean=0 and std=`std`.
 
     Args:
@@ -238,7 +251,8 @@ def sparse(tensor, sparsity, std=0.01):
         return tensor
     else:
         if tensor.ndimension() != 2:
-            raise ValueError("Sparse initialization only supported for 2D inputs")
+            raise ValueError(
+                "Sparse initialization only supported for 2D inputs")
         tensor.normal_(0, std)
         rows, cols = tensor.size(0), tensor.size(1)
         num_zeros = int(np.ceil(cols * sparsity))

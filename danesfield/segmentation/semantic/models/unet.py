@@ -4,7 +4,7 @@ import math
 import sympy as sym
 import torch
 import torch.nn.functional as F
-import .nninit as nninit
+import nninit
 from .output_shape_for import OutputShapeFor
 
 __all__ = ['UNet']
