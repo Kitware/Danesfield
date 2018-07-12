@@ -94,11 +94,11 @@ class Estimator:
             model_dict.update(pretrained_dict)
             try:
                 self.model.module.load_state_dict(model_dict)
-            except:
+            except Exception:
                 print('load state dict failed')
             try:
                 self.optimizer.load_state_dict(checkpoint['optimizer'])
-            except:
+            except Exception:
                 pass
 
             for param_group in self.optimizer.param_groups:

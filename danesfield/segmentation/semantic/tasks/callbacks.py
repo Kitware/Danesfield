@@ -300,5 +300,5 @@ class TelegramSender(Callback):
             self.trainer.metrics_collection.best_epoch or 'last')
         try:
             send_telegram(messages=message, conf='tg_config.conf')
-        except:
+        except Exception:
             pass

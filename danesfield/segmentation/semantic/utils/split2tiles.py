@@ -5,7 +5,6 @@ from osgeo import gdal
 from osgeo import osr
 from fractions import gcd
 from rasterio.enums import ColorInterp
-from pylab import *
 from scipy.ndimage import measurements
 
 
@@ -111,8 +110,8 @@ def split(file_name, nbands, stype, tagname, sqwidth=2048):
     pixelWidth = transform[1]
     pixelHeight = -transform[5]
 
-    txlen = sqwid*pixelWidth
-    tylen = sqwid*pixelHeight
+    txlen = sqwidth*pixelWidth
+    tylen = sqwidth*pixelHeight
 
     # tiles = create_tiles(minx, miny, maxx, maxy, 15)
     tiles = create_square_tiles(minx, miny, maxx, maxy, txlen, tylen)
