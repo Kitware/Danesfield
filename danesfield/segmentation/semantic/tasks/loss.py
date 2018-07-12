@@ -3,8 +3,6 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.functional import binary_cross_entropy_with_logits
 
-# from matplotlib import pyplot as plt
-
 
 def dice_round(preds, trues, is_average=True):
     preds = torch.round(preds)
@@ -16,15 +14,12 @@ def dice(preds, trues, weight=None, is_average=True):
 #    for i in range(num):
 #        predmat = preds[i,0,:,:].cpu().detach().numpy()
 #        truemat = trues[i,0,:,:].cpu().detach().numpy()
-#
 #        plt.subplot(121)
 #        plt.imshow(predmat)
 #        plt.title('prediction')
-#
 #        plt.subplot(122)
 #        plt.imshow(truemat)
 #        plt.title('true')
-#
 #        plt.show()
 
     preds = preds.view(num, -1)
@@ -51,6 +46,33 @@ class DiceLoss(nn.Module):
         return 1 - dice(F.sigmoid(input), target, weight=weight, is_average=self.size_average)
 
 
+class BCELoss(nn.Module):
+    def __init__(self, size_average=True):
+        super().__init__()
+        self.size_average = size_average
+
+    def forward(self, input, target, weight=None):
+        return binary_cross_entropy_with_logits(input, target, size_average=self.size_average)
+
+
+class BCELossWeighted(nn.Module):
+    def __init__(self, size_average=True):
+        super().__init__()
+        self.size_average = size_average
+
+    def forward(self, input, target, weight=None):
+        pos_count = 0
+        if target.nonzero().dim() > 0:
+            pos_count = target.nonzero().size()[0]
+
+        neg_count = 1
+        if (target == 0).nonzero().dim() > 0:
+            neg_count = (target == 0).nonzero().size()[0]
+        w = pos_count/neg_count
+        return binary_cross_entropy_with_logits(input, target, weight=w,
+                                                size_average=self.size_average)
+
+
 class BCEDiceLoss(nn.Module):
     def __init__(self, size_average=True):
         super().__init__()
@@ -68,5 +90,5 @@ class BCEDiceLossWeighted(nn.Module):
 
     def forward(self, input, target, weight=None):
         return (1.5 * binary_cross_entropy_with_logits(input, target,
-                                                       size_average=self.size_average) +
+                size_average=self.size_average) +
                 .5 * (1 - dice(F.sigmoid(input), target, is_average=self.size_average)))

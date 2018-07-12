@@ -52,13 +52,9 @@ pip install -r requirements.txt
 
 
 
-## Usage
+## Testing uage
 
-For training task
+``$ bash denseunet_test.sh``
 
-``$ ./runtraindemo.sh``
-
-For testing task
-
-``$ ./runtestdemo.sh``
-
+after running the above command line, you will get the prediction results in the temporal folder
+``tmpresults/results/denseunet_/merged".

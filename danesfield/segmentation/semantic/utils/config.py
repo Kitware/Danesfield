@@ -2,6 +2,8 @@ from collections import namedtuple
 
 Config = namedtuple("Config", [
     "dataset_path",
+    "pretrain_model_path",
+    "dsm_tifdata_path",
     "folder",
     "img_rows",
     "img_cols",

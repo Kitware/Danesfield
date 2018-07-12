@@ -8,8 +8,6 @@ from scipy import ndimage as ndi
 from skimage.morphology import remove_small_objects, watershed
 import tqdm
 
-from matplotlib import pyplot as plt
-
 
 def rlencode(x, dropna=False):
     """
@@ -157,11 +155,11 @@ def make_submission(prediction_dir, test_dsmdata_dir, submission_file):
         outband.WriteArray(cls_mask)
         outRaster.FlushCache()
 
-        plt.imshow(labeled_array > 0)
+        # plt.imshow(labeled_array > 0)
         # plt.show()
-        pngfname = cls_path_geo.replace('.tif', '.png')
-        plt.savefig(pngfname)
-        plt.close()
+        # pngfname = cls_path_geo.replace('.tif', '.png')
+        # plt.savefig(pngfname)
+        # plt.close()
 
         # labeled_array = remove_on_boundary(labeled_array)
         rle_str = rle_to_string(rlencode(labeled_array.flatten()))

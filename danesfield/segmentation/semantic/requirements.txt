@@ -1,6 +1,7 @@
 PyTorch
 pencv-python
 sklearn
+scikit-image
 ubelt
 tensorboardX
 sympy

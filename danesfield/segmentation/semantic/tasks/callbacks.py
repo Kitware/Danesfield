@@ -99,8 +99,7 @@ class StepLR(Callback):
         self.lr_decay_factor = lr_decay_factor
 
     def on_epoch_begin(self, epoch, step):
-        lr = self.init_lr * (self.lr_decay_factor **
-                             (epoch // self.num_epochs_per_decay))
+        lr = self.init_lr * (self.lr_decay_factor ** (epoch // self.num_epochs_per_decay))
         for param_group in self.estimator.optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -134,8 +133,7 @@ class CyclicLR(Callback):
     def on_epoch_begin(self, epoch, step):
         ep = epoch - self.estimator.start_epoch
         epoch_in_cycle = ep % self.num_epochs_per_cycle
-        lr = self.init_lr * (self.lr_decay_factor **
-                             (epoch_in_cycle // self.cycle_epochs_decay))
+        lr = self.init_lr * (self.lr_decay_factor ** (epoch_in_cycle // self.cycle_epochs_decay))
         for param_group in self.estimator.optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -150,8 +148,7 @@ class CyclicLR(Callback):
             self.best_loss = loss
 
             torch.save(deepcopy(self.estimator.model.module),
-                       os.path.join(self.estimator.save_path,
-                                    self.weights_name)
+                       os.path.join(self.estimator.save_path, self.weights_name)
                        .format(cycle=cycle_num))
 
 
@@ -171,8 +168,7 @@ class ModelSaver(Callback):
                 self.metrics_collection.best_epoch = epoch
 
                 torch.save(deepcopy(self.estimator.model.module),
-                           os.path.join(self.estimator.save_path,
-                                        self.save_name)
+                           os.path.join(self.estimator.save_path, self.save_name)
                            .format(epoch=epoch, loss="{:.2}".format(loss)))
 
     def on_step_end(self, epoch, step, best_val_bce, best_val_dice):
@@ -183,13 +179,12 @@ class ModelSaver(Callback):
                 self.metrics_collection.best_epoch = epoch
 
                 torch.save(deepcopy(self.estimator.model.module),
-                           os.path.join(self.estimator.save_path,
-                                        self.save_name)
+                           os.path.join(self.estimator.save_path, self.save_name)
                            .format(epoch=epoch, loss="{:.2}".format(loss)))
 
 
-def save_checkpoint(epoch, step, best_val_bce, best_val_dice,
-                    model_state_dict, optimizer_state_dict, path):
+def save_checkpoint(epoch, step, best_val_bce, best_val_dice, model_state_dict,
+                    optimizer_state_dict, path):
     torch.save({
         'epoch': epoch + 1,
         'step': step + 1,
@@ -260,31 +255,25 @@ class TensorBoard(Callback):
 
     def on_epoch_end(self, epoch, step, best_val_bce, best_val_dice):
         for k, v in self.metrics_collection.train_metrics.items():
-            self.writer.add_scalar('train/{}'.format(k),
-                                   float(v), global_step=epoch)
+            self.writer.add_scalar('train/{}'.format(k), float(v), global_step=epoch)
 
         for k, v in self.metrics_collection.val_metrics.items():
-            self.writer.add_scalar(
-                'val/{}'.format(k), float(v), global_step=epoch)
+            self.writer.add_scalar('val/{}'.format(k), float(v), global_step=epoch)
 
         for idx, param_group in enumerate(self.estimator.optimizer.param_groups):
             lr = param_group['lr']
-            self.writer.add_scalar(
-                'group{}/lr'.format(idx), float(lr), global_step=epoch)
+            self.writer.add_scalar('group{}/lr'.format(idx), float(lr), global_step=epoch)
 
     def on_step_end(self, epoch, step, best_val_bce, best_val_dice):
         for k, v in self.metrics_collection.train_metrics.items():
-            self.writer.add_scalar(
-                'train_step/{}'.format(k), float(v), global_step=step)
+            self.writer.add_scalar('train_step/{}'.format(k), float(v), global_step=step)
 
         for k, v in self.metrics_collection.val_metrics.items():
-            self.writer.add_scalar(
-                'val_step/{}'.format(k), float(v), global_step=step)
+            self.writer.add_scalar('val_step/{}'.format(k), float(v), global_step=step)
 
         for idx, param_group in enumerate(self.estimator.optimizer.param_groups):
             lr = param_group['lr']
-            self.writer.add_scalar(
-                'group_step{}/lr'.format(idx), float(lr), global_step=step)
+            self.writer.add_scalar('group_step{}/lr'.format(idx), float(lr), global_step=step)
 
     def on_train_end(self):
         self.writer.close()

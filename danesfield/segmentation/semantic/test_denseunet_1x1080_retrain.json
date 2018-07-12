@@ -1,7 +1,7 @@
 {
   "batch_size": 1,
   "iter_size": 1,
-  "dataset_path": "/data/CORE3D/AOIS/DaytonJacksonville/pngdata",
+  "dataset_path": "./test_data/pngdata",
   "dbg": false,
   "folder": "denseunet_",
   "img_cols": 2048,
@@ -12,7 +12,8 @@
   "test_pad": 64,
   "train_pad": 0,
   "epoch_size": 16,
-  "predict_batch_size": 1,
+  "test_batch_size": 1,
+  "test_iter_size": 1,
   "results_dir": "./tmpresults",
   "save_images": true,
   "target_cols": 512,
