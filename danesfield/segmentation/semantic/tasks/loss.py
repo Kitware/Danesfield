@@ -1,10 +1,9 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-import numpy as np
 from torch.nn.functional import binary_cross_entropy_with_logits
 
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 
 def dice_round(preds, trues, is_average=True):

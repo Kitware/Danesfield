@@ -1,5 +1,4 @@
 import torch
-from . import unet
 import ubelt as ub
 import torchvision  # NOQA
 import torch.nn as nn

@@ -2,8 +2,6 @@ import numpy as np
 import cv2
 from sklearn.model_selection import KFold
 from .config import Config
-import argparse
-import json
 
 
 def heatmap(map):

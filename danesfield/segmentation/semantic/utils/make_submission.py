@@ -1,7 +1,5 @@
 from osgeo import gdal
 from osgeo import osr
-from osgeo.gdalnumeric import CopyDatasetInfo
-from rasterio.enums import ColorInterp
 import os
 import glob
 import copy

@@ -1,6 +1,6 @@
 import os
 from .abstract_image_type import AbstractImageType
-from typing import Type, Dict, AnyStr, Callable
+from typing import Type
 
 
 class AbstractImageProvider:

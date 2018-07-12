@@ -1,17 +1,12 @@
-import torch
 import os
 
-from tasks.transforms import augment_flips_color
-
 from dataset.image_provider import ImageProvider
-from dataset.threeband_image import ThreebandImageType
 from dataset.multiband_image import MultibandImageType
-from utils.utils import get_folds, update_config
+from utils.utils import update_config
 from tasks.concrete_eval import GdalFullEvaluator
 import argparse
 import json
 from utils.config import Config
-from utils.merge_preds import merge_tiffs
 from utils.merge_preds import merge_onetrain_tiffs
 from utils.make_submission import make_submission
 

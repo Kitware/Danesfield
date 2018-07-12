@@ -6,7 +6,6 @@ import gc
 import torch
 from torch import nn
 from torch import optim
-from torch.autograd import Variable
 from torch.utils.data.dataloader import DataLoader as PytorchDataLoader
 from torch.nn.functional import binary_cross_entropy
 from tqdm import tqdm
@@ -14,13 +13,12 @@ from typing import Type
 
 from dataset.neural_dataset import TrainDataset, ValDataset
 from .loss import dice_round, dice, BCEDiceLoss, BCEDiceLossWeighted
-from .callbacks import ModelSaver, TensorBoard, CheckpointSaver, Callbacks, StepLR, InverseLR
+from .callbacks import ModelSaver, TensorBoard, CheckpointSaver, Callbacks, InverseLR
+# from .callbacks import StepLR
 from models import extension_unet
 from models import resnet_unet
 from models import dense_unet
 import numpy as np
-
-from matplotlib import pyplot as plt
 
 
 torch.backends.cudnn.benchmark = True

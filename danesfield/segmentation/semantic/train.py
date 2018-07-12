@@ -1,4 +1,3 @@
-import torch
 import os
 
 from tasks.transforms import augment_flips_color
