@@ -54,7 +54,8 @@ pip install -r requirements.txt
 
 ## Testing uage
 
-``$ bash denseunet_test.sh``
+``$ cd tools "
+``$ bash denseunet_test.sh"
 
 after running the above command line, you will get the prediction results in the temporal folder
-``tmpresults/results/denseunet_/merged".
+``./tools/tmpresults/results/denseunet_/merged".
