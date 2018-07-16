@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 import os
 import argparse
-import inception_v1
+from danesfield.segmentation.building import inception_v1
 import cv2
 
 import gdal
