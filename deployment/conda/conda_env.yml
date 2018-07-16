@@ -15,6 +15,7 @@ dependencies:
 - pubgeo-core3d-metrics
 - gdal
 - pdal
+- python-pdal
 - texture-atlas
 - gaia
 - pyproj
