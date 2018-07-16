@@ -17,8 +17,8 @@ def main(args):
     parser.add_argument('--info_paths', nargs='*', required=True,
                         help='List of metadata files for image files. (.tar or .imd)')
 
-    parser.add_argument('--output_path', required=True,
-                        help='Path to save result image to.')
+    parser.add_argument('--output_dir', required=True,
+                        help='Directory where result images will be saved.')
 
     parser.add_argument('--model_path',
                         help='Path to model used for evaluation.')
@@ -35,15 +35,19 @@ def main(args):
     classifier = Classifier(args.cuda, args.batch_size, args.model_path)
 
     # Use CNN to create material map
-    assert len(args.image_paths) == len(args.info_paths)
+    if len(args.image_paths) != len(args.info_paths):
+        raise IOError(
+            ('The number of image paths {}, '
+             'does not match the number of metadata paths {}.').format(len(args.image_paths),
+                                                                       len(args.info_paths)))
 
-    combine_result = Combine_Result('mean')
+    combine_result = Combine_Result('max_prob')
     for image_path, info_path in zip(args.image_paths, args.info_paths):
-        _, prob_ouput = classifier.Evaluate(image_path, info_path)
-        combine_result.update(prob_ouput)
+        _, prob_output = classifier.Evaluate(image_path, info_path)
+        combine_result.update(prob_output)
 
     # Save results
-    output_path = args.output_path + 'mean'
+    output_path = args.output_dir + 'max_prob' + '.tif'
 
     combined_result = combine_result.call()
 

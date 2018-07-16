@@ -4,6 +4,7 @@ import torch
 from .image_calibration import Image_Calibration as IC
 from scipy import stats
 from PIL import Image
+import gdal
 
 
 class TestDataLoader(Dataset):
@@ -79,7 +80,18 @@ def create_mode_img(stacked_img, save_path):
 
 
 def save_output(img, out_path):
-    Image.fromarray(img.astype('uint8')).save(out_path + '.png')
+    img = img.astype(int)
+
+    driver = gdal.GetDriverByName('GTiff')
+    out_dataset = driver.Create(out_path,
+                                img.shape[1],
+                                img.shape[0],
+                                1,
+                                gdal.GDT_Byte)
+
+    out_dataset.GetRasterBand(1).WriteArray(img)
+    out_dataset = None
+
     Image.fromarray(ColorImage(img).astype(
         'uint8')).save(out_path + '_color.png')
 
@@ -89,11 +101,11 @@ class Combine_Result(object):
         self.merge_type = merge_type
         self.update_count = 0
 
-        if self.merge_type != 'mean':
+        if self.merge_type != 'max_prob':
             raise RuntimeError('Other type of merge {} is not added yet.'.format(self.merge_type))
 
     def update(self, result):
-        if self.merge_type == 'mean':
+        if self.merge_type == 'max_prob':
             if self.update_count == 0:
                 self.merge_result = result
             else:
@@ -101,7 +113,7 @@ class Combine_Result(object):
                 self.update_count += 1
 
     def call(self):
-        if self.merge_type == 'mean':
+        if self.merge_type == 'max_prob':
             class_probs = self.merge_result[:, :, 1:]
             mean_image = np.argmax(class_probs, axis=2) + 1
             return mean_image
