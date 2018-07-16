@@ -71,22 +71,32 @@ def main(args):
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-            '--rgb_image', default='ortho_rgb_D2_07NOV16WV031100016NOV07165023.tif',
-            help='File path to orthorectified image')
+            '--rgb_image', required=True,
+            help='File path to orthorectified RGB image')
     parser.add_argument(
-            '--msi_image', default='ortho_ps_D2_07NOV16WV031100016NOV07165023.tif',
+            '--msi_image', required=True,
             help='File path to MSI image (8 channels)')
     parser.add_argument(
-            '--dsm', default='/dvmm-filer2/projects/Core3D/D2_WPAFB/DSMs/D2_P3D_DSM.tif',
+            '--dsm', required=True,
             help='File path to DSM')
     parser.add_argument(
-            '--dtm', default='/dvmm-filer2/projects/Core3D/D2_WPAFB/DTMs/D2_DTM.tif',
+            '--dtm', required=True,
             help='File path to DTM')
-    parser.add_argument('--model_path', default='../Inception_model/Dayton_best', help='')
-    parser.add_argument('--save_dir', default='../data/thres_img/', help='folder to save result')
-    parser.add_argument("--no_NDVI", action="store_true", help="use NDVI or not")
-    parser.add_argument("--output_tif", action="store_true", help="save to geotif or not")
-    parser.add_argument('--gpu-id', default='0', type=str, help='id(s) for CUDA_VISIBLE_DEVICES')
+    parser.add_argument(
+            '--model_path', required=True,
+            help='File path to the network model parameters')
+    parser.add_argument(
+            '--save_dir', default='building_seg/',
+            help='Folder to save result')
+    parser.add_argument(
+            '--no_NDVI', action='store_true',
+            help='Disable the use of NDVI')
+    parser.add_argument(
+            '--output_tif', action='store_true',
+            help="Save the output as GeoTIFF")
+    parser.add_argument(
+            '--gpu-id', default='0', type=str,
+            help='id(s) for CUDA_VISIBLE_DEVICES')
 
     np.set_printoptions(precision=2)
 
