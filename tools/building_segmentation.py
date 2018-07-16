@@ -68,7 +68,6 @@ def read_data_test(args):
 
 
 def main(args):
-    slim = tf.contrib.slim
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
@@ -114,7 +113,7 @@ def main(args):
     else:
         img_place_holder = tf.placeholder(tf.float32, [None, None, None, 4])
 
-    with slim.arg_scope(inception_v1.inception_v1_arg_scope()):
+    with tf.contrib.slim.arg_scope(inception_v1.inception_v1_arg_scope()):
         logits, _ = inception_v1.inception_v1(img_place_holder, no_bn=False)
         test_logits, _ = inception_v1.inception_v1(
                 img_place_holder, reuse=True, is_training=False, no_bn=False)
