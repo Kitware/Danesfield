@@ -28,3 +28,4 @@ dependencies:
 - pytest
 - pytorch=0.3.*
 - shapely
+- tensorflow
