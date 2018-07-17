@@ -94,6 +94,8 @@ def main(config_fpath):
     # created (based on the time of creation)
     working_dir = create_working_dir(config['paths'].get('work_dir'))
 
+    imagery_dir = config['paths']['imagery_dir']
+
     aoi_name = config['aoi']['name']
     aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
 
