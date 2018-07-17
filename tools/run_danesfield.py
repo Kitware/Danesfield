@@ -14,9 +14,9 @@ import subprocess
 import sys
 
 # import other tools
-import generate_dsm
-import fit_dtm
-import orthorectify
+from . import generate_dsm
+from . import fit_dtm
+from . import orthorectify
 
 
 def create_working_dir(working_dir):
