@@ -65,8 +65,8 @@ def main(args):
     print("Bounds ({}, {}, {}, {})".format(minX, maxX, minY, maxY))
 
     # compensate for PDAL expanding the extents by 1 pixel
-    maxX -= args.gsd
-    maxY -= args.gsd
+    maxX -= float(args.gsd)
+    maxY -= float(args.gsd)
 
     # read the pdal file and project the points
     jsonTemplate = """
