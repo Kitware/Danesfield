@@ -116,6 +116,8 @@ def main(config_fpath):
     working_dir = create_working_dir(config['paths'].get('work_dir'),
                                      config['paths']['imagery_dir'])
 
+    imagery_dir = config['paths']['imagery_dir']
+
     aoi_name = config['aoi']['name']
     aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
 
