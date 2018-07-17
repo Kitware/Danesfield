@@ -198,7 +198,6 @@ def main(config_fpath):
     # For each source image (PAN and MSI) call orthorectify.py
     # needs to use the DSM, DTM from above and Raytheon RPC file,
     # which is a by-product of P3D.
-<<<<<<< HEAD
     for collection_id, files in collection_id_to_files.items():
         # Orthorectify the pan images
         pan_ntf_fpath = files['pan']['image']
@@ -221,26 +220,6 @@ def main(config_fpath):
             cmd_args.extend('--rpc', msi_rpc_fpath)
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
-=======
-    pan_dir = os.path.join(args.image_dir, 'PAN')
-    pan_ntf_fpaths = glob.glob(pan_dir)
-    for pan_ntf_fpath in pan_ntf_fpaths:
-        fname, ext = os.path.splitext(os.path.split(pan_ntf_fpath)[1])
-        ortho_out_fname = fname + '_ortho' + ext
-        ortho_out_path = os.path.join(working_dir, ortho_out_fname)
-        cmd_args = [pan_ntf_fpath, dsm_file, ortho_out_path, '--raytheon-rpc', p3d_file, '--dtm',
-                    dtm_file]
-        orthorectify.main(cmd_args)
-    msi_dir = os.path.join(args.image_dir, 'MSI')
-    msi_ntf_fpaths = glob.glob(msi_dir)
-    for msi_ntf_fpath in msi_ntf_fpaths:
-        fname, ext = os.path.splitext(os.path.split(msi_ntf_fpath)[1])
-        ortho_out_fname = fname + '_ortho_msi' + ext
-        ortho_out_path = os.path.join(working_dir, ortho_out_fname)
-        cmd_args = [msi_ntf_fpath, dsm_file, ortho_out_path, '--raytheon-rpc', p3d_file, '--dtm',
-                    dtm_file]
-        orthorectify.main(cmd_args)
->>>>>>> Initial orthorectify implementation
     #
     # Note: we may eventually select a subset of input images
     # on which to run this and the following steps
