@@ -54,8 +54,6 @@ pip install -r requirements.txt
 
 ## Testing uage
 
-``$ cd tools "
-``$ bash denseunet_test.sh"
+``$ bash runtest.sh"
 
-after running the above command line, you will get the prediction results in the temporal folder
-``./tools/tmpresults/results/denseunet_/merged".
+after running the above command line, you will get the prediction probability map and class mask.

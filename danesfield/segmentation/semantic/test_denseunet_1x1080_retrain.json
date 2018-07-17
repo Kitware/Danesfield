@@ -1,7 +1,7 @@
 {
   "batch_size": 1,
   "iter_size": 1,
-  "dataset_path": "./test_data/pngdata",
+  "dataset_path": "NA",
   "dbg": false,
   "folder": "denseunet_",
   "img_cols": 2048,
@@ -14,7 +14,7 @@
   "epoch_size": 16,
   "test_batch_size": 1,
   "test_iter_size": 1,
-  "results_dir": "./tmpresults",
+  "results_dir": "NA",
   "save_images": true,
   "target_cols": 512,
   "target_rows": 512,
