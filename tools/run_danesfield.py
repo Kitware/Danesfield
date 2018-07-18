@@ -9,8 +9,15 @@ import datetime
 import glob
 import logging
 import os
+<<<<<<< HEAD
 import re
+<<<<<<< HEAD
 import subprocess
+=======
+=======
+import subprocess
+>>>>>>> Implement pairing of MSI and PAN images and run pansharpening process
+>>>>>>> Implement pairing of MSI and PAN images and run pansharpening process
 import sys
 
 # import other tools
@@ -227,6 +234,18 @@ def main(config_fpath):
     #############################################
     # Pansharpen images
     #############################################
+    # This matches PAN images and MSI images, which will need to be matched when calling
+    # gdal_pansharpen.py.
+    pan_msi_pairs = []
+    img_prefixes = []
+    for ortho_pan_fpath in ortho_pan_fpaths:
+        img_prefix = os.path.splitext(os.path.split(ortho_pan_fpath)[1])[0].split('-')[0]
+        img_prefixes.append(img_prefix)
+        for idx, msi_fname in enumerate(ortho_msi_fpaths):
+            if img_prefix in msi_fname:
+                pan_msi_pairs.append((ortho_pan_fpath, msi_fname))
+                break
+
     # Call gdal_pansharpen.py (from GDAL, not Danesfield) like this:
     #    gdal_pansharpen.py PAN_image MSI_image output_image
     # on each of the pairs of matching PAN and MSI orthorectified
