@@ -7,3 +7,7 @@ __pycache__/
 
 # Rutgers material classification
 /danesfield/materials/pixel_prediction/architecture/RN18_All.pth.tar
+
+# Temp. work dirs
+danesfield-*
+
