@@ -27,31 +27,6 @@ def create_working_dir(working_dir):
         os.mkdir(working_dir)
     return working_dir
 
-
-def parse_config_list(list_str, sep=' ', data_type=int):
-    """
-    Parse a string-formatted list and turn it into a Python list of the specified data type
-
-    :param list_str: The string version of the list to be parsed
-    :type list_str: str
-
-    :param sep: The separator used in ``list_str`` to denote elements
-    :type sep: str
-
-    :param data_type: The data type to cast the separated list values into
-    :type data_type: type
-
-    :return: The list converted into a native Python list with elements of type ``data_type``
-    :rtype: []
-    """
-    split_strs = list_str.split(sep)
-
-    converted_list = []
-    for split_str in split_strs:
-        converted_list.append(data_type(split_str))
-
-    return converted_list
-
 # Note: here are the AOI boundaries for the current AOIs
 # D1: 747285 747908 4407065 4407640
 # D2: 749352 750082 4407021 4407863
@@ -70,7 +45,7 @@ def main(config_fpath):
     working_dir = create_working_dir(config['paths'].get('work_dir'))
 
     aoi_name = config['aoi']['name']
-    aoi_bounds = parse_config_list(config['aoi']['bounds'])
+    aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
 
     gsd = float(config['params'].get('gsd', 0.25))
 
