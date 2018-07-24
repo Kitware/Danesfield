@@ -4,7 +4,7 @@
 Run the Danesfield processing pipeline on an AOI from start to finish.
 """
 
-import argparse
+import configparser
 import datetime
 import logging
 import os
@@ -27,69 +27,42 @@ def create_working_dir(working_dir):
         os.mkdir(working_dir)
     return working_dir
 
-
 # Note: here are the AOI boundaries for the current AOIs
 # D1: 747285 747908 4407065 4407640
 # D2: 749352 750082 4407021 4407863
 # D3: 477268 478256 3637333 3638307
 # D4: 435532 436917 3354107 3355520
 
-def main(args):
-    # Configure argument parser
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        '--image-dir',
-        type=str,
-        required=True,
-        help='Imagery source directory')
-    parser.add_argument(
-        '--working-dir',
-        type=str,
-        required=False,
-        help='A working directory in which to write output files')
-    parser.add_argument(
-        '--aoi-name',
-        type=str,
-        required=True,
-        help='The name of this AOI, a prefix to output files')
-    parser.add_argument(
-        "--aoi",
-        nargs=4,
-        type=float,
-        required=True,
-        action="store",
-        help="Area of Interest (AOI) bounds: minX, maxX, minY, maxY. "
-             "Coordinates are specified in UTM "
-             "in the zone of the source imagery")
-    parser.add_argument(
-        "--gsd",
-        type=float,
-        default=0.25,
-        required=False,
-        help="Ground sample distance of output imagery "
-             "in meters per pixel (default is 0.25)")
 
-    # Parse arguments
-    args = parser.parse_args(args)
+def main(config_fpath):
+    # Read configuration file
+    config = configparser.ConfigParser()
+    config.read(config_fpath)
 
-    # Create working directory
-    working_dir = create_working_dir(args.working_dir)
+    # This either parses the working directory from the configuration file and passes it to
+    # create the working directory or passes None and so some default working directory is
+    # created (based on the time of creation)
+    working_dir = create_working_dir(config['paths'].get('work_dir'))
+
+    aoi_name = config['aoi']['name']
+    aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
+
+    gsd = float(config['params'].get('gsd', 0.25))
 
     #############################################
     # Run P3D point cloud generation
     #############################################
-
     # TODO implement running P3D from Docker
-    p3d_file = os.path.join(working_dir, args.aoi_name + "_P3D.bpf")
+    p3d_file = config['paths']['p3d_fpath']
 
     #############################################
     # Render DSM from P3D point cloud
     #############################################
 
-    dsm_file = os.path.join(working_dir, args.aoi_name + '_P3D_DSM.tif')
+    dsm_file = os.path.join(working_dir, aoi_name + '_P3D_DSM.tif')
     cmd_args = [dsm_file, '-s', p3d_file, '--bounds']
-    cmd_args += list(map(str, args.aoi))
-    cmd_args += ['--gsd', str(args.gsd)]
+    cmd_args += list(map(str, aoi_bounds))
+    cmd_args += ['--gsd', str(gsd)]
     logging.info("---- Running generate_dsm.py ----")
     logging.debug(cmd_args)
     generate_dsm.main(cmd_args)
@@ -98,7 +71,7 @@ def main(args):
     # Fit DTM to the DSM
     #############################################
 
-    dtm_file = os.path.join(working_dir, args.aoi_name + '_DTM.tif')
+    dtm_file = os.path.join(working_dir, aoi_name + '_DTM.tif')
     cmd_args = [dsm_file, dtm_file]
     logging.info("---- Running fit_dtm.py ----")
     logging.debug(cmd_args)
