@@ -113,7 +113,7 @@ def main(config_fpath):
 
     # We start with prefixes as a set so that we're only adding the unique ones.
     prefixes = set()
-    prefix_regex = re.compile('[0-9]{2}[A-Z]{3}[0-9]{7}[0-9]-')
+    prefix_regex = re.compile('[0-9]{2}[A-Z]{3}[0-9]{8}-')
     for ntf_fpath in ntf_fpaths:
         prefix = prefix_regex.search(ntf_fpath)
         if prefix:
