@@ -97,6 +97,63 @@ def main(config_fpath):
     gsd = float(config['params'].get('gsd', 0.25))
 
     #############################################
+    # Find all NTF and corresponding Raytheon
+    # corrected RPC files
+    #############################################
+    ntf_fpaths = []
+    rpc_fpaths = []
+    info_fpaths = []
+    for root, dirs, files in os.walk(config['paths']['imagery_dir']):
+        ntf_fpaths.extend([os.path.join(root, file)
+                           for file in files if file.lower().endswith('.ntf')])
+        rpc_fpaths.extend([os.path.join(root, file)
+                           for file in files if file.lower().endswith('.rpc')])
+        info_fpaths.extend([os.path.join(root, file)
+                            for file in files if file.lower().endswith('.tar')])
+
+    # We start with prefixes as a set so that we're only adding the unique ones.
+    prefixes = set()
+    prefix_regex = re.compile('[0-9]{2}[A-Z]{3}[0-9]{7}[0-9]-')
+    for ntf_fpath in ntf_fpaths:
+        prefix = prefix_regex.search(ntf_fpath)
+        if prefix:
+            prefixes.add(prefix.group(0).rstrip('-'))
+    prefixes = list(prefixes)
+
+    # Group the modalities with the collection data prefix
+    collection_id_to_files = {}
+    for prefix in prefixes:
+        collection_id_to_files[prefix] = {
+            'pan': '',
+            'msi': '',
+            'swir': '',
+            'rpc': '',
+            'info': ''
+        }
+        for ntf_fpath in ntf_fpaths:
+            if prefix in ntf_fpath:
+                if '-P1BS-' in ntf_fpath:
+                    collection_id_to_files[prefix]['pan'] = ntf_fpath
+                elif '-M1BS-' in ntf_fpath:
+                    collection_id_to_files[prefix]['msi'] = ntf_fpath
+                elif '-A1BS-' in ntf_fpath:
+                    collection_id_to_files[prefix]['swir'] = ntf_fpath
+
+        for rpc_fpath in rpc_fpaths:
+            if prefix in rpc_fpath:
+                collection_id_to_files[prefix]['rpc'] = rpc_fpath
+
+        for info_fpath in info_fpaths:
+            if prefix in info_fpath:
+                collection_id_to_files[prefix]['info'] = info_fpath
+
+        # If we didn't pick up all of the modalities, then delete the entry from the dictionary
+        if not collection_id_to_files[prefix].get('pan') \
+                or not collection_id_to_files[prefix].get('msi') \
+                or not collection_id_to_files[prefix].get('info'):
+            del collection_id_to_files[prefix]
+
+    #############################################
     # Run P3D point cloud generation
     #############################################
     # TODO implement running P3D from Docker
