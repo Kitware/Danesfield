@@ -124,11 +124,17 @@ def main(config_fpath):
     collection_id_to_files = {}
     for prefix in prefixes:
         collection_id_to_files[prefix] = {
-            'pan': '',
-            'msi': '',
-            'swir': '',
-            'rpc': '',
-            'info': ''
+            'pan': {
+                'image': '',
+                'rpc': '',
+                'info': ''
+            },
+            'msi': {
+                'image': '',
+                'rpc': '',
+                'info': ''
+            },
+            'swir': ''
         }
         for ntf_fpath in ntf_fpaths:
             if prefix in ntf_fpath:
