@@ -8,6 +8,7 @@ import configparser
 import datetime
 import logging
 import os
+import re
 import sys
 
 # import other tools
@@ -26,6 +27,52 @@ def create_working_dir(working_dir):
     if not os.path.isdir(working_dir):
         os.mkdir(working_dir)
     return working_dir
+
+
+def ensure_complete_modality(modality_dict, require_rpc=False):
+    """
+    Ensures that a certain modality (MSI, PAN, SWIR) has all of the required files for computation
+    through the whole pipeline.
+
+    :param modality_dict: Mapping of a certain modality to its image, rpc, and info files.
+    :type modality_dict: dict
+
+    :param require_rpc: Whether or not to consider the rpc file being present as a requirement for
+    a complete modality.
+    :type require_rpc: bool
+    """
+    keys = ['image', 'info']
+    if require_rpc:
+        keys.append('rpc')
+    return all(key in modality_dict for key in keys)
+
+
+def classify_fpaths(prefix, fpaths, id_to_files, file_type):
+    """
+    Classify the modality of the paths in ``fpaths`` and store that information in
+    ``id_to_files_dict``.
+
+    :param prefix: The prefix to use when validating and classifying the paths in ``fpaths``.
+    :type prefix: str
+
+    :param fpaths: The filepaths to classify.
+    :type fpaths: [str]
+
+    :param id_to_files: Mapping of the prefix ID to it's associated files.
+    :type id_to_files: dict
+
+    :param file_type: The type of file to look for. One of `image`, `info`, or `rpc`. This is the
+    key used when updating ``id_to_files_dict``.
+    :type file_type: str
+    """
+    for fpath in fpaths:
+        if prefix in fpath:
+            if '-P1BS-' in fpath:
+                id_to_files[prefix]['pan'][file_type] = fpath
+            elif '-M1BS-' in fpath:
+                id_to_files[prefix]['msi'][file_type] = fpath
+            elif '-A1BS-' in fpath:
+                id_to_files[prefix]['swir'][file_type] = fpath
 
 # Note: here are the AOI boundaries for the current AOIs
 # D1: 747285 747908 4407065 4407640
@@ -54,6 +101,68 @@ def main(config_fpath):
     #############################################
     # TODO implement running P3D from Docker
     p3d_file = config['paths']['p3d_fpath']
+
+    #############################################
+    # Find all NTF and corresponding info tar
+    # files
+    #############################################
+    ntf_fpaths = []
+    info_fpaths = []
+    for root, dirs, files in os.walk(config['paths']['imagery_dir']):
+        ntf_fpaths.extend([os.path.join(root, file)
+                           for file in files if file.lower().endswith('.ntf')])
+        info_fpaths.extend([os.path.join(root, file)
+                            for file in files if file.lower().endswith('.tar')])
+
+    # We look for the rpc files in a different dir
+    rpc_fpaths = []
+    for root, dirs, files in os.walk(config['paths'].get('rpc_dir')):
+        rpc_fpaths.extend([os.path.join(root, file)
+                           for file in files if file.lower().endswith('.rpc')])
+
+    # We start with prefixes as a set so that we're only adding the unique ones.
+    prefixes = set()
+    prefix_regex = re.compile('[0-9]{2}[A-Z]{3}[0-9]{8}-')
+    for ntf_fpath in ntf_fpaths:
+        prefix = prefix_regex.search(ntf_fpath)
+        if prefix:
+            prefixes.add(prefix.group(0).rstrip('-'))
+    prefixes = list(prefixes)
+
+    # Group the modalities with the collection data prefix
+    collection_id_to_files = {}
+    incomplete_ids = []
+    for prefix in prefixes:
+        collection_id_to_files[prefix] = {
+            'pan': {
+                'image': '',
+                'rpc': '',
+                'info': ''
+            },
+            'msi': {
+                'image': '',
+                'rpc': '',
+                'info': ''
+            },
+            'swir': {
+                'image': '',
+                'rpc': '',
+                'info': ''
+            }
+        }
+
+        classify_fpaths(prefix, ntf_fpaths, collection_id_to_files, 'image')
+        classify_fpaths(prefix, rpc_fpaths, collection_id_to_files, 'rpc')
+        classify_fpaths(prefix, info_fpaths, collection_id_to_files, 'info')
+
+        # If we didn't pick up all of the modalities, then delete the entry from the dictionary.
+        # For now, we aren't running the check on SWIR.
+        complete = (ensure_complete_modality(collection_id_to_files[prefix]['pan'])
+                    and ensure_complete_modality(collection_id_to_files[prefix]['msi']))
+
+        if not complete:
+            del collection_id_to_files[prefix]
+            incomplete_ids.append(prefix)
 
     #############################################
     # Render DSM from P3D point cloud
