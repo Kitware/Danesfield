@@ -9,11 +9,13 @@ import datetime
 import logging
 import os
 import re
+import subprocess
 import sys
 
 # import other tools
 import generate_dsm
 import fit_dtm
+import orthorectify
 
 
 def create_working_dir(working_dir):
@@ -95,76 +97,6 @@ def main(config_fpath):
     aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
 
     gsd = float(config['params'].get('gsd', 0.25))
-
-    #############################################
-    # Find all NTF and corresponding info tar
-    # files
-    #############################################
-    ntf_fpaths = []
-    info_fpaths = []
-    for root, dirs, files in os.walk(config['paths']['imagery_dir']):
-        ntf_fpaths.extend([os.path.join(root, file)
-                           for file in files if file.lower().endswith('.ntf')])
-        info_fpaths.extend([os.path.join(root, file)
-                            for file in files if file.lower().endswith('.tar')])
-
-    # We look for the rpc files in a different dir
-    rpc_fpaths = []
-    for root, dirs, files in os.walk(config['paths']['rpc_dir']):
-        rpc_fpaths.extend([os.path.join(root, file)
-                           for file in files if file.lower().endswith('.rpc')])
-
-    # We start with prefixes as a set so that we're only adding the unique ones.
-    prefixes = set()
-    prefix_regex = re.compile('[0-9]{2}[A-Z]{3}[0-9]{8}-')
-    for ntf_fpath in ntf_fpaths:
-        prefix = prefix_regex.search(ntf_fpath)
-        if prefix:
-            prefixes.add(prefix.group(0).rstrip('-'))
-    prefixes = list(prefixes)
-
-    # Group the modalities with the collection data prefix
-    collection_id_to_files = {}
-    for prefix in prefixes:
-        collection_id_to_files[prefix] = {
-            'pan': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
-            'msi': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
-            'swir': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            }
-        }
-        for ntf_fpath in ntf_fpaths:
-            if prefix in ntf_fpath:
-                if '-P1BS-' in ntf_fpath:
-                    collection_id_to_files[prefix]['pan'] = ntf_fpath
-                elif '-M1BS-' in ntf_fpath:
-                    collection_id_to_files[prefix]['msi'] = ntf_fpath
-                elif '-A1BS-' in ntf_fpath:
-                    collection_id_to_files[prefix]['swir'] = ntf_fpath
-
-        for rpc_fpath in rpc_fpaths:
-            if prefix in rpc_fpath:
-                collection_id_to_files[prefix]['rpc'] = rpc_fpath
-
-        for info_fpath in info_fpaths:
-            if prefix in info_fpath:
-                collection_id_to_files[prefix]['info'] = info_fpath
-
-        # If we didn't pick up all of the modalities, then delete the entry from the dictionary
-        if not collection_id_to_files[prefix].get('pan') \
-                or not collection_id_to_files[prefix].get('msi') \
-                or not collection_id_to_files[prefix].get('info'):
-            del collection_id_to_files[prefix]
 
     #############################################
     # Run P3D point cloud generation
@@ -263,6 +195,28 @@ def main(config_fpath):
     # For each source image (PAN and MSI) call orthorectify.py
     # needs to use the DSM, DTM from above and Raytheon RPC file,
     # which is a by-product of P3D.
+    for collection_id, files in collection_id_to_files.items():
+        # Orthorectify the pan images
+        pan_ntf_fpath = files['pan']['image']
+        pan_fname, ext = os.path.splitext(os.path.split(pan_ntf_fpath)[1])
+        pan_rpc_fpath = files['pan']['rpc']
+        pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho{}'.format(pan_fname, ext))
+        cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
+        if pan_rpc_fpath:
+            cmd_args.extend('--rpc', pan_rpc_fpath)
+        orthorectify.main(cmd_args)
+        files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
+
+        # Orthorectify the msi images
+        msi_ntf_fpath = files['msi']['image']
+        msi_fname, ext = os.path.splitext(os.path.split(pan_ntf_fpath)[1])
+        msi_rpc_fpath = files['msi']['rpc']
+        msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho{}'.format(msi_fname, ext))
+        cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
+        if msi_rpc_fpath:
+            cmd_args.extend('--rpc', msi_rpc_fpath)
+        orthorectify.main(cmd_args)
+        files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
     #
     # Note: we may eventually select a subset of input images
     # on which to run this and the following steps
@@ -270,11 +224,21 @@ def main(config_fpath):
     #############################################
     # Pansharpen images
     #############################################
-
     # Call gdal_pansharpen.py (from GDAL, not Danesfield) like this:
     #    gdal_pansharpen.py PAN_image MSI_image output_image
     # on each of the pairs of matching PAN and MSI orthorectified
     # images from the step above
+    logging.info('---- Pansharpening {} image pairs ----'.format(
+                 len(collection_id_to_files.keys())))
+    for collection_id, files in collection_id_to_files.items():
+        ortho_pan_fpath = files['pan']['ortho_img_fpath']
+        ortho_msi_fpath = files['msi']['ortho_img_fpath']
+        logging.info('\t Running on pair ({}, {})'.format(ortho_pan_fpath, ortho_msi_fpath))
+        pansharpened_output_image = os.path.join(working_dir,
+                                                 '{}_ortho_pansharpened.NTF'.format(collection_id))
+        cmd_args = ['gdal_pansharpen.py', ortho_pan_fpath, ortho_msi_fpath,
+                    pansharpened_output_image]
+        subprocess.run(cmd_args)
 
     #############################################
     # Convert to 8-bit RGB
