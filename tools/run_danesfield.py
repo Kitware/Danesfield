@@ -97,19 +97,22 @@ def main(config_fpath):
     gsd = float(config['params'].get('gsd', 0.25))
 
     #############################################
-    # Find all NTF and corresponding Raytheon
-    # corrected RPC files
+    # Find all NTF and corresponding info tar
+    # files
     #############################################
     ntf_fpaths = []
-    rpc_fpaths = []
     info_fpaths = []
     for root, dirs, files in os.walk(config['paths']['imagery_dir']):
         ntf_fpaths.extend([os.path.join(root, file)
                            for file in files if file.lower().endswith('.ntf')])
-        rpc_fpaths.extend([os.path.join(root, file)
-                           for file in files if file.lower().endswith('.rpc')])
         info_fpaths.extend([os.path.join(root, file)
                             for file in files if file.lower().endswith('.tar')])
+
+    # We look for the rpc files in a different dir
+    rpc_fpaths = []
+    for root, dirs, files in os.walk(config['paths']['rpc_dir']):
+        rpc_fpaths.extend([os.path.join(root, file)
+                           for file in files if file.lower().endswith('.rpc')])
 
     # We start with prefixes as a set so that we're only adding the unique ones.
     prefixes = set()
