@@ -159,8 +159,12 @@ def main(config_fpath):
 
         # If we didn't pick up all of the modalities, then delete the entry from the dictionary.
         # For now, we aren't running the check on SWIR.
-        complete = (ensure_complete_modality(collection_id_to_files[prefix]['pan'])
-                    and ensure_complete_modality(collection_id_to_files[prefix]['msi']))
+        complete = ensure_complete_modality(collection_id_to_files[prefix]['pan']) \
+                and ensure_complete_modality(collection_id_to_files[prefix]['msi'])
+
+        if not complete:
+            del collection_id_to_files[prefix]
+            incomplete_ids.append(prefix)
 
         if not complete:
             del collection_id_to_files[prefix]
