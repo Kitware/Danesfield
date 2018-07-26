@@ -166,10 +166,6 @@ def main(config_fpath):
             del collection_id_to_files[prefix]
             incomplete_ids.append(prefix)
 
-        if not complete:
-            del collection_id_to_files[prefix]
-            incomplete_ids.append(prefix)
-
     #############################################
     # Render DSM from P3D point cloud
     #############################################
