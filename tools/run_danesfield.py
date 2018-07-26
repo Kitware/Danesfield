@@ -134,7 +134,11 @@ def main(config_fpath):
                 'rpc': '',
                 'info': ''
             },
-            'swir': ''
+            'swir': {
+                'image': '',
+                'rpc': '',
+                'info': ''
+            }
         }
         for ntf_fpath in ntf_fpaths:
             if prefix in ntf_fpath:
