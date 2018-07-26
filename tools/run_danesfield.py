@@ -202,7 +202,7 @@ def main(config_fpath):
         pan_ntf_fpath = files['pan']['image']
         pan_fname, ext = os.path.splitext(os.path.split(pan_ntf_fpath)[1])
         pan_rpc_fpath = files['pan']['rpc']
-        pan_ortho_img_fpath = '{}_ortho{}'.fstring(pan_fname, ext)
+        pan_ortho_img_fpath = '{}_ortho{}'.format(pan_fname, ext)
         cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
         if pan_rpc_fpath:
             cmd_args.extend('--rpc', pan_rpc_fpath)
@@ -213,7 +213,7 @@ def main(config_fpath):
         msi_ntf_fpath = files['msi']['image']
         msi_fname, ext = os.path.splitext(os.path.split(pan_ntf_fpath)[1])
         msi_rpc_fpath = files['msi']['rpc']
-        msi_ortho_img_fpath = '{}_ortho{}'.fstring(msi_fname, ext)
+        msi_ortho_img_fpath = '{}_ortho{}'.format(msi_fname, ext)
         cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
         if msi_rpc_fpath:
             cmd_args.extend('--rpc', msi_rpc_fpath)
