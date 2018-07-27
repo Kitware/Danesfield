@@ -6,7 +6,6 @@ Run the Danesfield processing pipeline on an AOI from start to finish.
 
 import configparser
 import datetime
-import glob
 import logging
 import os
 import re
