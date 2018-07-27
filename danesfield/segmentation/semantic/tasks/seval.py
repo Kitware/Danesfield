@@ -70,10 +70,10 @@ def read_model(config, fold):
         warnings.simplefilter('ignore', SourceChangeWarning)
         if torch.cuda.is_available():
             model = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
-                                        'fold{}_best.pth'.format(fold)))
+                               'fold{}_best.pth'.format(fold)))
         else:
             model = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
-                                        'fold{}_best.pth'.format(fold)), map_location={'cuda:0': 'cpu'})
+                               'fold{}_best.pth'.format(fold)), map_location={'cuda:0': 'cpu'})
 
         model.eval()
         return model
@@ -90,10 +90,10 @@ def read_onetrain_model(config):
         if '_checkpoint' in model_path:
             if torch.cuda.is_available():
                 checkpoint = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
-                                                 'onetrain_checkpoint.pth'))
+                                        'onetrain_checkpoint.pth'))
             else:
                 checkpoint = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
-                                                 'onetrain_checkpoint.pth'), map_location={'cuda:0': 'cpu'})
+                                        'onetrain_checkpoint.pth'), map_location={'cuda:0': 'cpu'})
             if config.folder == 'resnet34_':
                 model = resnet_unet.ResnetUNet(num_classes=1, num_channels=5)
             elif config.folder == 'denseunet_':
@@ -298,10 +298,10 @@ class Evaluator:
             for j in range(len(yinsidx)):
                 if have_cuda:
                     samples = torch.autograd.Variable(data['image'][:, :, xinsidx[i]:xineidx[i],
-                                                                    yinsidx[j]:yineidx[j]], volatile=True).cuda()
+                                                      yinsidx[j]:yineidx[j]], volatile=True).cuda()
                 else:
                     samples = torch.autograd.Variable(data['image'][:, :, xinsidx[i]:xineidx[i],
-                                                                    yinsidx[j]:yineidx[j]], volatile=True)
+                                                      yinsidx[j]:yineidx[j]], volatile=True)
 
                 prediction = predict(model, samples, flips=self.flips)
                 predicted[:, :, xoutsidx[i]:xouteidx[i], youtsidx[j]:youteidx[j]

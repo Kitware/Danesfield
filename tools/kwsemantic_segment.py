@@ -12,7 +12,8 @@ from danesfield.segmentation.semantic.utils.config import Config
 # Need to append to sys.path here as the pretrained model includes an
 # import statement for "models" rather than
 # "danesfield.segmentation.semantic.models"
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../danesfield/segmentation/semantic"))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "../danesfield/segmentation/semantic"))
 
 parser = argparse.ArgumentParser(description='configuration for semantic segmantation task.')
 parser.add_argument('config_path', help='configuration file path.')
