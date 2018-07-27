@@ -266,3 +266,23 @@ def fix_height(plane, new_cor):
     height = z([new_cor[:, 0], new_cor[:, 1]])
     new_plane = np.c_[new_cor[:, 0], new_cor[:, 1], height]
     return new_plane
+
+
+def counterClockwiseCheck(vertList):
+    '''
+    Check to see if a list of 2D vertices are clockwise
+    :param vertList:
+    :return:
+    '''
+    sum = 0
+    for x in range(1, len(vertList)):
+        v1 = vertList[x-1]
+        v2 = vertList[x]
+        t = (v2[0]-v1[0])*(v2[1]+v1[1])
+        sum = sum + t
+    v1 = vertList[len(vertList)-1]
+    v2 = vertList[0]
+    t = (v2[0]-v1[0])*(v2[1]+v1[1])
+
+    sum = sum + t
+    return sum < 0
