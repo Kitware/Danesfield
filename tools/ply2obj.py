@@ -22,16 +22,11 @@ def main(args):
     if not os.path.exists(args.dem):
         raise RuntimeError("Error: Failed to open DEM {}".format(args.DEM_file_name))
 
-    if args.offset:
-        offset = True
-    else:
-        offset = False
-
     start_time = time.time()
     m = Model()
     m.initialize(args.ply_dir, args.dem)
     generate_model_time = time.time()
-    m.write_model(offset)
+    m.write_model(args.offset)
     write_obj_time = time.time()
     m.write_surface()
     print(args.ply_dir + " completed!")
