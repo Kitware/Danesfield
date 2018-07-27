@@ -94,6 +94,14 @@ class Building:
             topstring = []
             bottomstring = []
             pn = self.topsurface[i].point_cor.shape[0]
+
+            poly_check = self.topsurface[i].point_cor[:, 0:2]
+            if not counterClockwiseCheck(poly_check):
+                self.topsurface[i].point_cor = np.flip(self.topsurface[i].point_cor, 0)
+
+            poly_check = self.bottomsurface[i].point_cor[:, 0:2]
+            if not counterClockwiseCheck(poly_check):
+                self.bottomsurface[i].point_cor = np.flip(self.bottomsurface[i].point_cor, 0)
             temp_surf = Polygon(self.topsurface[i].point_cor[:, 0:2])
             #surface info: vertex num, edge num, area
             self.surface_info.append([pn, pn, temp_surf.area])
