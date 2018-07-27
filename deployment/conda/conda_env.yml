@@ -28,8 +28,8 @@ dependencies:
 - pytorch=0.3.*
 - shapely
 - scikit-learn
+- scikit-image
 - pip:
   - ubelt
 - torchvision
 - tqdm
-- scikit-image
