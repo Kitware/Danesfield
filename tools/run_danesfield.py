@@ -6,7 +6,6 @@ Run the Danesfield processing pipeline on an AOI from start to finish.
 
 import configparser
 import datetime
-import glob
 import logging
 import os
 import re
@@ -115,8 +114,6 @@ def main(config_fpath):
     # created (based on the time of creation)
     working_dir = create_working_dir(config['paths'].get('work_dir'),
                                      config['paths']['imagery_dir'])
-
-    imagery_dir = config['paths']['imagery_dir']
 
     aoi_name = config['aoi']['name']
     aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
