@@ -4,12 +4,12 @@ import numpy as np
 from scipy.spatial.distance import dice
 import torch
 import torch.nn.functional as F
-from models import resnet_unet
-from models import dense_unet
+from danesfield.segmentation.semantic.models import resnet_unet
+from danesfield.segmentation.semantic.models import dense_unet
 import tqdm
 
 
-from dataset.neural_dataset import ValDataset, SequentialDataset
+from danesfield.segmentation.semantic.dataset.neural_dataset import ValDataset, SequentialDataset
 from torch.utils.data.dataloader import DataLoader as PytorchDataLoader
 from utils.utils import heatmap
 from torch.serialization import SourceChangeWarning

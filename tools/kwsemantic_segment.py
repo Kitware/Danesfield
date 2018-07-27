@@ -1,11 +1,18 @@
 import os
+import sys
 import numpy as np
 from osgeo import gdal
-from danesfield.segmentation.semantic.utils.utils import update_config
-from danesfield.segmentation.semantic.tasks.seval import Evaluator
 import argparse
 import json
-from danesfield.segmentation.emantic.utils.config import Config
+
+from danesfield.segmentation.semantic.utils.utils import update_config
+from danesfield.segmentation.semantic.tasks.seval import Evaluator
+from danesfield.segmentation.semantic.utils.config import Config
+
+# Need to append to sys.path here as the pretrained model includes an
+# import statement for "models" rather than
+# "danesfield.segmentation.semantic.models"
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../danesfield/segmentation/semantic"))
 
 parser = argparse.ArgumentParser(description='configuration for semantic segmantation task.')
 parser.add_argument('config_path', help='configuration file path.')
@@ -25,6 +32,7 @@ with open(args.config_path, 'r') as f:
     msipath = args.msipath
     outfname = args.outfname
     cfg['pretrain_model_path'] = pretrain_model_path
+    cfg['out_fname'] = outfname
 config = Config(**cfg)
 
 

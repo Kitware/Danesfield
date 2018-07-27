@@ -4,8 +4,8 @@ import numpy as np
 from scipy.spatial.distance import dice
 import torch
 import torch.nn.functional as F
-from models import resnet_unet
-from models import dense_unet
+from danesfield.segmentation.semantic.models import resnet_unet
+from danesfield.segmentation.semantic.models import dense_unet
 import tqdm
 from osgeo import gdal
 from osgeo import osr
@@ -13,9 +13,9 @@ from osgeo.gdalnumeric import CopyDatasetInfo
 from scipy import ndimage as ndi
 from skimage.morphology import remove_small_objects, watershed
 
-from dataset.neural_dataset import ValDataset, SequentialDataset
+from danesfield.segmentation.semantic.dataset.neural_dataset import ValDataset, SequentialDataset
 from torch.utils.data.dataloader import DataLoader as PytorchDataLoader
-from utils.utils import heatmap
+from danesfield.segmentation.semantic.utils.utils import heatmap
 from torch.serialization import SourceChangeWarning
 import warnings
 
@@ -68,8 +68,13 @@ def read_model(config, fold):
     # 'fold{}_best.pth'.format(fold))))
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', SourceChangeWarning)
-        model = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
-                           'fold{}_best.pth'.format(fold)))
+        if torch.cuda.is_available():
+            model = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
+                                        'fold{}_best.pth'.format(fold)))
+        else:
+            model = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
+                                        'fold{}_best.pth'.format(fold)), map_location={'cuda:0': 'cpu'})
+
         model.eval()
         return model
 
@@ -83,8 +88,12 @@ def read_onetrain_model(config):
 
         model = None
         if '_checkpoint' in model_path:
-            checkpoint = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
+            if torch.cuda.is_available():
+                checkpoint = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
                                                  'onetrain_checkpoint.pth'))
+            else:
+                checkpoint = torch.load(os.path.join(config.results_dir, 'weights', config.folder,
+                                                 'onetrain_checkpoint.pth'), map_location={'cuda:0': 'cpu'})
             if config.folder == 'resnet34_':
                 model = resnet_unet.ResnetUNet(num_classes=1, num_channels=5)
             elif config.folder == 'denseunet_':
@@ -96,7 +105,10 @@ def read_onetrain_model(config):
             model_dict.update(pretrained_dict)
 
         else:
-            model = torch.load(model_path)
+            if torch.cuda.is_available():
+                model = torch.load(model_path)
+            else:
+                model = torch.load(model_path, map_location={'cuda:0': 'cpu'})
 
         model.eval()
         return model
@@ -280,11 +292,17 @@ class Evaluator:
         xinsidx, xineidx, xcpsidx, xcpeidx, xoutsidx, xouteidx = self.index_in_copy_out(dsize[2])
         yinsidx, yineidx, ycpsidx, ycpeidx, youtsidx, youteidx = self.index_in_copy_out(dsize[3])
 
+        have_cuda = torch.cuda.is_available()
         predicted = np.zeros((dsize[0], 1, dsize[2], dsize[3]))
         for i in range(len(xinsidx)):
             for j in range(len(yinsidx)):
-                samples = torch.autograd.Variable(data['image'][:, :, xinsidx[i]:xineidx[i],
-                                                  yinsidx[j]:yineidx[j]], volatile=True).cuda()
+                if have_cuda:
+                    samples = torch.autograd.Variable(data['image'][:, :, xinsidx[i]:xineidx[i],
+                                                                    yinsidx[j]:yineidx[j]], volatile=True).cuda()
+                else:
+                    samples = torch.autograd.Variable(data['image'][:, :, xinsidx[i]:xineidx[i],
+                                                                    yinsidx[j]:yineidx[j]], volatile=True)
+
                 prediction = predict(model, samples, flips=self.flips)
                 predicted[:, :, xoutsidx[i]:xouteidx[i], youtsidx[j]:youteidx[j]
                           ] = prediction[:, :, xcpsidx[i]:xcpeidx[i], ycpsidx[j]:ycpeidx[j]]

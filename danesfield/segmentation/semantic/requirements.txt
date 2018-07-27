@@ -1,5 +1,5 @@
 PyTorch
-pencv-python
+opencv-python
 sklearn
 scikit-image
 ubelt

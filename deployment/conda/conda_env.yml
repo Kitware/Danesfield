@@ -27,3 +27,9 @@ dependencies:
 - pytest
 - pytorch=0.3.*
 - shapely
+- scikit-learn
+- pip:
+  - ubelt
+- torchvision
+- tqdm
+- scikit-image

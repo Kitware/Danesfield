@@ -3,7 +3,7 @@ import random
 import numpy as np
 from matplotlib import pyplot as plt
 
-from tasks.transforms import ToTensor
+from danesfield.segmentation.semantic.tasks.transforms import ToTensor
 from .image_provider import AbstractImageProvider
 from .image_cropper import ImageCropper
 
