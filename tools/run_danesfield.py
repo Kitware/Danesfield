@@ -221,12 +221,8 @@ def main(config_fpath):
 
         pan_rpc_fpath = files['pan'].get('rpc', None)
         if pan_rpc_fpath:
-<<<<<<< 8cbf6322d4f9717fe6b047275da23986167b6628
             cmd_args.extend(['--raytheon-rpc', pan_rpc_fpath])
 
-=======
-            cmd_args.extend(['--rpc', pan_rpc_fpath])
->>>>>>> Remove unneeded glob import and fix extending cmd_args to be called with array
         orthorectify.main(cmd_args)
         files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
 
@@ -238,12 +234,8 @@ def main(config_fpath):
 
         msi_rpc_fpath = files['msi'].get('rpc', None)
         if msi_rpc_fpath:
-<<<<<<< 8cbf6322d4f9717fe6b047275da23986167b6628
             cmd_args.extend(['--raytheon-rpc', msi_rpc_fpath])
 
-=======
-            cmd_args.extend(['--rpc', msi_rpc_fpath])
->>>>>>> Remove unneeded glob import and fix extending cmd_args to be called with array
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
     #
