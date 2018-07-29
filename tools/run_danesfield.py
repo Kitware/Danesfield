@@ -211,9 +211,9 @@ def main(config_fpath):
     for collection_id, files in collection_id_to_files.items():
         # Orthorectify the pan images
         pan_ntf_fpath = files['pan']['image']
-        pan_fname, ext = os.path.splitext(os.path.split(pan_ntf_fpath)[1])
+        pan_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
         pan_rpc_fpath = files['pan']['rpc']
-        pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho{}'.format(pan_fname, ext))
+        pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(pan_fname))
         cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
         if pan_rpc_fpath:
             cmd_args.extend('--rpc', pan_rpc_fpath)
@@ -222,9 +222,9 @@ def main(config_fpath):
 
         # Orthorectify the msi images
         msi_ntf_fpath = files['msi']['image']
-        msi_fname, ext = os.path.splitext(os.path.split(pan_ntf_fpath)[1])
+        msi_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
         msi_rpc_fpath = files['msi']['rpc']
-        msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho{}'.format(msi_fname, ext))
+        msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(msi_fname))
         cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
         if msi_rpc_fpath:
             cmd_args.extend('--rpc', msi_rpc_fpath)
