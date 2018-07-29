@@ -248,7 +248,7 @@ def main(config_fpath):
         ortho_msi_fpath = files['msi']['ortho_img_fpath']
         logging.info('\t Running on pair ({}, {})'.format(ortho_pan_fpath, ortho_msi_fpath))
         pansharpened_output_image = os.path.join(working_dir,
-                                                 '{}_ortho_pansharpened.NTF'.format(collection_id))
+                                                 '{}_ortho_pansharpened.tif'.format(collection_id))
         cmd_args = ['gdal_pansharpen.py', ortho_pan_fpath, ortho_msi_fpath,
                     pansharpened_output_image]
         subprocess.run(cmd_args)
