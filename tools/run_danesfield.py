@@ -437,67 +437,9 @@ def main(config_fpath):
 
     # Collaborate with Bastien Jacquet on what to run here
     # Dan Lipsa is helping with conda packaging
-    logging.info("Prepare images for texture mapping")
-
-    # Prepare the images
-    input_dir = "xxxx/"         # this directory should contains the cropped MSI and PAN images
-    output_dir = "xxxx/"        # pansharpene images will be generated in this directory
-    # check that output_dir exists and create it otherwise
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
-
-    # Associate the corresponding PAN and MSI by looking at the NITF_CSDIDA_PROCESS_TIME tag
-    dico = {}
-    for s in glob.glob(os.path.join(input_dir, "*.tif")):
-        dataset = gdal.Open(s, gdalconst.GA_ReadOnly)
-        metadata = dataset.GetMetadata_Dict()
-        tag = metadata["NITF_CSDIDA_PROCESS_TIME"]
-        if dataset.RasterCount == 8 or dataset.RasterCount == 4:
-            image_type = "M1BS"
-        elif dataset.RasterCount == 1:
-            image_type = "P1BS"
-        else:
-            print("Not 1, 4 or 8 bands. The image is ignored.")
-            continue
-        if tag in dico.keys():
-            dico[tag][image_type] = s
-        else:
-            dico[tag] = {image_type: s}
-        if image_type == "M1BS":
-            dico[tag]["nb_bands"] = dataset.RasterCount
-
-    # Process the pairs of images
-    for day in dico.keys():
-        # check if MSI and PAN exist for that day
-        if "M1BS" not in dico[day].keys() or "P1BS" not in dico[day].keys():
-            print("Error: one image is missing")
-            continue
-        msi = dico[day]["M1BS"]
-        pan = dico[day]["P1BS"]
-        out = os.path.join(output_dir, os.path.basename(pan)[:-4]
-                           + "_pansharpen_" + str(dico[day]["nb_bands"]) + ".tif")
-        print(os.path.basename(pan)[:-4])
-        try:
-            # pansharpen
-            args = ["gdal_pansharpen.py", pan, msi, out]
-            subprocess.call(args)
-            # copy metdata from PAN to the new pansharpen image
-            print("Copy TIF information")
-            img_pan = gdal.Open(pan)
-            img_out = gdal.Open(out, gdal.GA_Update)
-            metadata_domains = img_pan.GetMetadataDomainList()
-            for domain in metadata_domains:
-                dico = img_pan.GetMetadata_Dict(domain)
-                for key, val in dico.items():
-                    img_out.SetMetadataItem(key, val, domain)
-            img_out.SetProjection(img_pan.GetProjection())
-            img_out.SetGeoTransform(img_pan.GetGeoTransform())
-
-        except Exception as e:
-            print("Error: ", e, " (file ", pan, ")")
-
+    logging.info("---- Preparing images for texture mapping ----")
     # List of images
-    images_to_use = ["image1.tif", "image2.tif", "image3.tif"]
+    images_to_use = [files['pansharpened_fpath'] for files in collection_id_to_files.values()]
 
     # Prepare the mesh
     mesh_file = "xxxx.obj"
