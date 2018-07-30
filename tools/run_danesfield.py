@@ -15,6 +15,7 @@ import sys
 # import other tools
 import generate_dsm
 import fit_dtm
+import material_classifier
 import orthorectify
 
 
@@ -279,8 +280,25 @@ def main(config_fpath):
     #############################################
     # Material Segmentation
     #############################################
-
-    # Collaborate with Matt Purri on what to run here
+    logging.info('---- Running material segmentation classifier ----')
+    cmd_args = ['--image_paths']
+    # We build these up separately because they have to be 1-to-1 on the command line and
+    # dictionaries are unordered
+    img_paths = []
+    info_paths = []
+    for collection_id, files in collection_id_to_files.items():
+        img_paths.append(files['msi']['ortho_img_fpath'])
+        info_paths.append(files['msi']['info'])
+    cmd_args.extend(img_paths)
+    cmd_args.append('--info_paths')
+    cmd_args.extend(info_paths)
+    cmd_args.extend(['--output_dir', working_dir,
+                     '--model_path', config['material']['model_fpath'],
+                     '--batch_size', str(config['material'].get('batch_size', 1024))])
+    if config['material'].getboolean('cuda'):
+            cmd_args.append('--cuda')
+    logging.info(cmd_args)
+    material_classifier.main(cmd_args)
 
     #############################################
     # PointNet Geon Extraction
