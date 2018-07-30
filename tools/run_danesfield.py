@@ -99,6 +99,27 @@ def classify_fpaths(prefix, fpaths, id_to_files, file_type):
             elif '-A1BS-' in fpath:
                 id_to_files[prefix]['swir'][file_type] = fpath
 
+
+def copy_tif_info(in_fpath, out_fpath):
+    """
+    Copy the TIF metadata from in_fpath and save it to the image at out_fpath.
+    :param in_fpath: Filepath for input image which has metadata to copy.
+    :type in_fpath: str
+
+    :param out_fpath: Filepath for image to which we want to save the metadata.
+    :type out_fpath: str
+    """
+    logging.info("---- Copying TIF information ----")
+    gdal_in = gdal.Open(in_fpath)
+    gdal_out = gdal.Open(out_fpath, gdal.GA_Update)
+    metadata_domains = gdal_in.GetMetadataDomainList()
+    for domain in metadata_domains:
+        dico = gdal_in.GetMetadata_Dict(domain)
+        for key, val in dico.items():
+            gdal_out.SetMetadataItem(key, val, domain)
+    gdal_out.SetProjection(gdal_in.GetProjection())
+    gdal_out.SetGeoTransform(gdal_in.GetGeoTransform())
+
 # Note: here are the AOI boundaries for the current AOIs
 # D1: 747285 747908 4407065 4407640
 # D2: 749352 750082 4407021 4407863
@@ -229,6 +250,7 @@ def main(config_fpath):
 
         orthorectify.main(cmd_args)
         files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
+        copy_tif_info(pan_ntf_fpath, pan_ortho_img_fpath)
 
         # Orthorectify the msi images
         msi_ntf_fpath = files['msi']['image']
@@ -242,6 +264,7 @@ def main(config_fpath):
 
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
+        copy_tif_info(msi_ntf_fpath, msi_ortho_img_fpath)
     #
     # Note: we may eventually select a subset of input images
     # on which to run this and the following steps
@@ -272,6 +295,7 @@ def main(config_fpath):
         if angle < lowest_angle:
             lowest_angle = angle
             most_nadir_collection_id = collection_id
+        copy_tif_info(ortho_pan_fpath, pansharpened_output_image)
 
     #############################################
     # Convert to 8-bit RGB
