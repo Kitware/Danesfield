@@ -473,10 +473,8 @@ def main(config_fpath):
         except Exception as e:
             print("Error: ", e, " (file ", pan, ")")
 
-    # the config file contains the list of the images used
-    config_file = "xxxx.conf"
-    # if the config file is not used a list of images can be passed
-    # with the argument "--images img1 img2 ..."
+    # List of images
+    images_to_use = ["image1.tif", "image2.tif", "image3.tif"]
 
     # Prepare the mesh
     mesh_file = "xxxx.obj"
@@ -490,33 +488,38 @@ def main(config_fpath):
     # It should contains all the buildings of the area
     occlusion_mesh = "xxxx.obj"
 
+    # Images fusion method
+    fusion_method = "test"
+
     # Run texture mapping (process buildings separately)
     logging.info("---- Running texture_mapping ----")
     building_id = 0
-    initial_working_dir = ""
+
+    # here we except that meshes is a list as follows: [[mesh1_filename, mesh1_name], [mesh2_filename, mesh2_name], ...]
+    # it can be changed but mesh and mesh_name are required when we call the texture_mapping binary
     for mesh, mesh_name in meshes:
+        # create a sub-working-directory per building
         current_working_dir = os.path.join(working_dir, mesh_name)
-        # create a subdirectory per building
         mesh = os.path.join(mesh_dir, mesh)
         if not os.path.isdir(current_working_dir):
             os.mkdir(current_working_dir)
 
         call_args = [mesh, current_working_dir, str(utm),
                      "--output-name", "building_" + mesh_name,
-                     "--config", config_file,
                      "--offset_x", str(x_offset),
                      "--offset_y", str(y_offset),
                      "--offset_z", str(z_offset),
-                     "--fusion-method", fusion_method]
+                     "--fusion-method", fusion_method,
+                     "--shadows", "no",
+                     "--images"] + images_to_use
         if building_id == 0:
             # for the first building we compute the depthmaps and output them
             call_args += ["--output-depthmap", os.path.join(current_working_dir, "depthmaps.txt"),
-                          "--occlusions", occlusion_mesh, "--shadows", "no"]
+                          "--occlusions", occlusion_mesh]
             initial_working_dir = current_working_dir
         else:
             # for the next buildings, we re-use the generated depthmaps
-            call_args += ["--occlusions", os.path.join(initial_working_dir, "depthmaps.txt"),
-                          "--shadows", "no"]
+            call_args += ["--occlusions", os.path.join(initial_working_dir, "depthmaps.txt")]
         subprocess.call(["run_texture_mapping"] + call_args)
         print("\n\n")
         building_id += 1
