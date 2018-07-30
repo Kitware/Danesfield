@@ -11,11 +11,12 @@ Material classification from Rutgers University.
 ### Input
 
 - Orthorectified image (GeoTIFF)
-- Image metadata (.IMD)
+- Image metadata (.IMD or .tar)
 
 ### Output
 
 - Orthorectified material segmentation map (GeoTIFF)
+- Colorized material segmentation map (PNG)
 
 ### Tools
 
@@ -30,7 +31,7 @@ https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5ab3b3a18d7
 ### Usage
 
 ```bash
-python material_classifier.py <image_path> <imd_path> <output_path>
+python material_classifier.py --image_paths <image_paths> --info_paths <info_paths> --output_dir <output_dir> --model_path <model_path> --cuda
 ```
 
 ## Third-party tools

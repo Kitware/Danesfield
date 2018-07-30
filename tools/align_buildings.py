@@ -393,7 +393,7 @@ def main(args):
                     output = os.path.basename(outputNoExt + "_" + VECTOR_TYPES[i] + "_roads.tif")
                     roads = rasterize.rasterize_file_dilated_line(
                         input, inputImage, output,
-                        numpy.ones((3, 3)), dilation_iterations=20)
+                        numpy.ones((3, 3)), dilation_iterations=20, query=rasterize.ROADS_QUERY)
                     if not args.debug:
                         os.remove(output)
                 buildingsData = gdal_utils.gdal_open(

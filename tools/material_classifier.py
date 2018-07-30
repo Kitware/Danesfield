@@ -3,42 +3,55 @@
 import argparse
 import logging
 import sys
-import os
 
 from danesfield.materials.pixel_prediction.util.model import Classifier
-from danesfield.materials.pixel_prediction.util.misc import save_output
+from danesfield.materials.pixel_prediction.util.misc import save_output, Combine_Result
 
 
 def main(args):
-    parser = argparse.ArgumentParser(
-        description='Classify materials for an orthorectifed image.')
-    parser.add_argument('image_path', help='Path to image file.')
-    parser.add_argument(
-        'imd_path', help='Path to image metadata (.IMD) file.')
-    parser.add_argument(
-        'output_path', help='Path to save result images to.')
+    parser = argparse.ArgumentParser(description='Classify materials in an orthorectifed image.')
+
+    parser.add_argument('--image_paths', nargs='*', required=True,
+                        help='List of image paths.')
+
+    parser.add_argument('--info_paths', nargs='*', required=True,
+                        help='List of metadata files for image files. (.tar or .imd)')
+
+    parser.add_argument('--output_dir', required=True,
+                        help='Directory where result images will be saved.')
+
+    parser.add_argument('--model_path',
+                        help='Path to model used for evaluation.')
+
     parser.add_argument('--cuda', action='store_true',
                         help='Use GPU. (May have to adjust batch_size value)')
+
     parser.add_argument('--batch_size', type=int, default=1024,
                         help='Number of pixels classified at a time.')
-    parser.add_argument('--aux_out', action='store_true',
-                        help='Output a class probably image in output path for each image.')
+
     args = parser.parse_args(args)
 
     # Load model and select option to use CUDA
-    classifier = Classifier(args.cuda, args.batch_size)
+    classifier = Classifier(args.cuda, args.batch_size, args.model_path)
 
     # Use CNN to create material map
-    material_output, debug_ouput = classifier.Evaluate(
-        args.image_path, args.imd_path)
+    if len(args.image_paths) != len(args.info_paths):
+        raise IOError(
+            ('The number of image paths {}, '
+             'does not match the number of metadata paths {}.').format(len(args.image_paths),
+                                                                       len(args.info_paths)))
+
+    combine_result = Combine_Result('max_prob')
+    for image_path, info_path in zip(args.image_paths, args.info_paths):
+        _, prob_output = classifier.Evaluate(image_path, info_path)
+        combine_result.update(prob_output)
 
     # Save results
-    output_path = args.output_path + \
-        os.path.splitext(os.path.split(args.image_path)[1])[0]
+    output_path = args.output_dir + 'max_prob' + '.tif'
 
-    save_output(material_output, output_path)
-    if args.aux_out:
-        save_output(debug_ouput, output_path, aux=True)
+    combined_result = combine_result.call()
+
+    save_output(combined_result, output_path)
 
 
 if __name__ == '__main__':
