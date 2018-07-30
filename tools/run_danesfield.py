@@ -16,7 +16,6 @@ import subprocess
 import sys
 
 # import other tools
-import gdal
 import generate_dsm
 import fit_dtm
 import material_classifier
