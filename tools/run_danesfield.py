@@ -16,6 +16,7 @@ import sys
 import generate_dsm
 import fit_dtm
 import material_classifier
+import msi_to_rgb
 import orthorectify
 
 
@@ -155,6 +156,8 @@ def main(config_fpath):
                 'rpc': '',
                 'info': ''
             },
+            'pansharpened_fpath': '',
+            'rgb_fpath': '',
             'msi': {
                 'image': '',
                 'rpc': '',
@@ -217,7 +220,7 @@ def main(config_fpath):
         pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(pan_fname))
         cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
         if pan_rpc_fpath:
-            cmd_args.extend('--rpc', pan_rpc_fpath)
+            cmd_args.extend(['--rpc', pan_rpc_fpath])
         orthorectify.main(cmd_args)
         files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
 
@@ -228,7 +231,7 @@ def main(config_fpath):
         msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(msi_fname))
         cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
         if msi_rpc_fpath:
-            cmd_args.extend('--rpc', msi_rpc_fpath)
+            cmd_args.extend(['--rpc', msi_rpc_fpath])
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
     #
@@ -253,13 +256,21 @@ def main(config_fpath):
         cmd_args = ['gdal_pansharpen.py', ortho_pan_fpath, ortho_msi_fpath,
                     pansharpened_output_image]
         subprocess.run(cmd_args)
+        files['pansharpened_fpath'] = pansharpened_output_image
 
     #############################################
     # Convert to 8-bit RGB
     #############################################
-
     # call msi_to_rgb.py on each of the previous Pansharpened images
     # with the '-b' flag to make byte images
+    logging.info('---- Convert pansharpened MSI images to RGB ----')
+    for collection_id, files in collection_id_to_files.items():
+        rgb_image_fpath = os.path.join(working_dir, '{}_rgb_byte_image.tif'.format(collection_id))
+        msi_image_fpath = files['pansharpened_fpath']
+
+        cmd_args = [msi_image_fpath, rgb_image_fpath, '-b']
+        msi_to_rgb.main(cmd_args)
+        files['rgb_fpath'] = rgb_image_fpath
 
     #############################################
     # Segment by Height and Vegetation
