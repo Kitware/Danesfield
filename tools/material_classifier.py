@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-
 import argparse
 import logging
+import os
 import sys
 
 from danesfield.materials.pixel_prediction.util.model import Classifier
@@ -47,7 +47,7 @@ def main(args):
         combine_result.update(prob_output)
 
     # Save results
-    output_path = args.output_dir + 'max_prob' + '.tif'
+    output_path = os.path.join(args.output_dir, 'max_prob' + '.tif')
 
     combined_result = combine_result.call()
 
