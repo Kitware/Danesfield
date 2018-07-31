@@ -13,11 +13,13 @@ import subprocess
 import sys
 
 # import other tools
+import gdal
 import generate_dsm
 import fit_dtm
 import material_classifier
 import msi_to_rgb
 import orthorectify
+import segment_by_height
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -167,7 +169,8 @@ def main(config_fpath):
                 'image': '',
                 'rpc': '',
                 'info': ''
-            }
+            },
+            'angle': -1,
         }
 
         classify_fpaths(prefix, ntf_fpaths, collection_id_to_files, 'image')
@@ -247,6 +250,8 @@ def main(config_fpath):
     # images from the step above
     logging.info('---- Pansharpening {} image pairs ----'.format(
                  len(collection_id_to_files.keys())))
+    lowest_angle = float('inf')
+    most_nadir_collection_id = ''
     for collection_id, files in collection_id_to_files.items():
         ortho_pan_fpath = files['pan']['ortho_img_fpath']
         ortho_msi_fpath = files['msi']['ortho_img_fpath']
@@ -257,6 +262,11 @@ def main(config_fpath):
                     pansharpened_output_image]
         subprocess.run(cmd_args)
         files['pansharpened_fpath'] = pansharpened_output_image
+        angle = float(gdal.Open(files['pan']['image'],
+                                gdal.GA_ReadOnly).GetMetadata()['NITF_CSEXRA_OBLIQUITY_ANGLE'])
+        if angle < lowest_angle:
+            lowest_angle = angle
+            most_nadir_collection_id = collection_id
 
     #############################################
     # Convert to 8-bit RGB
@@ -275,12 +285,19 @@ def main(config_fpath):
     #############################################
     # Segment by Height and Vegetation
     #############################################
-
     # Call segment_by_height.py using the DSM, DTM, and *one* of the
     # pansharpened images above.  We've been manually picking the most
     # nadir one.  We could do that here or generalize the code to average
     # or otherwise combine the NDVI map from multiple images.
     # the output here has the suffix _threshold_CLS.tif.
+    logging.info('---- Segmenting by Height and Vegetation ----')
+    # Choose the most NADIR image
+    most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
+    ndvi_output_fpath = os.path.join(working_dir, 'ndvi.tif')
+    threshold_output_mask_fpath = os.path.join(working_dir, 'threshold_CLS.tif')
+    cmd_args = [dsm_file, dtm_file, threshold_output_mask_fpath, '--msi', most_nadir_pan_fpath,
+                '--ndvi', ndvi_output_fpath]
+    segment_by_height.main(cmd_args)
 
     #############################################
     # UNet Semantic Segmentation
