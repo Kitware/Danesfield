@@ -289,6 +289,14 @@ def main(config_fpath):
     # Collaborate with Chengjiang Long on what to run here
 
     #############################################
+    # Columbia Building Segmentation
+    #############################################
+
+    # Run building_segmentation.py
+    # Collaborate with Xu Zhang from Columbia University on how to run this
+
+
+    #############################################
     # Material Segmentation
     #############################################
     logging.info('---- Running material segmentation classifier ----')
