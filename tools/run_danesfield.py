@@ -223,7 +223,7 @@ def main(config_fpath):
         pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(pan_fname))
         cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
         if pan_rpc_fpath:
-            cmd_args.extend(['--rpc', pan_rpc_fpath])
+            cmd_args.extend(['--raytheon-rpc', pan_rpc_fpath])
         orthorectify.main(cmd_args)
         files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
 
@@ -234,7 +234,7 @@ def main(config_fpath):
         msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(msi_fname))
         cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
         if msi_rpc_fpath:
-            cmd_args.extend(['--rpc', msi_rpc_fpath])
+            cmd_args.extend(['--raytheon-rpc', msi_rpc_fpath])
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
     #
