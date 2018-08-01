@@ -153,23 +153,11 @@ def main(config_fpath):
     incomplete_ids = []
     for prefix in prefixes:
         collection_id_to_files[prefix] = {
-            'pan': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
+            'pan': {},
             'pansharpened_fpath': '',
             'rgb_fpath': '',
-            'msi': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
-            'swir': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
+            'msi': {},
+            'swir': {},
             'angle': -1,
         }
 
@@ -311,7 +299,6 @@ def main(config_fpath):
 
     # Run building_segmentation.py
     # Collaborate with Xu Zhang from Columbia University on how to run this
-
 
     #############################################
     # Material Segmentation
