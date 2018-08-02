@@ -6,6 +6,7 @@ import time
 import argparse
 from danesfield.surface.scene import Model
 
+
 def main(args):
     parser = argparse.ArgumentParser(description='Generate OBJ file from PLY file.')
     parser.add_argument('-p', '--ply_dir',
@@ -33,9 +34,10 @@ def main(args):
     print("generate time: " + str(generate_model_time - start_time))
     print("write obj file time: " + str(write_obj_time - start_time))
 
+
 if __name__ == "__main__":
     try:
         main(sys.argv[1:])
     except Exception as e:
         print(e)
-    
+        
