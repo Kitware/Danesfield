@@ -59,20 +59,21 @@ class Sphere_building(Building):
             self.surface_info.append([pn + boundary_num, boundary_num * 3, 0])
 
             for l in self.top_curved_surface[i]:
-                l = l - offset
-                tl = l.tolist()
+                nl = l - offset
+                tl = nl.tolist()
                 tl = [str(t) for t in tl]
                 curved_surface_cor_str.append('v ' + ' '.join(tl) + '\n')
 
             for l in self.bottom_curved_surface[i]:
-                l = l - offset
-                tl = l.tolist()
+                nl = l - offset
+                tl = nl.tolist()
                 tl = [str(t) for t in tl]
                 bottom_surface_cor_str.append('v ' + ' '.join(tl) + '\n')
 
             for l in self.top_curved_surface_index[i]:
                 curved_surface_index.append([si + point_flag for si in l.tolist()])
-                curved_surface_index_str.append('f ' + ' '.join([str(si + point_flag) for si in l.tolist()]) + "\n")
+                curved_surface_index_str.append('f ' + 
+                ' '.join([str(si + point_flag) for si in l.tolist()]) + "\n")
 
             surf_boundary_index = [str(si + point_flag) for si in self.top_boundary_index[i]]
             bottom_surface_index = [str(si + point_flag + boundary_num) for si in self.top_boundary_index[i]]
@@ -103,8 +104,8 @@ class Sphere_building(Building):
             pn = self.top_curved_surface[i].shape[0]
 
             for l in self.top_curved_surface[i]:
-                l = l - offset
-                tl = l.tolist()
+                nl = l - offset
+                tl = nl.tolist()
                 tl = [str(t) for t in tl]
                 curved_surface_cor_str.append('v ' + ' '.join(tl) + '\n')
 
