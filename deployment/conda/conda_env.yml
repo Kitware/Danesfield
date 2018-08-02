@@ -33,6 +33,7 @@ dependencies:
 - scikit-image
 - liblas
 - flann
+- pcl
 - pip:
   - ubelt
 - torchvision
