@@ -72,7 +72,7 @@ class Sphere_building(Building):
 
             for l in self.top_curved_surface_index[i]:
                 curved_surface_index.append([si + point_flag for si in l.tolist()])
-                curved_surface_index_str.append('f ' + 
+                curved_surface_index_str.append('f ' +
                 ' '.join([str(si + point_flag) for si in l.tolist()]) + "\n")
 
             surf_boundary_index = [str(si + point_flag) for si in self.top_boundary_index[i]]
