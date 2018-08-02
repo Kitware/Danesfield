@@ -119,11 +119,11 @@ def MinimumBoundingBox(points):
 
     # this is ugly but a quick hack and is being changed in the speedup branch
     return BoundingBox(
-        area = min_rectangle['area'],
-        length_parallel = min_rectangle['length_parallel'],
-        length_orthogonal = min_rectangle['length_orthogonal'],
-        rectangle_center = min_rectangle['rectangle_center'],
-        unit_vector = min_rectangle['unit_vector'],
-        unit_vector_angle = min_rectangle['unit_vector_angle'],
-        corner_points = rectangle_corners(min_rectangle)
+        area=min_rectangle['area'],
+        length_parallel=min_rectangle['length_parallel'],
+        length_orthogonal=min_rectangle['length_orthogonal'],
+        rectangle_center=min_rectangle['rectangle_center'],
+        unit_vector=min_rectangle['unit_vector'],
+        unit_vector_angle=min_rectangle['unit_vector_angle'],
+        corner_points=rectangle_corners(min_rectangle)
     )
