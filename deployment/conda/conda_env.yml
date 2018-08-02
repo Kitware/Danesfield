@@ -37,6 +37,7 @@ dependencies:
 - cgal
 - xorg-libsm
 - xorg-libX11
+- purdue-segmentation
 - pip:
   - ubelt
 - torchvision
