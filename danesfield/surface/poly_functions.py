@@ -24,11 +24,11 @@ def ply_parser(fp):
     lines = tf.readlines()
     flag = 0
     for l in lines:
-        if re.search("\s*element\s*vertex\s*\d*", l) != None:
+        if re.search("\s*element\s*vertex\s*\d*", l) is not None:
             vertex_num = int(re.findall("\d+\.?\d*", l)[0])
-        if re.search("\s*element\s*face\s*\d*", l) != None:
+        if re.search("\s*element\s*face\s*\d*", l) is not None:
             face_num = int(re.findall("\d+\.?\d*", l)[0])
-        if re.search("end_header", l) != None:
+        if re.search("end_header", l) is not None:
             begin_num = flag + 1
         flag += 1
 
@@ -94,7 +94,8 @@ def get_height_from_dem(cor, dem):
         try:
             value = data[yOffset][xOffset]
             base_height.append(value)
-        except:
+        except Exception as e:
+            print(e)
             dist_2 = np.sum((r - np.array([yOffset, xOffset])) ** 2, axis=1)
             index = np.argmin(dist_2)
             value = data[r[index, 0]][r[index, 1]]
