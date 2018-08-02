@@ -102,7 +102,8 @@ def MinimumBoundingBox(points):
     #               unit_vector_angle: angle of the unit vector
     #               corner_points: set that contains the corners of the rectangle
 
-    if len(points) <= 2: raise ValueError('More than two points required.')
+    if len(points) <= 2: 
+        raise ValueError('More than two points required.')
 
     hull_ordered = [points[index] for index in ConvexHull(points).vertices]
     hull_ordered.append(hull_ordered[0])
