@@ -167,10 +167,14 @@ def main(config_fpath):
 
         # If we didn't pick up all of the modalities, then delete the entry from the dictionary.
         # For now, we aren't running the check on SWIR.
-        complete = (ensure_complete_modality(collection_id_to_files[prefix]['pan'])
-                    and ensure_complete_modality(collection_id_to_files[prefix]['msi']))
+        complete = (ensure_complete_modality(collection_id_to_files[prefix]['pan'],
+                                             require_rpc=True)
+                    and ensure_complete_modality(collection_id_to_files[prefix]['msi'],
+                                                 require_rpc=True))
 
         if not complete:
+            logging.warning("Don't have complete modality for collection ID: '{}', skipping!"
+                            .format(prefix))
             del collection_id_to_files[prefix]
             incomplete_ids.append(prefix)
 
@@ -207,22 +211,26 @@ def main(config_fpath):
         # Orthorectify the pan images
         pan_ntf_fpath = files['pan']['image']
         pan_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
-        pan_rpc_fpath = files['pan']['rpc']
         pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(pan_fname))
         cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
+
+        pan_rpc_fpath = files['pan'].get('rpc', None)
         if pan_rpc_fpath:
             cmd_args.extend(['--raytheon-rpc', pan_rpc_fpath])
+
         orthorectify.main(cmd_args)
         files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
 
         # Orthorectify the msi images
         msi_ntf_fpath = files['msi']['image']
         msi_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
-        msi_rpc_fpath = files['msi']['rpc']
         msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(msi_fname))
         cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
+
+        msi_rpc_fpath = files['msi'].get('rpc', None)
         if msi_rpc_fpath:
             cmd_args.extend(['--raytheon-rpc', msi_rpc_fpath])
+
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
     #
