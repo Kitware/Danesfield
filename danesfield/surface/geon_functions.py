@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import numpy as np
 from .poly_functions import *
 from .MinimumBoundingBox import MinimumBoundingBox as mbr
 from shapely.geometry import Point
@@ -172,7 +173,7 @@ def add_mesh_geon(id, top_surf, bottom_surf, offset):
             wall_index.append([top_index[wi], bottom_index[wi], bottom_index[wi + 1], top_index[wi + 1]])
 
     return dict(type='mesh', id='mesh_' + str(id), transform=dict(affine_matrix=np.identity(4).tolist()),
-             vertices_3d=point_cor.tolist(), faces=wall_index), 0
+            vertices_3d=point_cor.tolist(), faces=wall_index), 0
 
 
 def add_shed_geon(id, surf, body_Z, offset):
@@ -239,7 +240,7 @@ def add_gable_geon(id, surfs, body_Z, offset):
     '''
     theta = get_roof_line_theta(surfs)
     pn_2d = np.array([np.cos(theta), np.sin(theta)])
-    #Merge all gable roofs
+    # Merge all gable roofs
     surf2d = np.vstack(tuple(surfs))[:, 0:2]
     surf2d_mbr = mbr(surf2d)
     poly = surf2d_mbr.corner_points
