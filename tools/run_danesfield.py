@@ -20,6 +20,7 @@ import material_classifier
 import msi_to_rgb
 import orthorectify
 import segment_by_height
+import building_segmentation
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -304,9 +305,23 @@ def main(config_fpath):
     #############################################
     # Columbia Building Segmentation
     #############################################
-
     # Run building_segmentation.py
-    # Collaborate with Xu Zhang from Columbia University on how to run this
+    logging.info('---- Running building segmentation ----')
+
+    most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
+    most_nadir_rgb_fpath = collection_id_to_files[most_nadir_collection_id]['rgb_fpath']
+    cmd_args = ["--rgb_image", most_nadir_rgb_fpath,
+                "--msi_image", most_nadir_pan_fpath,
+                "--dsm", dsm_file,
+                "--dtm", dtm_file,
+                "--model_path", config['building']['model_fpath_prefix'],
+                "--save_dir", working_dir,
+                "--output_tif"]
+    building_segmentation.main(cmd_args)
+    # Output files
+    # bldg_segmentation_predict = "{}/predict.png".format(working_dir)
+    # If the "--output_tif" argument is provided:
+    # bldg_segmentation_CLS_Float = "{}/CU_CLS_Float.tif".format(working_dir)
 
     #############################################
     # Material Segmentation
