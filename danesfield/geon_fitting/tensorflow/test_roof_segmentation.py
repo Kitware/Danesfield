@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import tensorflow as tf
 import os
-from Loggers import Logger
+# from Loggers import Logger
 
 from tqdm import tqdm
 
@@ -19,60 +19,60 @@ if os.environ.get('DISPLAY', '') == '':
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-        '--gpu_id', type=int, default=0,
-        help='GPU to use [default: GPU 0]')
+    '--gpu_id', type=int, default=0,
+    help='GPU to use [default: GPU 0]')
 parser.add_argument(
-        '--dataset', default='dayton',
-        help='GPU to use [default: GPU 0]')
+    '--dataset', default='dayton',
+    help='GPU to use [default: GPU 0]')
 parser.add_argument(
-        '--model', default='roof_segmentation',
-        help='Model name [default: model]')
+    '--model', default='roof_segmentation',
+    help='Model name [default: model]')
 parser.add_argument(
-        '--root_dir', default='../data/',
-        help='Log dir [default: log]')
+    '--root_dir', default='../data/',
+    help='Log dir [default: log]')
 parser.add_argument(
-        '--log_dir', default='../segmentation_log/',
-        help='Log dir [default: log]')
+    '--log_dir', default='../segmentation_log/',
+    help='Log dir [default: log]')
 parser.add_argument(
-        '--model_dir', default='../segmentation_model/',
-        help='Log dir [default: log]')
+    '--model_dir', default='../segmentation_model/',
+    help='Log dir [default: log]')
 parser.add_argument(
-        '--num_point', type=int,
-        default=3500, help='Point Number [default: 3500]')
+    '--num_point', type=int,
+    default=3500, help='Point Number [default: 3500]')
 parser.add_argument(
-        '--max_epoch', type=int, default=100,
-        help='Epoch to run [default: 201]')
+    '--max_epoch', type=int, default=100,
+    help='Epoch to run [default: 201]')
 parser.add_argument(
-        '--batch_size', type=int, default=32,
-        help='Batch Size during training [default: 32]')
+    '--batch_size', type=int, default=32,
+    help='Batch Size during training [default: 32]')
 parser.add_argument(
-        '--learning_rate', type=float,
-        default=0.001, help='Initial learning rate [default: 0.001]')
+    '--learning_rate', type=float,
+    default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument(
-        '--momentum', type=float, default=0.9,
-        help='Initial learning rate [default: 0.9]')
+    '--momentum', type=float, default=0.9,
+    help='Initial learning rate [default: 0.9]')
 parser.add_argument(
-        '--optimizer', default='adam',
-        help='adam or momentum [default: adam]')
+    '--optimizer', default='adam',
+    help='adam or momentum [default: adam]')
 parser.add_argument(
-        '--decay_step', type=int, default=200000,
-        help='Decay step for lr decay [default: 200000]')
+    '--decay_step', type=int, default=200000,
+    help='Decay step for lr decay [default: 200000]')
 parser.add_argument(
-        '--decay_rate', type=float, default=0.7,
-        help='Decay rate for lr decay [default: 0.7]')
+    '--decay_rate', type=float, default=0.7,
+    help='Decay rate for lr decay [default: 0.7]')
 parser.add_argument('--appendix', type=str, default="", help='')
 parser.add_argument(
-        "--flip", action="store_true",
-        help="use feature mean to initialize or not")
+    "--flip", action="store_true",
+    help="use feature mean to initialize or not")
 parser.add_argument(
-        "--da", action="store_true",
-        help="use feature mean to initialize or not")
+    "--da", action="store_true",
+    help="use feature mean to initialize or not")
 parser.add_argument(
-        "--scale", action="store_true",
-        help="use feature mean to initialize or not")
+    "--scale", action="store_true",
+    help="use feature mean to initialize or not")
 parser.add_argument(
-        "--shift", action="store_true",
-        help="use feature mean to initialize or not")
+    "--shift", action="store_true",
+    help="use feature mean to initialize or not")
 args = parser.parse_args()
 
 
@@ -112,7 +112,7 @@ if args.shift:
 
 if not os.path.isdir(args.log_dir):
     os.makedirs(args.log_dir + args.dataset)
-logger = Logger(args.log_dir + args.dataset + '/' + args.dataset + appendix)
+# logger = Logger(args.log_dir + args.dataset + '/' + args.dataset + appendix)
 
 if not os.path.isdir('{}{}/{}{}/'.format(
         args.model_dir, args.dataset, args.dataset, appendix)):
@@ -269,7 +269,7 @@ def axisEqual3D(ax):
 def main():
     with tf.Graph().as_default():
         pointclouds_pl, labels_pl = roof_type_segmentation.placeholder_inputs(
-                NUM_POINT, NUM_CLASSES)
+            NUM_POINT, NUM_CLASSES)
         is_training_pl = tf.placeholder(tf.bool, shape=())
 
         # Note the global_step=batch parameter to minimize.
@@ -281,7 +281,7 @@ def main():
         print("--- Get model and loss")
         # Get model and loss
         pred, end_points = roof_type_segmentation.get_segmentation_model(
-                pointclouds_pl, is_training_pl, NUM_CLASSES, bn_decay=bn_decay)
+            pointclouds_pl, is_training_pl, NUM_CLASSES, bn_decay=bn_decay)
 
         # Create a session
         config = tf.ConfigProto()
@@ -293,7 +293,7 @@ def main():
         # Add ops to save and restore all the variables.
         saver = tf.train.Saver()
         saver.restore(sess=sess, save_path='{}/{}/{}{}/'.format(args.model_dir, args.dataset,
-                      args.dataset, appendix)+"epoch_{:03d}.ckpt".format(95))
+                                                                args.dataset, appendix)+"epoch_{:03d}.ckpt".format(95))
 
         # Init variables
         ops = {'pointclouds_pl': pointclouds_pl,

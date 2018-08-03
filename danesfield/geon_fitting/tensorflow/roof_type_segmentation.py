@@ -1,12 +1,7 @@
-import os
-import sys
-BASE_DIR = os.path.dirname(__file__)
-sys.path.append(BASE_DIR)
-sys.path.append(os.path.join(BASE_DIR, '../utils'))
 import tensorflow as tf
-import numpy as np
-import tf_util
-from pointnet_util import pointnet_sa_module, pointnet_fp_module
+
+from danesfield.geon_fitting.utils import tf_util
+from danesfield.geon_fitting.utils.pointnet_util import pointnet_sa_module, pointnet_fp_module
 
 
 def placeholder_inputs(num_point, num_class):
@@ -22,8 +17,8 @@ def placeholder_building_inputs(num_point):
 
 def get_segmentation_model(point_cloud, is_training, num_class, bn_decay=None):
     """ Semantic segmentation PointNet, input is BxNx3, output Bxnum_class """
-    batch_size = tf.shape(point_cloud)[0]
-    num_point = tf.shape(point_cloud)[1]
+    # batch_size = tf.shape(point_cloud)[0]
+    # num_point = tf.shape(point_cloud)[1]
     end_points = {}
     l0_xyz = point_cloud
     l0_points = None
@@ -31,19 +26,23 @@ def get_segmentation_model(point_cloud, is_training, num_class, bn_decay=None):
 
     l1_xyz, l1_points, l1_indices = pointnet_sa_module(
         l0_xyz, l0_points, npoint=1024, radius=0.1, nsample=32, mlp=[
-            32, 32, 64], mlp2=None, group_all=False, is_training=is_training, bn_decay=bn_decay, scope='layer1')
+            32, 32, 64], mlp2=None, group_all=False, is_training=is_training,
+        bn_decay=bn_decay, scope='layer1')
 
     l2_xyz, l2_points, l2_indices = pointnet_sa_module(
         l1_xyz, l1_points, npoint=256, radius=0.2, nsample=32, mlp=[
-            64, 64, 128], mlp2=None, group_all=False, is_training=is_training, bn_decay=bn_decay, scope='layer2')
+            64, 64, 128], mlp2=None, group_all=False, is_training=is_training,
+        bn_decay=bn_decay, scope='layer2')
 
     l3_xyz, l3_points, l3_indices = pointnet_sa_module(
         l2_xyz, l2_points, npoint=64, radius=0.4, nsample=32, mlp=[
-            128, 128, 256], mlp2=None, group_all=False, is_training=is_training, bn_decay=bn_decay, scope='layer3')
+            128, 128, 256], mlp2=None, group_all=False, is_training=is_training,
+        bn_decay=bn_decay, scope='layer3')
 
     l4_xyz, l4_points, l4_indices = pointnet_sa_module(
         l3_xyz, l3_points, npoint=16, radius=0.8, nsample=32, mlp=[
-            256, 256, 512], mlp2=None, group_all=False, is_training=is_training, bn_decay=bn_decay, scope='layer4')
+            256, 256, 512], mlp2=None, group_all=False, is_training=is_training,
+        bn_decay=bn_decay, scope='layer4')
 
     # Feature Propagation layers
     l3_points = pointnet_fp_module(

@@ -1,10 +1,7 @@
 import pickle
 import os
-import sys
 import numpy as np
-import pc_util
 
-# import scene_util
 
 class RoofDataset():
     def __init__(self, root, num_category, npoints=3500, split='train', appendix=""):
@@ -12,7 +9,7 @@ class RoofDataset():
         self.root = root
         self.split = split
         self.num_category = num_category
-        self.data_filename = os.path.join(self.root, 'roof_seg_%s%s.pickle' % (split,appendix))
+        self.data_filename = os.path.join(self.root, 'roof_seg_%s%s.pickle' % (split, appendix))
         print("data_filename", self.data_filename)
         with open(self.data_filename, 'rb') as fp:
             self.scene_points_list = pickle.load(fp)
@@ -32,23 +29,27 @@ class RoofDataset():
         # print "coordmin", coordmin
         isvalid = False
         for i in range(10):
-            #curcenter = point_set[np.random.choice(point_set.shape[0], 1)[0], :]
-            curcenter = np.mean(point_set, axis = 0)
-            random_offset = np.random.uniform(-0.2,0.2,size = (3,))
+            # curcenter = point_set[np.random.choice(point_set.shape[0], 1)[0], :]
+            curcenter = np.mean(point_set, axis=0)
+            random_offset = np.random.uniform(-0.2, 0.2, size=(3,))
             curcenter = curcenter+random_offset
             curmin = curcenter - [space_l/2, space_w/2, space_h/2]
             curmax = curcenter + [space_l/2, space_w/2, space_h/2]
             curmin[2] = coordmin[2] - 0.2
             curmax[2] = coordmax[2] + 0.2
-            curchoice = np.sum((point_set >= (curmin - 0.2)) * (point_set <= (curmax + 0.2)), axis=1) == 3
+            curchoice = np.sum((point_set >= (curmin - 0.2)) *
+                               (point_set <= (curmax + 0.2)), axis=1) == 3
             cur_point_set = point_set[curchoice, :]
             cur_segment_set = np.array(semantic_seg)[curchoice]
             if cur_point_set.shape[0] == 0:
                 continue
-            mask = np.sum((cur_point_set >= (curmin - 0.01)) * (cur_point_set <= (curmax + 0.01)), axis=1) == 3
-            vidx = np.ceil((cur_point_set[mask, :] - curmin) / (curmax - curmin) * [62.0, 62.0, 62.0])
+            mask = np.sum((cur_point_set >= (curmin - 0.01)) *
+                          (cur_point_set <= (curmax + 0.01)), axis=1) == 3
+            vidx = np.ceil((cur_point_set[mask, :] - curmin) /
+                           (curmax - curmin) * [62.0, 62.0, 62.0])
             vidx = np.unique(vidx[:, 0] * 62.0 * 62.0 + vidx[:, 1] * 62.0 + vidx[:, 2])
-            isvalid = len(vidx) / 62.0 / 62.0 / 62.0 >= 0.02 #np.sum(cur_semantic_seg > 0) / len(cur_semantic_seg) >= 0.7 and 
+            # np.sum(cur_semantic_seg > 0) / len(cur_semantic_seg) >= 0.7 and
+            isvalid = len(vidx) / 62.0 / 62.0 / 62.0 >= 0.02
             if isvalid:
                 break
 
@@ -59,4 +60,3 @@ class RoofDataset():
 
     def __len__(self):
         return len(self.scene_points_list)
-
