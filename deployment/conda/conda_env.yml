@@ -3,7 +3,7 @@
 # Create the environment by running the following command (after installing Miniconda):
 #   $ conda env create -f conda_env.yml
 
-name: core3d-dev
+name: core3d-xu
 
 channels:
 - kitware-geospatial
@@ -14,7 +14,9 @@ channels:
 dependencies:
 - pubgeo-core3d-metrics
 - gdal
+- conda-forge/label/broken::libgdal=2.2.4=5
 - pdal
+- python-pdal
 - texture-atlas
 - gaia
 - pyproj
@@ -27,3 +29,10 @@ dependencies:
 - pytest
 - pytorch=0.3.*
 - shapely
+- scikit-learn
+- scikit-image
+- pip:
+  - ubelt
+- torchvision
+- tqdm
+- tensorflow
