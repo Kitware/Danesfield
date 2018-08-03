@@ -14,10 +14,10 @@ import gdal
 import gdalnumeric
 
 
-def combine_imagery(img_data, depth_data, NDVI_data):
+def combine_imagery(img_data, depth_data, NDVI_data=None):
     """Combine the various source of imagery into a multi-channel image
     """
-    if not NDVI_data:
+    if NDVI_data is None:
         img = np.zeros([1, img_data.shape[0], img_data.shape[1], 4], dtype=np.float32)
     else:
         img = np.zeros([1, img_data.shape[0], img_data.shape[1], 5], dtype=np.float32)
@@ -27,7 +27,7 @@ def combine_imagery(img_data, depth_data, NDVI_data):
     img[0, :, :, :3] = float_img
     img[0, :, :, 3] = float_depth
 
-    if NDVI_data:
+    if NDVI_data is not None:
         float_NDVI = (np.float32(NDVI_data.copy())/255.0-0.5)*2.0
         img[0, :, :, 4] = float_NDVI
 
