@@ -10,6 +10,7 @@ Compile:
 Change the path in the script first before you compiling the file.
 
 ```
+
 cd ./tf_ops/grouping/
 
 ./tf_grouping_compile.sh
@@ -27,11 +28,13 @@ cd ./tf_ops/sampling/
 ./tf_sampling_compile.sh
 
 cd ../
+
 ```
 
 Test:
 
 ```
+
 cd ./tensorflow/
 
 python roof_segmentation.py \
@@ -40,4 +43,5 @@ python roof_segmentation.py \
 --output_png=../segmentation_graph/out.png \
 --output_txt=../outlas/out.txt \
 --text_output
+
 ```
