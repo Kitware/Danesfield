@@ -73,6 +73,6 @@ def get_segmentation_model(point_cloud, is_training, num_class, bn_decay=None):
     net = tf_util.dropout(net, keep_prob=0.5,
                           is_training=is_training, scope='dp1')
     net = tf_util.conv1d(net, num_class, 1, padding='VALID',
-                         activation_fn=None, scope='fc2')
+                         activation_fn=None, is_training=is_training, scope='fc2')
 
     return net, end_points

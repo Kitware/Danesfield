@@ -7,9 +7,9 @@ Date: November 2017
 from danesfield.geon_fitting.tf_ops.sampling.tf_sampling import farthest_point_sample, gather_point
 from danesfield.geon_fitting.tf_ops.grouping.tf_grouping import query_ball_point, group_point, knn_point  # noqa: E501
 from danesfield.geon_fitting.tf_ops.interpolation.tf_interpolate import three_nn, three_interpolate
+from danesfield.geon_fitting.utils import tf_util
 import tensorflow as tf
 import numpy as np
-import tf_util
 
 
 def sample_and_group(npoint, radius, nsample, xyz, points, knn=False, use_xyz=True):
@@ -124,20 +124,20 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
 
         # Pooling in Local Regions
         if pooling == 'max':
-            new_points = tf.reduce_max(new_points, axis=[2], keep_dims=True, name='maxpool')
+            new_points = tf.reduce_max(new_points, axis=[2], keepdims=True, name='maxpool')
         elif pooling == 'avg':
-            new_points = tf.reduce_mean(new_points, axis=[2], keep_dims=True, name='avgpool')
+            new_points = tf.reduce_mean(new_points, axis=[2], keepdims=True, name='avgpool')
         elif pooling == 'weighted_avg':
             with tf.variable_scope('weighted_avg'):
-                dists = tf.norm(grouped_xyz, axis=-1, ord=2, keep_dims=True)
+                dists = tf.norm(grouped_xyz, axis=-1, ord=2, keepdims=True)
                 exp_dists = tf.exp(-dists * 5)
                 # (batch_size, npoint, nsample, 1)
-                weights = exp_dists/tf.reduce_sum(exp_dists, axis=2, keep_dims=True)
+                weights = exp_dists/tf.reduce_sum(exp_dists, axis=2, keepdims=True)
                 new_points *= weights  # (batch_size, npoint, nsample, mlp[-1])
-                new_points = tf.reduce_sum(new_points, axis=2, keep_dims=True)
+                new_points = tf.reduce_sum(new_points, axis=2, keepdims=True)
         elif pooling == 'max_and_avg':
-            max_points = tf.reduce_max(new_points, axis=[2], keep_dims=True, name='maxpool')
-            avg_points = tf.reduce_mean(new_points, axis=[2], keep_dims=True, name='avgpool')
+            max_points = tf.reduce_max(new_points, axis=[2], keepdims=True, name='maxpool')
+            avg_points = tf.reduce_mean(new_points, axis=[2], keepdims=True, name='avgpool')
             new_points = tf.concat([avg_points, max_points], axis=-1)
 
         # [Optional] Further Processing
@@ -218,7 +218,7 @@ def pointnet_fp_module(xyz1, xyz2, points1, points2, mlp, is_training, bn_decay,
     with tf.variable_scope(scope) as sc:
         dist, idx = three_nn(xyz1, xyz2)
         dist = tf.maximum(dist, 1e-10)
-        norm = tf.reduce_sum((1.0/dist), axis=2, keep_dims=True)
+        norm = tf.reduce_sum((1.0/dist), axis=2, keepdims=True)
         norm = tf.tile(norm, [1, 1, 3])
         weight = (1.0/dist) / norm
         interpolated_points = three_interpolate(points2, idx, weight)
