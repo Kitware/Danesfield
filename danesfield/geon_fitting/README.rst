@@ -4,8 +4,7 @@ It takes building point cloud as input and output label file contains the buildi
 
 The model and test files are in data.kitware
 
-[https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24)
-
+https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24
 Compile:
 
 Change the path in the script first before you compiling the file.
