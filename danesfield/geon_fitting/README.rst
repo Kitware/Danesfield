@@ -9,27 +9,26 @@ Compile:
 
 Change the path in the script first before you compiling the file.
 
-```
+.. code-block:: bash
 
-cd ./tf_ops/grouping/
+    cd ./tf_ops/grouping/
 
-./tf_grouping_compile.sh
+    ./tf_grouping_compile.sh
 
-cd ../
+    cd ../
 
-cd ./tf_ops/interpolation/
+    cd ./tf_ops/interpolation/
 
-./tf_interpolate_compile.sh
+    ./tf_interpolate_compile.sh
 
-cd ../
+    cd ../
 
-cd ./tf_ops/sampling/
+    cd ./tf_ops/sampling/
 
-./tf_sampling_compile.sh
+    ./tf_sampling_compile.sh
 
-cd ../
+    cd ../
 
-```
 
 Test:
 
