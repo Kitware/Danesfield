@@ -32,15 +32,14 @@ Change the path in the script first before you compiling the file.
 
 Test:
 
-```
+.. code-block:: bash
 
-cd ./tensorflow/
+    cd ./tensorflow/
 
-python roof_segmentation.py \
---model=../model/dayton_geon \
---input_pc=/home/xuzhang/project/Core3D/core3d-columbia/data/D2_mls_building.txt \
---output_png=../segmentation_graph/out.png \
---output_txt=../outlas/out.txt \
---text_output
+    python roof_segmentation.py \
+    --model=../model/dayton_geon \
+    --input_pc=/home/xuzhang/project/Core3D/core3d-columbia/data/D2_mls_building.txt \
+    --output_png=../segmentation_graph/out.png \
+    --output_txt=../outlas/out.txt \
+    --text_output
 
-```
