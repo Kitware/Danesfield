@@ -12,13 +12,21 @@ Change the path in the script first before you compiling the file.
 ```
 
 cd ./tf_ops/grouping/
+
 ./tf_grouping_compile.sh
+
 cd ../
+
 cd ./tf_ops/interpolation/
+
 ./tf_interpolate_compile.sh
+
 cd ../
+
 cd ./tf_ops/sampling/
+
 ./tf_sampling_compile.sh
+
 cd ../
 
 ```
@@ -27,11 +35,17 @@ Test:
 
 ```
 cd ./tensorflow/
+
 python roof_segmentation.py 
+
 --model=../model/dayton_geon
+
 --input_pc=/home/xuzhang/project/Core3D/core3d-columbia/data/D2_mls_building.txt
+
 --output_png=../segmentation_graph/out.png
+
 --output_txt=../outlas/out.txt
+
 --text_output
 
 ```
