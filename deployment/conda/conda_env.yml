@@ -38,6 +38,7 @@ dependencies:
 - xorg-libsm
 - xorg-libX11
 - purdue-segmentation
+- purdue-reconstruction
 - pip:
   - ubelt
 - torchvision
