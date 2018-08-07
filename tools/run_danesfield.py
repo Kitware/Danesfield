@@ -223,7 +223,7 @@ def main(config_fpath):
 
         # Orthorectify the msi images
         msi_ntf_fpath = files['msi']['image']
-        msi_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
+        msi_fname = os.path.splitext(os.path.split(msi_ntf_fpath)[1])[0]
         msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(msi_fname))
         cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
 
