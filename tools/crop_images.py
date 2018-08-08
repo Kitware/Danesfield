@@ -29,6 +29,8 @@ from danesfield import raytheon_rpc
 import gdalconst
 import gdal
 
+import pyproj
+
 
 def gdal_get_transform(src_image):
     geo_trans = src_image.GetGeoTransform()
@@ -75,6 +77,28 @@ def read_raytheon_RPC(rpc_path, img_file):
         return raytheon_rpc.parse_raytheon_rpc_file(f)
 
 
+def get_corners(gt, cols, rows):
+    corners = []
+    xarr = [0, cols]
+    yarr = [0, rows]
+    for px in xarr:
+        for py in yarr:
+            x = gt[0] + (px * gt[1]) + (py * gt[2])
+            y = gt[3] + (px * gt[4]) + (py * gt[5])
+            corners.append([x, y])
+        yarr.reverse()
+    return corners
+
+
+def utm_to_latlong(pts, utm_zone):
+    wgs84 = pyproj.Proj(init="epsg:326" + str(utm_zone))
+    utm = pyproj.Proj(init='epsg:4326')
+    new_pts = np.zeros_like(pts)
+    new_pts[:, 0], new_pts[:, 1], new_pts[:, 2] = pyproj.transform(
+            wgs84, utm, pts[:, 0], pts[:, 1], pts[:, 2])
+    return new_pts
+
+
 def main(args):
     parser = argparse.ArgumentParser(
         description="Crop out images for each of the CORE3D AOIs")
@@ -82,17 +106,19 @@ def main(args):
                         choices=['D1', 'D2', 'D3', 'D4'],
                         help="dataset_AOI options: D1 (WPAFB), D2 (WPAFB), "
                              "D3 (USCD), D4 (Jacksonville)")
-    parser.add_argument("src-root",
+    parser.add_argument("src_root",
                         help="Source imagery root directory")
-    parser.add_argument("dest-dir",
+    parser.add_argument("dest_dir",
                         help="Destination directory for writing crops")
-    parser.add_argument("--rpc-dir",
+    parser.add_argument("--rpc_dir",
                         help="Source directory for RPC text files")
+    parser.add_argument("--dsm",
+                        help="Source DSM used to get the cropping bounds")
     args = parser.parse_args(args)
 
-    AOI = args.aoi[1]
+    AOI = args.aoi
     src_root_dir = os.path.join(args.src_root, '')
-    dst_root_dir = os.path.join(args.dest_root, '')
+    dst_root_dir = os.path.join(args.dest_dir, '')
 
     print('Cropping images from: ' + src_root_dir)
     print('Locating crops in directory: ' + dst_root_dir)
@@ -104,67 +130,88 @@ def main(args):
     else:
         print('Not using updated RPCs')
 
-    elevation_range = 100
+    if args.dsm and os.path.isfile(args.dsm):
+        # Determine the cropping bounds from DSM
+        data_dsm = gdal.Open(args.dsm)
+        dsm_w = data_dsm.RasterXSize
+        dsm_h = data_dsm.RasterYSize
+        gt = data_dsm.GetGeoTransform()
+        utm_corners = get_corners(gt, dsm_w, dsm_h)
+        dsm = data_dsm.GetRasterBand(1).ReadAsArray(0, 0, dsm_w, dsm_h, buf_type=gdal.GDT_Float32)
+        no_data_value = data_dsm.GetRasterBand(1).GetNoDataValue()
+        dsm_without_no_data = dsm[dsm != no_data_value]
+        elevations = np.array([[dsm_without_no_data.min()], [dsm_without_no_data.max()]])
+        utm_corners = np.hstack((np.tile(utm_corners, (2, 1)), np.repeat(elevations, 4, axis=0)))
 
-    # WPAFB AOI D1
-    if AOI == 'D1':
-        elevation = 240
-        ul_lon = -84.11236693243779
-        ul_lat = 39.77747025512961
+        if AOI == 'D1' or AOI == 'D2':
+            utm_zone = 16
+        elif AOI == 'D3':
+            utm_zone = 11
+        elif AOI == 'D4':
+            utm_zone = 17
+        latlong_corners = utm_to_latlong(utm_corners, utm_zone)
+        print("Cropping bounds extracted from DSM")
+    else:
+        elevation_range = 100
+        # WPAFB AOI D1
+        if AOI == 'D1':
+            elevation = 240
+            ul_lon = -84.11236693243779
+            ul_lat = 39.77747025512961
 
-        ur_lon = -84.10530109439955
-        ur_lat = 39.77749705975315
+            ur_lon = -84.10530109439955
+            ur_lat = 39.77749705975315
 
-        lr_lon = -84.10511182729961
-        lr_lat = 39.78290042788092
+            lr_lon = -84.10511182729961
+            lr_lat = 39.78290042788092
 
-        ll_lon = -84.11236485416471
-        ll_lat = 39.78287156225952
+            ll_lon = -84.11236485416471
+            ll_lat = 39.78287156225952
 
-    # WPAFB AOI D2
-    if AOI == 'D2':
-        elevation = 300
-        ul_lon = -84.08847226672408
-        ul_lat = 39.77650841377968
+        # WPAFB AOI D2
+        if AOI == 'D2':
+            elevation = 300
+            ul_lon = -84.08847226672408
+            ul_lat = 39.77650841377968
 
-        ur_lon = -84.07992142333644
-        ur_lat = 39.77652166058358
+            ur_lon = -84.07992142333644
+            ur_lat = 39.77652166058358
 
-        lr_lon = -84.07959205694203
-        lr_lat = 39.78413758747398
+            lr_lon = -84.07959205694203
+            lr_lat = 39.78413758747398
 
-        ll_lon = -84.0882028871317
-        ll_lat = 39.78430009793551
+            ll_lon = -84.0882028871317
+            ll_lat = 39.78430009793551
 
-    # UCSD AOI D3
-    if AOI == 'D3':
-        elevation = 120
-        ul_lon = -117.24298768132505
-        ul_lat = 32.882791370856857
+        # UCSD AOI D3
+        if AOI == 'D3':
+            elevation = 120
+            ul_lon = -117.24298768132505
+            ul_lat = 32.882791370856857
 
-        ur_lon = -117.24296375496185
-        ur_lat = 32.874021450913411
+            ur_lon = -117.24296375496185
+            ur_lat = 32.874021450913411
 
-        lr_lon = -117.2323749640905
-        lr_lat = 32.874041569804469
+            lr_lon = -117.2323749640905
+            lr_lat = 32.874041569804469
 
-        ll_lon = -117.23239784772379
-        ll_lat = 32.882811496466012
+            ll_lon = -117.23239784772379
+            ll_lat = 32.882811496466012
 
-    # Jacksonville AOI D4
-    if AOI == 'D4':
-        elevation = 2
-        ul_lon = -81.67078466333165
-        ul_lat = 30.31698808384777
+        # Jacksonville AOI D4
+        if AOI == 'D4':
+            elevation = 2
+            ul_lon = -81.67078466333165
+            ul_lat = 30.31698808384777
 
-        ur_lon = -81.65616946309449
-        ur_lat = 30.31729872444624
+            ur_lon = -81.65616946309449
+            ur_lat = 30.31729872444624
 
-        lr_lon = -81.65620275072482
-        lr_lat = 30.329923847788603
+            lr_lon = -81.65620275072482
+            lr_lat = 30.329923847788603
 
-        ll_lon = -81.67062242425624
-        ll_lat = 30.32997669492018
+            ll_lon = -81.67062242425624
+            ll_lat = 30.32997669492018
 
     for root, dirs, files in os.walk(src_root_dir):
         for file_ in files:
@@ -191,18 +238,20 @@ def main(args):
                     nodata_value = nodata
                 nodata_values.append(nodata_value)
 
-            # +- elevation_range
-            poly = np.array([[ul_lon, ul_lat, elevation + elevation_range],
-                             [ur_lon, ur_lat, elevation + elevation_range],
-                             [lr_lon, lr_lat, elevation + elevation_range],
-                             [ll_lon, ll_lat, elevation + elevation_range],
-                             [ul_lon, ul_lat, elevation + elevation_range],
-                             [ul_lon, ul_lat, elevation - elevation_range],
-                             [ur_lon, ur_lat, elevation - elevation_range],
-                             [lr_lon, lr_lat, elevation - elevation_range],
-                             [ll_lon, ll_lat, elevation - elevation_range],
-                             [ul_lon, ul_lat, elevation - elevation_range]])
-
+            if args.dsm and os.path.isfile(args.dsm):
+                poly = latlong_corners.copy()
+                elevation = np.median(dsm)
+            else:
+                poly = np.array([[ul_lon, ul_lat, elevation + elevation_range],
+                                 [ur_lon, ur_lat, elevation + elevation_range],
+                                 [lr_lon, lr_lat, elevation + elevation_range],
+                                 [ll_lon, ll_lat, elevation + elevation_range],
+                                 [ul_lon, ul_lat, elevation + elevation_range],
+                                 [ul_lon, ul_lat, elevation - elevation_range],
+                                 [ur_lon, ur_lat, elevation - elevation_range],
+                                 [lr_lon, lr_lat, elevation - elevation_range],
+                                 [ll_lon, ll_lat, elevation - elevation_range],
+                                 [ul_lon, ul_lat, elevation - elevation_range]])
             rpc_md = src_image.GetMetadata('RPC')
             model = rpc.rpc_from_gdal_dict(rpc_md)
             if (corrected_rpc_dir):
