@@ -358,7 +358,7 @@ class Evaluator:
         srs.ImportFromWkt(wkt)
 
         probpath = outfname + '_prob.tif'
-        maskpath = outfname + '_mask.tif'
+        maskpath = outfname + '_semantic_CLS.tif'
 
         driver = gdal.GetDriverByName('GTiff')
 
