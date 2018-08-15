@@ -21,6 +21,7 @@ import msi_to_rgb
 import orthorectify
 import segment_by_height
 import kwsemantic_segment
+import building_segmentation
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -154,23 +155,11 @@ def main(config_fpath):
     incomplete_ids = []
     for prefix in prefixes:
         collection_id_to_files[prefix] = {
-            'pan': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
+            'pan': {},
             'pansharpened_fpath': '',
             'rgb_fpath': '',
-            'msi': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
-            'swir': {
-                'image': '',
-                'rpc': '',
-                'info': ''
-            },
+            'msi': {},
+            'swir': {},
             'angle': -1,
         }
 
@@ -180,10 +169,14 @@ def main(config_fpath):
 
         # If we didn't pick up all of the modalities, then delete the entry from the dictionary.
         # For now, we aren't running the check on SWIR.
-        complete = (ensure_complete_modality(collection_id_to_files[prefix]['pan'])
-                    and ensure_complete_modality(collection_id_to_files[prefix]['msi']))
+        complete = (ensure_complete_modality(collection_id_to_files[prefix]['pan'],
+                                             require_rpc=True)
+                    and ensure_complete_modality(collection_id_to_files[prefix]['msi'],
+                                                 require_rpc=True))
 
         if not complete:
+            logging.warning("Don't have complete modality for collection ID: '{}', skipping!"
+                            .format(prefix))
             del collection_id_to_files[prefix]
             incomplete_ids.append(prefix)
 
@@ -220,22 +213,26 @@ def main(config_fpath):
         # Orthorectify the pan images
         pan_ntf_fpath = files['pan']['image']
         pan_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
-        pan_rpc_fpath = files['pan']['rpc']
         pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(pan_fname))
         cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
+
+        pan_rpc_fpath = files['pan'].get('rpc', None)
         if pan_rpc_fpath:
-            cmd_args.extend(['--rpc', pan_rpc_fpath])
+            cmd_args.extend(['--raytheon-rpc', pan_rpc_fpath])
+
         orthorectify.main(cmd_args)
         files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
 
         # Orthorectify the msi images
         msi_ntf_fpath = files['msi']['image']
-        msi_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
-        msi_rpc_fpath = files['msi']['rpc']
+        msi_fname = os.path.splitext(os.path.split(msi_ntf_fpath)[1])[0]
         msi_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(msi_fname))
         cmd_args = [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
+
+        msi_rpc_fpath = files['msi'].get('rpc', None)
         if msi_rpc_fpath:
-            cmd_args.extend(['--rpc', msi_rpc_fpath])
+            cmd_args.extend(['--raytheon-rpc', msi_rpc_fpath])
+
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
     #
@@ -326,9 +323,23 @@ def main(config_fpath):
     #############################################
     # Columbia Building Segmentation
     #############################################
-
     # Run building_segmentation.py
-    # Collaborate with Xu Zhang from Columbia University on how to run this
+    logging.info('---- Running building segmentation ----')
+
+    most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
+    most_nadir_rgb_fpath = collection_id_to_files[most_nadir_collection_id]['rgb_fpath']
+    cmd_args = ["--rgb_image", most_nadir_rgb_fpath,
+                "--msi_image", most_nadir_pan_fpath,
+                "--dsm", dsm_file,
+                "--dtm", dtm_file,
+                "--model_path", config['building']['model_fpath_prefix'],
+                "--save_dir", working_dir,
+                "--output_tif"]
+    building_segmentation.main(cmd_args)
+    # Output files
+    # bldg_segmentation_predict = "{}/predict.png".format(working_dir)
+    # If the "--output_tif" argument is provided:
+    # bldg_segmentation_CLS_Float = "{}/CU_CLS_Float.tif".format(working_dir)
 
     #############################################
     # Material Segmentation

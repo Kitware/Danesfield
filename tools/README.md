@@ -25,8 +25,8 @@ Material classification from Rutgers University.
 ### Prerequisites
 
 Download [RN18_All.pth.tar](
-https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5ab3b3a18d777f068578ecb0)
- and place it in `danesfield/materials/pixel_prediction/architecture/`.
+https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5ab3b3a18d777f068578ecb0).
+When running the script, specify the path to this file using the `--model-path` argument.
 
 ### Usage
 
