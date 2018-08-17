@@ -55,8 +55,6 @@ def main(args):
     parser.add_argument('outfname', help='out filename for prediction probability and class mask')
     args = parser.parse_args(args)
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
-
     with open(args.config_path, 'r') as f:
         cfg = json.load(f)
         pretrain_model_path = args.pretrain_model_path
