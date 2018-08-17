@@ -201,7 +201,7 @@ class Evaluator:
             if self.need_dice:
                 print(np.mean(self.dice))
 
-    def onepredict(self, mydata, dsmpath, outfname):
+    def onepredict(self, mydata, dsmpath, outdir, outfname):
         model = read_onetrain_model(self.config)
 
         data = {}
@@ -209,7 +209,7 @@ class Evaluator:
 
         predicted = self.predict_samples_large(model, data)
 
-        self.process_data(predicted, dsmpath, outfname)
+        self.process_data(predicted, dsmpath, outdir, outfname)
 
     def cut_border(self, image):
         return image if not self.border else image[self.border:-self.border,
@@ -331,7 +331,7 @@ class Evaluator:
     def save(self, name, prefix=""):
         raise NotImplementedError
 
-    def process_data(self, predicted, dsmpath, outfname):
+    def process_data(self, predicted, dsmpath, outdir, outfname):
         threshold = 0.3
         prob_arr = predicted[0, 0, :, :]
         img_arr = np.copy(prob_arr)
@@ -357,8 +357,9 @@ class Evaluator:
         srs = osr.SpatialReference()
         srs.ImportFromWkt(wkt)
 
-        probpath = outfname + '_prob.tif'
-        maskpath = outfname + '_semantic_CLS.tif'
+        prefix = os.path.join(outdir, outfname)
+        probpath = prefix + '_prob.tif'
+        maskpath = prefix + '_semantic_CLS.tif'
 
         driver = gdal.GetDriverByName('GTiff')
 

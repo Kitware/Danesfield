@@ -19,7 +19,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              "../danesfield/segmentation/semantic"))
 
 
-def predict(rgbpath, dsmpath, dtmpath, msipath, outfname, config):
+def predict(rgbpath, dsmpath, dtmpath, msipath, outdir, outfname, config):
     img_data = np.transpose(gdal.Open(rgbpath).ReadAsArray(), (1, 2, 0))
 
     dsm_data = gdal.Open(dsmpath).ReadAsArray()
@@ -43,7 +43,7 @@ def predict(rgbpath, dsmpath, dtmpath, msipath, outfname, config):
     input_data = (input_data - 0.5)*2
 
     keval = Evaluator(config)
-    keval.onepredict(input_data, dsmpath, outfname)
+    keval.onepredict(input_data, dsmpath, outdir, outfname)
 
 
 def main(args):
@@ -54,6 +54,7 @@ def main(args):
     parser.add_argument('dsmpath', help='1-band float DSM file path')
     parser.add_argument('dtmpath', help='1-band float DTM file path')
     parser.add_argument('msipath', help='8-band float MSI file path')
+    parser.add_argument('outdir', help='directory in which to write output files')
     parser.add_argument('outfname', help='out filename for prediction probability and class mask')
     args = parser.parse_args(args)
 
@@ -71,7 +72,7 @@ def main(args):
     config = Config(**cfg)
     config = update_config(config, img_rows=2048, img_cols=2048, target_rows=2048,
                            target_cols=2048, num_channels=5)
-    predict(rgbpath, dsmpath, dtmpath, msipath, outfname, config)
+    predict(rgbpath, dsmpath, dtmpath, msipath, args.outdir, outfname, config)
 
 
 if __name__ == "__main__":
