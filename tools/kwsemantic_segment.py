@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import numpy as np
@@ -15,32 +16,8 @@ from danesfield.segmentation.semantic.utils.config import Config
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              "../danesfield/segmentation/semantic"))
 
-parser = argparse.ArgumentParser(description='configuration for semantic segmantation task.')
-parser.add_argument('config_path', help='configuration file path.')
-parser.add_argument('pretrain_model_path', help='pretrained model file path.')
-parser.add_argument('rgbpath', help='3-band 8-bit RGB image path')
-parser.add_argument('dsmpath', help='1-band float DSM file path')
-parser.add_argument('dtmpath', help='1-band float DTM file path')
-parser.add_argument('msipath', help='8-band float MSI file path')
-parser.add_argument('outfname', help='out filename for prediction probability and class mask')
-args = parser.parse_args()
-with open(args.config_path, 'r') as f:
-    cfg = json.load(f)
-    pretrain_model_path = args.pretrain_model_path
-    rgbpath = args.rgbpath
-    dsmpath = args.dsmpath
-    dtmpath = args.dtmpath
-    msipath = args.msipath
-    outfname = args.outfname
-    cfg['pretrain_model_path'] = pretrain_model_path
-    cfg['out_fname'] = outfname
-config = Config(**cfg)
 
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
-
-
-def predict():
+def predict(rgbpath, dsmpath, dtmpath, msipath, outfname, config):
     img_data = np.transpose(gdal.Open(rgbpath).ReadAsArray(), (1, 2, 0))
 
     dsm_data = gdal.Open(dsmpath).ReadAsArray()
@@ -67,7 +44,39 @@ def predict():
     keval.onepredict(input_data, dsmpath, outfname)
 
 
-if __name__ == "__main__":
+def main(args):
+    parser = argparse.ArgumentParser(description='configuration for semantic segmentation task.')
+    parser.add_argument('config_path', help='configuration file path.')
+    parser.add_argument('pretrain_model_path', help='pretrained model file path.')
+    parser.add_argument('rgbpath', help='3-band 8-bit RGB image path')
+    parser.add_argument('dsmpath', help='1-band float DSM file path')
+    parser.add_argument('dtmpath', help='1-band float DTM file path')
+    parser.add_argument('msipath', help='8-band float MSI file path')
+    parser.add_argument('outfname', help='out filename for prediction probability and class mask')
+    args = parser.parse_args(args)
+
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+
+    with open(args.config_path, 'r') as f:
+        cfg = json.load(f)
+        pretrain_model_path = args.pretrain_model_path
+        rgbpath = args.rgbpath
+        dsmpath = args.dsmpath
+        dtmpath = args.dtmpath
+        msipath = args.msipath
+        outfname = args.outfname
+        cfg['pretrain_model_path'] = pretrain_model_path
+        cfg['out_fname'] = outfname
+
+    config = Config(**cfg)
     config = update_config(config, img_rows=2048, img_cols=2048, target_rows=2048,
                            target_cols=2048, num_channels=5)
-    predict()
+    predict(rgbpath, dsmpath, dtmpath, msipath, outfname, config)
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        logging.exception(e)
+        sys.exit(1)
