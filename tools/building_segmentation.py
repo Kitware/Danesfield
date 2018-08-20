@@ -83,8 +83,14 @@ def main(args):
             '--dtm', required=True,
             help='File path to DTM')
     parser.add_argument(
-            '--model_path', required=True,
-            help='File path to the network model parameters')
+            '--model_path',
+            help='Combined directory and prefix of the network model parameters')
+    parser.add_argument(
+            '--model_dir',
+            help='Directory containing the network model parameters')
+    parser.add_argument(
+            '--model_prefix',
+            help='File prefix of the network model parameters')
     parser.add_argument(
             '--save_dir', default='building_seg/',
             help='Folder to save result')
@@ -101,6 +107,15 @@ def main(args):
     np.set_printoptions(precision=2)
 
     args = parser.parse_args(args)
+
+    # Accept either combined model directory/prefix or separate directory and prefix
+    if args.model_path is None:
+        if args.model_dir is None or args.model_prefix is None:
+            raise RuntimeError('Model directory and prefix are required')
+        args.model_path = os.path.join(args.model_dir, args.model_prefix)
+    elif args.model_dir is not None or args.model_prefix is not None:
+        raise RuntimeError('The model_dir and model_prefix arguments cannot be specified when '
+                           'model_path is specified')
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
 
