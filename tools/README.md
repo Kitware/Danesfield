@@ -1,5 +1,32 @@
 # Danesfield Tools
 
+## Columbia Building Segmentation
+
+### Tools
+
+- `building_segmentation.py`
+
+### Prerequisites
+
+Download the files in [this folder](
+https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b3be0568d777f2e62259362).
+When running the script, specify the path to this folder using the `--model_dir` argument
+and the common prefix of the model files using the `--model_prefix` argument, i.e. "Dayton_best".
+
+### Usage
+
+```bash
+python building_segmentation.py \
+    --rgb_image <rgb_image_path> \
+    --msi_image <msi_image_path> \
+    --dsm <dsm_image_path> \
+    --dtm <dtm_image_path> \
+    --model_dir <model_directory> \
+    --model_prefix <model_prefix> \
+    --save_dir <output_directory> \
+    --output_tif
+```
+
 ## Material Classification
 
 Material classification from Rutgers University.
