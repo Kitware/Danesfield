@@ -27,6 +27,33 @@ python building_segmentation.py \
     --output_tif
 ```
 
+## UNet Semantic Segmentation
+
+### Tools
+
+- `kwsemantic_segment.py`
+
+### Prerequisites
+
+Download the pretrained model
+[here](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b4dfb0d8d777f2e6225b8da).
+A default configuration file is included in this repository at
+`danesfield/segmentation/semantic/test_denseunet_1x1080_retrain.json`.
+
+### Usage
+
+```bash
+python kwsemantic_segment.py \
+    <config_file_path> \
+    <model_path> \
+    <rgb_image_path> \
+    <dsm_image_path> \
+    <dtm_image_path> \
+    <msi_image_path> \
+    <output_directory> \
+    <output_filename_prefix>
+```
+
 ## Material Classification
 
 Material classification from Rutgers University.
