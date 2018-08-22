@@ -1,7 +1,10 @@
 # Dockerfile for CORE3D Danesfield environment.
 #
+# Optional requirements:
+#   nvidia-docker2 (https://github.com/NVIDIA/nvidia-docker)
+#
 # Build:
-#    docker build -t core3d/danesfield .
+#   docker build -t core3d/danesfield .
 #
 # Run:
 #   docker run \
@@ -10,9 +13,21 @@
 #     core3d/danesfield \
 #     <command>
 # where <command> is like:
-#   python danesfield/tools/generate-dsm.py ...
+#   danesfield/tools/generate-dsm.py ...
+#
+# To run with CUDA support, ensure that nvidia-docker2 is installed on the host,
+# then add the following argument to the command line:
+#
+#   --runtime=nvidia
+#
+# Example:
+#   docker run \
+#     -i -t --rm \
+#     --runtime=nvidia \
+#     core3d/danesfield \
+#     danesfield/tools/material_classifier.py --cuda ...
 
-FROM ubuntu:16.04
+FROM nvidia/cuda:9.0-runtime-ubuntu16.04
 LABEL maintainer="Max Smolens <max.smolens@kitware.com>"
 
 # Install prerequisites
