@@ -358,8 +358,9 @@ def main(config_fpath):
     cmd_args.append('--info_paths')
     cmd_args.extend(info_paths)
     cmd_args.extend(['--output_dir', working_dir,
-                     '--model_path', config['material']['model_fpath'],
-                     '--batch_size', str(config['material'].get('batch_size', 1024))])
+                     '--model_path', config['material']['model_fpath']])
+    if config.has_option('material', 'batch_size'):
+        cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
     if config['material'].getboolean('cuda'):
             cmd_args.append('--cuda')
     logging.info(cmd_args)
