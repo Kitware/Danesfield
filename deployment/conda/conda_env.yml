@@ -14,7 +14,6 @@ channels:
 dependencies:
 - pubgeo-core3d-metrics
 - gdal
-- conda-forge/label/broken::libgdal=2.2.4=5
 - pdal
 - python-pdal
 - texture-atlas
@@ -37,8 +36,7 @@ dependencies:
 - cgal
 - xorg-libsm
 - xorg-libX11
-- purdue-segmentation
-- purdue-reconstruction
+- core3d-purdue
 - pip:
   - ubelt
 - torchvision
