@@ -32,6 +32,7 @@ dependencies:
 - scikit-image
 - liblas
 - flann
+- python-pcl
 - pcl
 - cgal
 - xorg-libsm
