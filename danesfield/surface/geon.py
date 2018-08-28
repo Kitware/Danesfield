@@ -7,6 +7,7 @@ import time
 import json as js
 import numpy as np
 from osgeo import gdal
+from pathlib import Path
 from .scene import Model
 from .MinimumBoundingBox import MinimumBoundingBox as mbr
 from .geon_functions import (
@@ -33,7 +34,7 @@ class Geon(Model):
         '''
         tf = open(fp)
         lines = tf.readlines()
-        scene_name = fp.split('\\')[-1].replace('.ply', '')
+        scene_name = Path(fp).with_suffix('').name
         flag = 0
         geon = {}
         gable = []

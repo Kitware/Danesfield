@@ -5,6 +5,7 @@ import sys
 import time
 import numpy as np
 from osgeo import gdal
+from pathlib import Path
 from .poly_functions import list_intersect, list_union, ply_parser
 from .sphere import Sphere_building
 from .base_surface import Building
@@ -53,7 +54,7 @@ class Model:
 
     def load_from_ply(self, fp):
 
-        scene_name = fp.split('\\')[-1].replace('.ply', '')
+        scene_name = Path(fp).with_suffix('').name
         cor, f = ply_parser(fp)
 
         for i in range(0, len(f)):
@@ -72,7 +73,7 @@ class Model:
 
     def load_from_curved_ply(self, fp):
 
-        scene_name = fp.split('\\')[-1].replace('.ply', '')
+        scene_name = Path(fp).with_suffix('').name
         cor, f = ply_parser(fp)
 
         for i in range(0, len(f)):
@@ -113,7 +114,7 @@ class Model:
 
     def load_from_sphere_ply(self, fp):
 
-        scene_name = fp.split('\\')[-1].replace('.ply', '')
+        scene_name = Path(fp).with_suffix('').name
         cor, f = ply_parser(fp)
 
         for i in range(0, len(f)):
