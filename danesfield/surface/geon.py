@@ -1,12 +1,22 @@
 #!/usr/bin/env python
 
 import os
+import re
 import sys
 import time
 import json as js
+import numpy as np
 from osgeo import gdal
 from .scene import Model
-from .geon_functions import *
+from .MinimumBoundingBox import MinimumBoundingBox as mbr
+from .geon_functions import (
+    add_box_geon,
+    add_gable_geon,
+    add_mesh_geon,
+    add_shed_geon,
+)
+from .poly_functions import Polygon, list_intersect
+
 
 class Geon(Model):
     geon_type = {}
@@ -165,12 +175,14 @@ class Geon(Model):
             for geon in self.geon_parameter[i]:
                 geon_obj.append(geon)
             coordinate = dict(type='EPSG',
-                              parameters=['wgs84', 'UTM zone 16N', offset[0], offset[1], offset[2], 0, 0, 0, 0, 0, ])
+                              parameters=['wgs84', 'UTM zone 16N', offset[0], offset[1], offset[2],
+                                          0, 0, 0, 0, 0, ])
             scene = dict(id=self.geon_type[i]['scene_name'],
                          coordinate_system=coordinate, objects=geon_obj)
-            json_obj = dict(name='Geon Json', producer_id='Purdue-Zhixin', team='CORE3D', timestamp=time.ctime(),
-                            scenes=[scene])
-            self.geon_json.append(js.dumps(json_obj, sort_keys=True, indent=2, separators=(',', ': ')))
+            json_obj = dict(name='Geon Json', producer_id='Purdue-Zhixin', team='CORE3D',
+                            timestamp=time.ctime(), scenes=[scene])
+            self.geon_json.append(js.dumps(json_obj, sort_keys=True, indent=2,
+                                  separators=(',', ': ')))
 
     def write_geonjson(self):
         '''

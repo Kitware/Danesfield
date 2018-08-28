@@ -5,7 +5,7 @@ import sys
 import time
 import numpy as np
 from osgeo import gdal
-from .poly_functions import *
+from .poly_functions import list_intersect, list_union, ply_parser
 from .sphere import Sphere_building
 from .base_surface import Building
 from .base_surface import Surface
@@ -42,7 +42,7 @@ class Model:
 
         for face_index in f:
             face_cor = cor[face_index]
-            if self.x_offset == None:
+            if self.x_offset is None:
                 self.x_offset = min(face_cor[:, 0])
                 self.y_offset = min(face_cor[:, 1])
                 self.z_offset = min(face_cor[:, 2])
@@ -209,7 +209,7 @@ class Model:
     def write_model(self, offset=True):
         log_file = open(os.path.join(self.obj_path, "model_log.txt"), 'a+')
         start_time = time.time()
-        if offset == False:
+        if not offset:
             model_offset = [0, 0, 0]
         else:
             model_offset = [self.x_offset, self.y_offset, self.z_offset]
@@ -221,9 +221,12 @@ class Model:
             self.surface_info_str += self.building_name[bi] + '\n'
             for si in range(0, self.buildings[bi].surface_num):
                 self.surface_info_str += 'surface #' + str(si) + '\nVertex num: ' +\
-                                         str(self.buildings[bi].surface_info[si][0]) + '\nEdge num: ' + \
-                                         str(self.buildings[bi].surface_info[si][1]) + '\nArea: ' + \
-                                         str(self.buildings[bi].surface_info[si][2]) + '\n'
+                                         str(self.buildings[bi].surface_info[si][0]) + \
+                                         '\nEdge num: ' + \
+                                         str(self.buildings[bi].surface_info[si][1]) + \
+                                         '\nArea: ' + \
+                                         str(self.buildings[bi].surface_info[si][2]) + \
+                                         '\n'
             out_file.write('#x offset: ' + str(model_offset[0]) + '\n')
             out_file.write('#y offset: ' + str(model_offset[1]) + '\n')
             out_file.write('#z offset: ' + str(model_offset[2]) + '\n')
@@ -261,7 +264,7 @@ class Model:
         log_file.close()
 
     def write_surface(self, offset=True):
-        if offset == False:
+        if not offset:
             model_offset = [0, 0, 0]
         else:
             model_offset = [self.x_offset, self.y_offset, self.z_offset]

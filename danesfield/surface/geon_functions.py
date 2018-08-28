@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
-from .poly_functions import *
+from .poly_functions import Polygon, fit_plane
 from .MinimumBoundingBox import MinimumBoundingBox as mbr
 from shapely.geometry import Point
 
@@ -15,7 +15,13 @@ def plane_intersect(p1, p2):
     '''
     [a1, b1, c1, d1] = p1
     [a2, b2, c2, d2] = p2
-    return [(b1*d2-b2*d1)/(a1*b2-a2*b1), (a1*d2-a2*d1)/(a2*b1-a1*b2), b1*c2-b2*c1, a2*c1-a1*c2, a1*b2-a2*b1]
+    return [
+        (b1*d2-b2*d1)/(a1*b2-a2*b1),
+        (a1*d2-a2*d1)/(a2*b1-a1*b2),
+        b1*c2-b2*c1,
+        a2*c1-a1*c2,
+        a1*b2-a2*b1
+    ]
 
 
 def point_in_plane(point, planes):
@@ -75,7 +81,8 @@ def get_roof_line_theta(surfs):
 
         pn_2d = [intersect_line[2], intersect_line[3]]
         pn_2d = np.array(
-            [pn_2d[0] / np.sqrt(pn_2d[0] ** 2 + pn_2d[1] ** 2), pn_2d[1] / np.sqrt(pn_2d[0] ** 2 + pn_2d[1] ** 2)])
+            [pn_2d[0] / np.sqrt(pn_2d[0] ** 2 + pn_2d[1] ** 2),
+             pn_2d[1] / np.sqrt(pn_2d[0] ** 2 + pn_2d[1] ** 2)])
         roof_thetas.append(np.arctan(pn_2d[1]/pn_2d[0]))
     return np.mean(roof_thetas)
 
@@ -116,6 +123,7 @@ def get_error(points, poly, polygon_height):
 
     return error/points.shape[0]
 
+
 def add_box_geon(id, topsurf, bottomsurf, offset):
     '''
     Get box geon dictionary
@@ -130,11 +138,13 @@ def add_box_geon(id, topsurf, bottomsurf, offset):
     surf_mbb = mbr(surf2d)
     poly = surf_mbb.corner_points
     error = get_error(topsurf, poly, bottomsurf[:, 2].mean())
-    surf_mbb_rm = np.array([[np.cos(surf_mbb.unit_vector_angle), -np.sin(surf_mbb.unit_vector_angle), 0],
-                            [np.sin(surf_mbb.unit_vector_angle), np.cos(surf_mbb.unit_vector_angle), 0],
-                            [0, 0, 1]])
+    surf_mbb_rm = np.array([
+        [np.cos(surf_mbb.unit_vector_angle), -np.sin(surf_mbb.unit_vector_angle), 0],
+        [np.sin(surf_mbb.unit_vector_angle), np.cos(surf_mbb.unit_vector_angle), 0],
+        [0, 0, 1]])
     affine_m = surf_mbb_rm
-    center = np.array([surf_mbb.corner_points[2][0], surf_mbb.corner_points[2][1], topsurf[:, 2].mean()])
+    center = np.array([
+        surf_mbb.corner_points[2][0], surf_mbb.corner_points[2][1], topsurf[:, 2].mean()])
 
     last_row = np.zeros(4)
     last_row[-1] = 1
@@ -144,7 +154,8 @@ def add_box_geon(id, topsurf, bottomsurf, offset):
     center[2] = center[2] - height
     affine_m = np.c_[affine_m, center - offset]
     affine_m = np.vstack((affine_m, last_row))
-    return dict(type='rect_prism', id='box_' + str(id), transform=dict(affine_matrix=affine_m.tolist()), width=width,
+    return dict(type='rect_prism', id='box_' + str(id),
+                transform=dict(affine_matrix=affine_m.tolist()), width=width,
                 length=length, height=height), error
 
 
@@ -170,10 +181,12 @@ def add_mesh_geon(id, top_surf, bottom_surf, offset):
         if wi == pn - 1:
             wall_index.append([top_index[wi], bottom_index[wi], bottom_index[0], top_index[0]])
         else:
-            wall_index.append([top_index[wi], bottom_index[wi], bottom_index[wi + 1], top_index[wi + 1]])
+            wall_index.append([top_index[wi], bottom_index[wi], bottom_index[wi + 1],
+                               top_index[wi + 1]])
 
-    return dict(type='mesh', id='mesh_' + str(id), transform=dict(affine_matrix=np.identity(4).tolist()),
-            vertices_3d=point_cor.tolist(), faces=wall_index), 0
+    return dict(type='mesh', id='mesh_' + str(id),
+                transform=dict(affine_matrix=np.identity(4).tolist()),
+                vertices_3d=point_cor.tolist(), faces=wall_index), 0
 
 
 def add_shed_geon(id, surf, body_Z, offset):
@@ -268,5 +281,6 @@ def add_gable_geon(id, surfs, body_Z, offset):
     last_row[-1] = 1
     affine_m = np.c_[rm, center]
     affine_m = np.vstack((affine_m, last_row))
-    return dict(type='gable', id='gable_' + str(id), transform=dict(affine_matrix=affine_m.tolist()), width=roof_width,
+    return dict(type='gable', id='gable_' + str(id),
+                transform=dict(affine_matrix=affine_m.tolist()), width=roof_width,
                 length=roof_length, roof_height=gabel_roof_height, body_height=body_height), error

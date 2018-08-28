@@ -43,7 +43,7 @@ def to_xy_coordinates(unit_vector_angle, point):
     # returns converted unit vector coordinates in x, y coordinates
     angle_orthogonal = unit_vector_angle + pi / 2
     return point[0] * cos(unit_vector_angle) + point[1] * cos(angle_orthogonal), \
-           point[0] * sin(unit_vector_angle) + point[1] * sin(angle_orthogonal)
+        point[0] * sin(unit_vector_angle) + point[1] * sin(angle_orthogonal)
 
 
 def rotate_points(center_of_rotation, angle, points):
@@ -70,20 +70,25 @@ def rectangle_corners(rectangle):
     corner_points = []
     for i1 in (.5, -.5):
         for i2 in (i1, -1 * i1):
-            corner_points.append((rectangle['rectangle_center'][0] + i1 * rectangle['length_parallel'],
-                            rectangle['rectangle_center'][1] + i2 * rectangle['length_orthogonal']))
+            corner_points.append(
+                (rectangle['rectangle_center'][0] + i1 * rectangle['length_parallel'],
+                 rectangle['rectangle_center'][1] + i2 * rectangle['length_orthogonal'])
+            )
 
-    return rotate_points(rectangle['rectangle_center'], rectangle['unit_vector_angle'], corner_points)
+    return rotate_points(
+        rectangle['rectangle_center'], rectangle['unit_vector_angle'], corner_points)
 
 
-BoundingBox = namedtuple('BoundingBox', ('area',
-                                         'length_parallel',
-                                         'length_orthogonal',
-                                         'rectangle_center',
-                                         'unit_vector',
-                                         'unit_vector_angle',
-                                         'corner_points'
-                                        )
+BoundingBox = namedtuple(
+    'BoundingBox', (
+        'area',
+        'length_parallel',
+        'length_orthogonal',
+        'rectangle_center',
+        'unit_vector',
+        'unit_vector_angle',
+        'corner_points'
+    )
 )
 
 
@@ -102,7 +107,7 @@ def MinimumBoundingBox(points):
     #               unit_vector_angle: angle of the unit vector
     #               corner_points: set that contains the corners of the rectangle
 
-    if len(points) <= 2: 
+    if len(points) <= 2:
         raise ValueError('More than two points required.')
 
     hull_ordered = [points[index] for index in ConvexHull(points).vertices]
@@ -115,8 +120,10 @@ def MinimumBoundingBox(points):
         if rectangle['area'] < min_rectangle['area']:
             min_rectangle = rectangle
 
-    min_rectangle['unit_vector_angle'] = atan2(min_rectangle['unit_vector'][1], min_rectangle['unit_vector'][0])
-    min_rectangle['rectangle_center'] = to_xy_coordinates(min_rectangle['unit_vector_angle'], min_rectangle['rectangle_center'])
+    min_rectangle['unit_vector_angle'] = atan2(
+        min_rectangle['unit_vector'][1], min_rectangle['unit_vector'][0])
+    min_rectangle['rectangle_center'] = to_xy_coordinates(
+        min_rectangle['unit_vector_angle'], min_rectangle['rectangle_center'])
 
     # this is ugly but a quick hack and is being changed in the speedup branch
     return BoundingBox(

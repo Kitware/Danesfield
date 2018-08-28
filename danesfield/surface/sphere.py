@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import copy
-from .poly_functions import *
+
+from .poly_functions import get_height_from_dem
 from .base_surface import Building
+
 from shapely.geometry import Point
 from shapely.geometry import MultiPoint
 
@@ -72,24 +74,36 @@ class Sphere_building(Building):
 
             for l in self.top_curved_surface_index[i]:
                 curved_surface_index.append([si + point_flag for si in l.tolist()])
-                curved_surface_index_str.append('f ' +
-                ' '.join([str(si + point_flag) for si in l.tolist()]) + "\n")
+                curved_surface_index_str.append(
+                    'f ' + ' '.join([str(si + point_flag) for si in l.tolist()]) + "\n")
 
             surf_boundary_index = [str(si + point_flag) for si in self.top_boundary_index[i]]
-            bottom_surface_index = [str(si + point_flag + boundary_num) for si in self.top_boundary_index[i]]
-            bottom_surface_index_str = 'f ' + ' '.join([str(si + point_flag + boundary_num) for si in self.top_boundary_index[i]]) + "\n"
+            bottom_surface_index = [
+                str(si + point_flag + boundary_num) for si in self.top_boundary_index[i]
+            ]
+            bottom_surface_index_str = 'f ' + ' '.join([
+                str(si + point_flag + boundary_num) for si in self.top_boundary_index[i]
+            ]) + "\n"
 
             for j in range(boundary_num):
                 if j == boundary_num - 1:
                     wall_str.append(
-                        'f ' + ' '.join([surf_boundary_index[j], bottom_surface_index[j], bottom_surface_index[0], surf_boundary_index[0]]) + '\n')
+                        'f ' + ' '.join([
+                            surf_boundary_index[j], bottom_surface_index[j],
+                            bottom_surface_index[0], surf_boundary_index[0]
+                        ]) + '\n')
                 else:
                     wall_str.append(
-                        'f ' + ' '.join([surf_boundary_index[j], bottom_surface_index[j], bottom_surface_index[j + 1], surf_boundary_index[j + 1]]) + '\n')
+                        'f ' + ' '.join([
+                            surf_boundary_index[j], bottom_surface_index[j],
+                            bottom_surface_index[j + 1], surf_boundary_index[j + 1]
+                        ]) + '\n')
 
             point_flag += pn + boundary_num
 
-            s = "o Mesh" + str(i) + "\ng Mesh" + str(i) + "\n" + ''.join(curved_surface_cor_str) + ''.join(bottom_surface_cor_str) + ''.join(curved_surface_index_str) + ''.join(bottom_surface_index_str) + ''.join(wall_str)
+            s = "o Mesh" + str(i) + "\ng Mesh" + str(i) + "\n" + ''.join(curved_surface_cor_str) + \
+                ''.join(bottom_surface_cor_str) + ''.join(curved_surface_index_str) + \
+                ''.join(bottom_surface_index_str) + ''.join(wall_str)
             objs.append(s)
 
         return objs
@@ -110,12 +124,14 @@ class Sphere_building(Building):
                 curved_surface_cor_str.append('v ' + ' '.join(tl) + '\n')
 
             for l in self.top_curved_surface_index[i]:
-                curved_surface_index_str.append('f ' + ' '.join([str(si) for si in l.tolist()]) + "\n")
+                curved_surface_index_str.append(
+                    'f ' + ' '.join([str(si) for si in l.tolist()]) + "\n")
 
             point_flag += pn
             self.vertex_num += point_flag
 
-            s = "o Mesh" + str(i) + "\ng Mesh" + str(i) + "\n" + ''.join(curved_surface_cor_str) + ''.join(curved_surface_index_str)
+            s = "o Mesh" + str(i) + "\ng Mesh" + str(i) + "\n" + ''.join(curved_surface_cor_str) + \
+                ''.join(curved_surface_index_str)
             objs.append(s)
 
         return objs

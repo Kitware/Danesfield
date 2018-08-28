@@ -1,8 +1,20 @@
 #!/usr/bin/env python
 
 import copy
-from .poly_functions import *
+import numpy as np
+
 from shapely.geometry import Polygon
+
+from .poly_functions import (
+    check_relation,
+    counterClockwiseCheck,
+    fix_height,
+    fix_intersection,
+    get_difference_plane,
+    get_height_from_dem,
+    get_height_from_lower_surface,
+    rotate_plane,
+)
 
 
 class Surface:
@@ -38,7 +50,6 @@ class Building:
             flat.append(height)
             self.flatsurface.append(flat)
 
-
     def add_topsurface(self, plane):
         '''
         Add building roof one by one
@@ -54,13 +65,15 @@ class Building:
         for i in range(0, self.surface_num):
             for j in range(0, self.surface_num):
                 if i != j:
-                    relationship_flag = check_relation(self.topsurface[i].point_cor, self.topsurface[j].point_cor)
+                    relationship_flag = check_relation(
+                        self.topsurface[i].point_cor, self.topsurface[j].point_cor)
                     if relationship_flag == 2:
                         try:
-                            rst = get_difference_plane(self.topsurface[i].point_cor, self.topsurface[j].point_cor)
+                            rst = get_difference_plane(
+                                self.topsurface[i].point_cor, self.topsurface[j].point_cor)
                             if rst[0]:
-                                self.topsurface[j].point_cor = fix_intersection(fix_height(self.topsurface[j].point_cor,
-                                                                                           rst[1]))
+                                self.topsurface[j].point_cor = fix_intersection(
+                                    fix_height(self.topsurface[j].point_cor, rst[1]))
                         except Exception as e:
                             print(e)
 
@@ -76,11 +89,11 @@ class Building:
         for i in range(0, self.surface_num):
             for j in range(0, self.surface_num):
                 if i != j:
-                    relationship_flag = check_relation(self.topsurface[i].point_cor,
-                                                            self.topsurface[j].point_cor)
+                    relationship_flag = check_relation(
+                        self.topsurface[i].point_cor, self.topsurface[j].point_cor)
                     if relationship_flag == 1:
-                        base_height1 = get_height_from_lower_surface(self.topsurface[i].point_cor,
-                                                                          self.topsurface[j].point_cor)
+                        base_height1 = get_height_from_lower_surface(
+                            self.topsurface[i].point_cor, self.topsurface[j].point_cor)
                         self.bottomsurface[j].point_cor[:, 2] = base_height1
 
     def get_obj_string(self, offset):
@@ -103,7 +116,7 @@ class Building:
             if not counterClockwiseCheck(poly_check):
                 self.bottomsurface[i].point_cor = np.flip(self.bottomsurface[i].point_cor, 0)
             temp_surf = Polygon(self.topsurface[i].point_cor[:, 0:2])
-            #surface info: vertex num, edge num, area
+            # surface info: vertex num, edge num, area
             self.surface_info.append([pn, pn, temp_surf.area])
             self.vertex_num += 2*pn
             self.edge_num += 3*pn
@@ -114,25 +127,30 @@ class Building:
             wallstring = []
             for j in range(0, pn):
                 if j == pn - 1:
-                    wallstring.append('f ' + ' '.join([top_index[j], bottom_index[j], bottom_index[0], top_index[0]]) + '\n')
+                    wallstring.append('f ' + ' '.join([
+                        top_index[j], bottom_index[j], bottom_index[0], top_index[0]
+                    ]) + '\n')
                     self.wall_num += 1
                 else:
-                    wallstring.append('f ' + ' '.join([top_index[j], bottom_index[j], bottom_index[j + 1], top_index[j + 1]]) + '\n')
+                    wallstring.append('f ' + ' '.join([
+                        top_index[j], bottom_index[j], bottom_index[j + 1], top_index[j + 1]
+                    ]) + '\n')
                     self.wall_num += 1
             point_flag = point_flag + 2*pn
-            for l in self.topsurface[i].point_cor:
-                l = l - offset
-                tl = l.tolist()
+            for v in self.topsurface[i].point_cor:
+                v = v - offset
+                tl = v.tolist()
                 tl = [str(t) for t in tl]
                 topstring.append('v ' + ' '.join(tl) + '\n')
-            for l in self.bottomsurface[i].point_cor:
-                l = l - offset
-                tl = l.tolist()
+            for v in self.bottomsurface[i].point_cor:
+                v = v - offset
+                tl = v.tolist()
                 tl = [str(t) for t in tl]
                 bottomstring.append('v ' + ' '.join(tl) + '\n')
 
             s = "o Mesh" + str(i) + "\ng Mesh" + str(i) + "\n" +\
-                ''.join(topstring) + ''.join(bottomstring) + top_string + bottom_string + ''.join(wallstring)
+                ''.join(topstring) + ''.join(bottomstring) + top_string + bottom_string + \
+                ''.join(wallstring)
             objs.append(s)
 
         return objs
@@ -149,9 +167,9 @@ class Building:
             top_index = [str(j) for j in range(point_flag, point_flag + pn)]
             top_string = 'f ' + ' '.join(top_index) + "\n"
             point_flag = point_flag + pn
-            for l in self.topsurface[i].point_cor:
-                l = l - offset
-                tl = l.tolist()
+            for v in self.topsurface[i].point_cor:
+                v = v - offset
+                tl = v.tolist()
                 tl = [str(t) for t in tl]
                 topstring.append('v ' + ' '.join(tl) + '\n')
 

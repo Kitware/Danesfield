@@ -38,7 +38,8 @@ def ply_parser(fp):
 
     cor = [[x[i], y[i], z[i]] for i in range(0, len(x))]
     cor = np.asarray(cor)
-    f = [re.findall("\d+\.?\d*", l) for l in lines[begin_num + vertex_num:begin_num + vertex_num + face_num]]
+    f = [re.findall("\d+\.?\d*", l)
+         for l in lines[begin_num + vertex_num:begin_num + vertex_num + face_num]]
 
     return cor, f
 
@@ -110,7 +111,9 @@ def get_height_from_lower_surface(plane1, plane2):
     :return: Z coordinate on lower surface
     '''
     [a, b, c, d] = fit_plane(plane1)
-    z = lambda x: -(a * x[0] + b * x[1] + d) / c
+
+    def z(x):
+        return -(a * x[0] + b * x[1] + d) / c
     return z([plane2[:, 0], plane2[:, 1]])
 
 
@@ -129,7 +132,7 @@ def get_difference_plane(plane1, plane2):
     try:
         p3 = np.array(pd.exterior.coords[:])
         p4 = np.array(pi.exterior.coords[:])
-    except:
+    except Exception:
         flag = False
         p3 = None
         p4 = None
@@ -144,7 +147,8 @@ def fit_plane(point):
     :return: Plane parameters
     '''
     xyz_mean = np.array([point[:, 0].mean(), point[:, 1].mean(), point[:, 2].mean()])
-    xyz_m = np.array([point[:, 0] - xyz_mean[0], point[:, 1] - xyz_mean[1], point[:, 2] - xyz_mean[2]])
+    xyz_m = np.array(
+        [point[:, 0] - xyz_mean[0], point[:, 1] - xyz_mean[1], point[:, 2] - xyz_mean[2]])
     [U, S, V] = np.linalg.svd(xyz_m)
     v = np.array([U[0, 2], U[1, 2], U[2, 2]])
     a = v[0]
@@ -177,7 +181,8 @@ def rotate_plane(plane):
               ry * np.sin(ra) + rx * rz * (1 - np.cos(ra))]
         r2 = [rz * np.sin(ra) + rx * ry * (1 - np.cos(ra)), np.cos(ra) + ry ** 2 * (1 - np.cos(ra)),
               -rx * np.sin(ra) + ry * rz * (1 - np.cos(ra))]
-        r3 = [-ry * np.sin(ra) + rx * rz * (1 - np.cos(ra)), rx * np.sin(ra) + ry * rz * (1 - np.cos(ra)),
+        r3 = [-ry * np.sin(ra) + rx * rz * (1 - np.cos(ra)),
+              rx * np.sin(ra) + ry * rz * (1 - np.cos(ra)),
               np.cos(ra) + rz ** 2 * (1 - np.cos(ra))]
         rm = np.array([r1, r2, r3])
         center = [np.mean(temp_cor[:, 0]), np.mean(temp_cor[:, 1]), np.mean(temp_cor[:, 2])]
@@ -189,7 +194,7 @@ def rotate_plane(plane):
     return [cor_2d, rotate_flag, rm, center]
 
 
-def remove_close_point(plane, T = 0.05):
+def remove_close_point(plane, T=0.05):
     '''
     Remove close points in a surface
     :param plane:
@@ -227,7 +232,8 @@ def fix_intersection(plane):
               ry * np.sin(ra) + rx * rz * (1 - np.cos(ra))]
         r2 = [rz * np.sin(ra) + rx * ry * (1 - np.cos(ra)), np.cos(ra) + ry ** 2 * (1 - np.cos(ra)),
               -rx * np.sin(ra) + ry * rz * (1 - np.cos(ra))]
-        r3 = [-ry * np.sin(ra) + rx * rz * (1 - np.cos(ra)), rx * np.sin(ra) + ry * rz * (1 - np.cos(ra)),
+        r3 = [-ry * np.sin(ra) + rx * rz * (1 - np.cos(ra)),
+              rx * np.sin(ra) + ry * rz * (1 - np.cos(ra)),
               np.cos(ra) + rz ** 2 * (1 - np.cos(ra))]
         rm = np.array([r1, r2, r3])
         center = [np.mean(temp_cor[:, 0]), np.mean(temp_cor[:, 1]), np.mean(temp_cor[:, 2])]
@@ -263,7 +269,9 @@ def fix_height(plane, new_cor):
     :return: Fixed plane coordinates
     '''
     [a, b, c, d] = fit_plane(plane)
-    z = lambda x: -(a * x[0] + b * x[1] + d) / c
+
+    def z(x):
+        return -(a * x[0] + b * x[1] + d) / c
     height = z([new_cor[:, 0], new_cor[:, 1]])
     new_plane = np.c_[new_cor[:, 0], new_cor[:, 1], height]
     return new_plane
