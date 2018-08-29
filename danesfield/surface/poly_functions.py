@@ -194,7 +194,7 @@ def rotate_plane(plane):
     return [cor_2d, rotate_flag, rm, center]
 
 
-def remove_close_point(plane, T=0.05):
+def remove_close_point(plane, T=e-6):
     '''
     Remove close points in a surface
     :param plane:
