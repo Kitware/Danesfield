@@ -201,6 +201,7 @@ def remove_close_point(plane, T=e-6):
     :param T: Threshold
     :return: New plane coordinates
     '''
+    origin_plane = plane
     test_plane = plane[:, 0:2]
     del_list = []
     for i in range(0, test_plane.shape[0]):
@@ -209,7 +210,10 @@ def remove_close_point(plane, T=e-6):
             if dist <= T:
                 del_list.append(i)
     plane = np.delete(plane, del_list, axis=0)
-    return plane
+    if plane.shape[0] <3:
+        return origin_plane
+    else:
+        return plane
 
 
 def fix_intersection(plane):
