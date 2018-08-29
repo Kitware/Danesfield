@@ -194,7 +194,7 @@ def rotate_plane(plane):
     return [cor_2d, rotate_flag, rm, center]
 
 
-def remove_close_point(plane, T=e-6):
+def remove_close_point(plane, T=1e-6):
     '''
     Remove close points in a surface
     :param plane:
@@ -210,7 +210,7 @@ def remove_close_point(plane, T=e-6):
             if dist <= T:
                 del_list.append(i)
     plane = np.delete(plane, del_list, axis=0)
-    if plane.shape[0] <3:
+    if plane.shape[0] < 3:
         return origin_plane
     else:
         return plane
