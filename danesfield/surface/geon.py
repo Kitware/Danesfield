@@ -98,14 +98,14 @@ class Geon(Model):
 
         for i in range(self.building_num):
             fp = file_name[i]
-            process = ''.join(['Now loading the PLY： ' + fp + '\n'])
+            process = ''.join(['Now loading the PLY: ' + fp + '\n'])
             sys.stdout.write(process)
             self.buildings.append(self.load_from_ply(os.path.join(self.ply_path, fp)))
             self.load_geon(os.path.join(self.ply_path, fp), i)
         sys.stdout.write('Loading PLY finished!           \n')
 
         for i in range(self.building_num):
-            process = ''.join(['Now processing intersected surfaces： ' + str(i) + '\r'])
+            process = ''.join(['Now processing intersected surfaces: ' + str(i) + '\r'])
             sys.stdout.write(process)
             self.buildings[i].get_bottomsurface(self.dem)
             self.buildings[i].get_flatsurface()

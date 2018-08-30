@@ -177,7 +177,7 @@ class Model(object):
             self.get_offset(os.path.join(self.ply_path, fp))
 
         for fp in file_name:
-            process = ''.join(['Now loading the PLY： ' + fp + '\n'])
+            process = ''.join(['Now loading the PLY: ' + fp + '\n'])
             sys.stdout.write(process)
             if 'sphere' in fp:
                 self.buildings.append(self.load_from_sphere_ply(os.path.join(self.ply_path, fp)))
@@ -189,14 +189,14 @@ class Model(object):
         sys.stdout.write('Loading PLY finished!         \n')
 
         for i in range(0, self.building_num):
-            process = ''.join(['Now processing intersected surfaces： ' + str(i) + '\r'])
+            process = ''.join(['Now processing intersected surfaces: ' + str(i) + '\r'])
             sys.stdout.write(process)
             self.buildings[i].split_surface()
             sys.stdout.flush()
         sys.stdout.write('Processing intersected surfaces finished!\n')
 
         for i in range(0, self.building_num):
-            process = ''.join(['Now generating bottom surfaces： ' + str(i) + '\r'])
+            process = ''.join(['Now generating bottom surfaces: ' + str(i) + '\r'])
             sys.stdout.write(process)
             self.buildings[i].get_bottomsurface(self.dem)
             self.buildings[i].get_flatsurface()
