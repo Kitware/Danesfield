@@ -31,6 +31,14 @@ dependencies:
 - shapely
 - scikit-learn
 - scikit-image
+- liblas
+- flann
+- python-pcl
+- pcl
+- cgal
+- xorg-libsm
+- xorg-libX11
+- core3d-purdue
 - pip:
   - ubelt
 - torchvision

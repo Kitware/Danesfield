@@ -1,0 +1,12 @@
+PyTorch
+opencv-python
+sklearn
+scikit-image
+ubelt
+tensorboardX
+sympy
+tqdm
+numpy
+scipy
+gdal
+pdal

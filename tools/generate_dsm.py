@@ -32,6 +32,9 @@ def main(args):
     if not args.gsd:
         args.gsd = 0.25
         print("Using gsd = 0.25 m")
+    else:
+        # Make sure the GSD is a float
+        args.gsd = float(args.gsd)
 
     if not args.source_points:
         raise RuntimeError("Error: At least one source_points file required")
@@ -62,8 +65,8 @@ def main(args):
     print("Bounds ({}, {}, {}, {})".format(minX, maxX, minY, maxY))
 
     # compensate for PDAL expanding the extents by 1 pixel
-    maxX -= args.gsd
-    maxY -= args.gsd
+    maxX -= float(args.gsd)
+    maxY -= float(args.gsd)
 
     # read the pdal file and project the points
     jsonTemplate = """
