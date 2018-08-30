@@ -13,25 +13,26 @@ from .base_surface import Surface
 from .curve_surface import Curved_building
 
 
-class Model:
-    dem = None
-    building_num = 0
-    buildings = []
-    building_name = []
-    ply_path = ""
-    obj_path = ""
-    surface_path = ""
-    x_offset = None
-    y_offset = None
-    z_offset = None
-    surface_info_str = ''
-    surface_num_total = 0
-    top_num_total = 0
-    bottom_num_total = 0
-    wall_num_total = 0
-    vertex_num_total = 0
-    edge_num_total = 0
-    offset_flag = True
+class Model(object):
+    def __init__(self):
+        self.dem = None
+        self.building_num = 0
+        self.buildings = []
+        self.building_name = []
+        self.ply_path = ""
+        self.obj_path = ""
+        self.surface_path = ""
+        self.x_offset = None
+        self.y_offset = None
+        self.z_offset = None
+        self.surface_info_str = ''
+        self.surface_num_total = 0
+        self.top_num_total = 0
+        self.bottom_num_total = 0
+        self.wall_num_total = 0
+        self.vertex_num_total = 0
+        self.edge_num_total = 0
+        self.offset_flag = True
 
     def get_offset(self, fp):
         cor, f = ply_parser(fp)

@@ -20,10 +20,12 @@ from .poly_functions import Polygon, list_intersect
 
 
 class Geon(Model):
-    geon_type = {}
-    geon_parameter = {}
-    geon_json = []
-    error = []
+    def __init__(self):
+        super(Geon, self).__init__()
+        self.geon_type = {}
+        self.geon_parameter = {}
+        self.geon_json = []
+        self.error = []
 
     def load_geon(self, fp, building_index):
         '''
