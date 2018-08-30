@@ -6,7 +6,7 @@ import os
 
 from tqdm import tqdm
 
-import roof_type_segmentation
+from danesfield.geon_fitting.tensorflow import roof_type_segmentation
 
 import matplotlib as mpl
 if os.environ.get('DISPLAY', '') == '':
