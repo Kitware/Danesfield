@@ -4,16 +4,21 @@
 Wrapper tool to run Purdue roof geon extraction.
 
 This script encapsulates running the Purdue roof geon extraction pipeline,
-including segmentation and reconstruction.
+including segmentation, reconstruction, conversion from PLY to OBJ, and
+conversion from PLY to geon JSON.
 """
 
 import argparse
+import itertools
 import os
 import shutil
 import subprocess
 import sys
 
 from pathlib import Path
+
+import ply2geon
+import ply2obj
 
 
 def main(args):
@@ -47,19 +52,37 @@ def main(args):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
+    # Construct file and directory names defined by tools
+    segmentationFile = args.las + '_seg.txt'
+    plyDir = Path(segmentationFile + '_plys')
+    objDir = Path(segmentationFile + '_plys_obj')
+    jsonDir = Path(segmentationFile + '_plys_json')
+
     # Run segmentation executable
     subprocess.run(['segmentation', args.las, args.cls, args.dtm], check=True)
 
     # Run reconstruction executable
-    segmentationFile = args.las + '_seg.txt'
     subprocess.run(['reconstruction', segmentationFile], check=True)
 
-    # TODO: convert to OBJ; see https://gitlab.kitware.com/core3d/danesfield/merge_requests/113
+    # Convert PLY files to OBJ
+    ply2obj.main([
+        '--ply_dir', str(plyDir),
+        '--dem', args.dtm,
+        '--offset'
+    ])
 
-    # Move generated PLY files to output directory
-    plyDir = Path(args.las).parent
-    for plyFile in plyDir.glob('*.ply'):
-        shutil.move(str(plyFile), args.output_dir)
+    # Convert PLY files to geon JSON
+    ply2geon.main([
+        '--ply_dir', str(plyDir),
+        '--dem', args.dtm
+    ])
+
+    # Move output files to output directory
+    for outputFile in itertools.chain(
+        objDir.glob('*.obj'),
+        jsonDir.glob('*.json')
+    ):
+        shutil.move(str(outputFile), args.output_dir)
 
 
 if __name__ == '__main__':
