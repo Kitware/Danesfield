@@ -3,7 +3,7 @@
 # Create the environment by running the following command (after installing Miniconda):
 #   $ conda env create -f conda_env.yml
 
-name: core3d-xu
+name: core3d-dev
 
 channels:
 - kitware-geospatial
