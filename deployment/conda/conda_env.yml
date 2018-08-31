@@ -43,6 +43,8 @@ dependencies:
   - ubelt
 - torchvision
 - tqdm
-- tensorflow-gpu=1.9
+- defaults::tensorboard=1.9
+- defaults::tensorflow=1.9
+- defaults::tensorflow-gpu=1.9
 - core3d-tf_ops
 - matplotlib
