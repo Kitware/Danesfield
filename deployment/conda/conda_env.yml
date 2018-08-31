@@ -51,3 +51,4 @@ dependencies:
 - torchvision
 - tqdm
 - matplotlib
+- requests
