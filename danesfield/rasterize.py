@@ -15,6 +15,10 @@ ELEVATED_ROADS_QUERY = (
     ")"
 )
 
+ROADS_QUERY = (
+    "type not in ('rail')"
+)
+
 
 def rasterize_file_dilated_line(
         vector_filename_in, reference_file, thin_line_raster_filename_out,

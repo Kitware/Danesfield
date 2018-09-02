@@ -4,7 +4,7 @@ import sys
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
-grouping_module=tf.load_op_library(os.path.join(BASE_DIR, 'tf_grouping_so.so'))
+grouping_module=tf.load_op_library('tf_grouping_so.so')
 def query_ball_point(radius, nsample, xyz1, xyz2):
     '''
     Input:
@@ -84,7 +84,7 @@ if __name__=='__main__':
         points = tf.constant(pts)
         xyz1 = tf.constant(tmp1)
         xyz2 = tf.constant(tmp2)
-        radius = 0.1 
+        radius = 0.1
         nsample = 64
         if knn:
             _, idx = knn_point(nsample, xyz1, xyz2)
@@ -95,11 +95,9 @@ if __name__=='__main__':
             #grouped_points_grad = tf.ones_like(grouped_points)
             #points_grad = tf.gradients(grouped_points, points, grouped_points_grad)
     with tf.Session('') as sess:
-        now = time.time() 
+        now = time.time()
         for _ in range(100):
             ret = sess.run(grouped_points)
         print(time.time() - now)
         print(ret.shape, ret.dtype)
         print(ret)
-    
-    
