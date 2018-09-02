@@ -1,8 +1,6 @@
 import ellipses as el
 import numpy as np
 from scipy.optimize import fmin_cobyla
-import hdbscan
-from sklearn.cluster import MeanShift, estimate_bandwidth
 
 '''
 args: n is principal axis direction,
@@ -20,6 +18,11 @@ def fit_2D_curve(n, points, fit_type='poly2', dist_threshold=0.05):
     if fit_type == 'ellipse':
         e1, e2, coefficients = transform_ellipse(e1, e2, coefficients, ez)
     points_z = get_z_along_axis(points[fitted_indices], centroid, ez)
+    fitted_indices = np.asarray(fitted_indices)
+    min_lst, max_lst, fitted_indices_lst = get_z_length(points_z, fitted_indices)
+    return centroid, ex, ey, ez, fitted_indices_lst, coefficients, min_lst, max_lst, mean_diff
+
+def get_z_length(points_z, fitted_indices):
     hist, bin_edges = np.histogram(points_z, bins=range(int(np.floor(min(points_z))), int(np.ceil(max(points_z))), 5))
     points_z_survivor_indices = np.asarray([i for i in range(len(points_z))
          if survive(points_z[i], hist, bin_edges, int(np.floor(min(points_z))), 5, cut_threshold_ratio = 0.1)])
@@ -27,15 +30,13 @@ def fit_2D_curve(n, points, fit_type='poly2', dist_threshold=0.05):
     min_lst = []
     max_lst = []
     fitted_indices_lst = []
-    fitted_indices = np.asarray(fitted_indices)
 
     for i in range(len(indices_lst)):
         indices = indices_lst[i]
         min_lst.append(min(points_z[points_z_survivor_indices[indices]]))
         max_lst.append(max(points_z[points_z_survivor_indices[indices]]))
         fitted_indices_lst.append(fitted_indices[points_z_survivor_indices[indices]])
-    print(min_lst, max_lst)
-    return centroid, ex, ey, ez, fitted_indices_lst, coefficients, min_lst, max_lst, mean_diff
+    return min_lst, max_lst, fitted_indices_lst
 
 def check_2D_curve(n, coefficients, centroid, points, fit_type='poly2', dist_threshold=0.05):
     #centroid = get_centroid(points)
@@ -67,7 +68,6 @@ def survive(point_z, hist, edges, start, bin_size, cut_threshold_ratio = 0.1):
     bin_num = min(int(np.floor(point_z - start)) // bin_size, len(hist) - 1)
     cut_threshold = cut_threshold_ratio * max(hist)
     return hist[bin_num] > cut_threshold
-
 
 def interval_cluster_1d(points_1d, max_interval):
     sorted_index = np.argsort(points_1d)
@@ -180,8 +180,8 @@ def check2Dshapes(points_2d, coefficients, fit_type="poly2",  dist_threshold = 0
         poly_coefficients = coefficients
         fitted_indices = np.arange(data[0].shape[0])
         error = poly_coefficients[0] * data[0]**2 +poly_coefficients[1] * data[0] + poly_coefficients[2] - data[1]
-        error = error**2
-        fitted_indices = fitted_indices[error<4]
+        error = np.sqrt(error**2)
+        fitted_indices = fitted_indices[error<3]
         return fitted_indices, error
 
 ''' find every points min dist to curve and calculate the avg of square diff of all points'''

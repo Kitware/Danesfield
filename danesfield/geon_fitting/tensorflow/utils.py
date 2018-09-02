@@ -190,9 +190,9 @@ def get_poly_ply_volume_with_hull(dtm, projection_model, centroid, ex, ey, coeff
             height = dtm[image_point[1],image_point[0]] - center_of_mess[2]
             vertex.append((original_grid_point[i,j,0], original_grid_point[i,j,1], height))
         if i != 0:
-            face.append(([start_point+4*i-4, start_point+4*i-2 , start_point+4*i], 255, 255, 255)) 
+            face.append(([start_point+4*i-2, start_point+4*i-4, start_point+4*i], 255, 255, 255)) 
             face.append(([start_point+4*i, start_point+4*i+2, start_point+4*i-2], 255, 255, 255)) 
-            face.append(([start_point+4*i-3, start_point+4*i-1 , start_point+4*i+3], 255, 255, 255)) 
+            face.append(([start_point+4*i-3, start_point+4*i-1, start_point+4*i+3], 255, 255, 255)) 
             face.append(([start_point+4*i+3, start_point+4*i+1, start_point+4*i-3], 255, 255, 255)) 
 
             face.append(([start_point+4*i-4, start_point+4*i-3, start_point+4*i], 255, 255, 255)) 
@@ -200,8 +200,8 @@ def get_poly_ply_volume_with_hull(dtm, projection_model, centroid, ex, ey, coeff
             face.append(([start_point+4*i-2, start_point+4*i-1, start_point+4*i+2], 255, 255, 255)) 
             face.append(([start_point+4*i+2, start_point+4*i+3, start_point+4*i-1], 255, 255, 255)) 
 
-    face.append(([start_point+0, start_point+1 , start_point+3], 255, 255, 255))
-    face.append(([start_point+3, start_point+2 , start_point+0], 255, 255, 255))
+    face.append(([start_point+0, start_point+1, start_point+3], 255, 255, 255))
+    face.append(([start_point+3, start_point+2, start_point+0], 255, 255, 255))
 
     final = len(vertex)-1
 
@@ -296,14 +296,11 @@ def get_poly_ply(centroid, ex, ey, fitted_points, coefficients, min_axis_z, max_
 
     return vertex, face, ortho_x_min, ortho_x_max
 
-def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, fitted_points, coefficients,\
-        min_axis_z, max_axis_z, start_point, center_of_mess):
+def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,\
+        min_axis_z, max_axis_z, ortho_x_min, ortho_x_max, start_point, center_of_mess):
 
     origin = np.array([0, 0, 0])
     ez = np.cross(ex,ey) 
-    ortho_x = np.matmul(fitted_points - centroid,ex)
-    ortho_x_max = np.max(ortho_x)
-    ortho_x_min = np.min(ortho_x)
     
     inverse_matrix = np.zeros((3,3),np.float32)
     inverse_matrix[0,:] = ex 
@@ -324,12 +321,6 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, fitted_points, 
     
     original_grid_point = np.matmul(grid_point, inverse_matrix) + centroid 
 
-    boundary_points = [] 
-    boundary_points.append((original_grid_point[0]+center_of_mess).tolist())
-    boundary_points.append((original_grid_point[ortho_grid_z.shape[0]-1]+center_of_mess).tolist())
-    boundary_points.append((original_grid_point[-1]+center_of_mess).tolist())
-    boundary_points.append((original_grid_point[-ortho_grid_z.shape[0]]+center_of_mess).tolist())
-
     original_grid_point = np.reshape(original_grid_point,(ortho_grid_x.shape[0],ortho_grid_z.shape[0],3))
 
     for i in range(ortho_grid_x.shape[0]):
@@ -341,25 +332,74 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, fitted_points, 
             height = dtm[image_point[1],image_point[0]] - center_of_mess[2]
             vertex.append((original_grid_point[i,j,0], original_grid_point[i,j,1], height))
         if i != 0:
-            face.append(([start_point+4*i-4, start_point+4*i-2 , start_point+4*i], 255, 255, 255)) 
-            face.append(([start_point+4*i, start_point+4*i+2, start_point+4*i-2], 255, 255, 255)) 
-            face.append(([start_point+4*i-3, start_point+4*i-1 , start_point+4*i+3], 255, 255, 255)) 
-            face.append(([start_point+4*i+3, start_point+4*i+1, start_point+4*i-3], 255, 255, 255)) 
+            face.append(([start_point+4*i, start_point+4*i-4, start_point+4*i-2], 255, 255, 255)) 
+            face.append(([start_point+4*i+2, start_point+4*i, start_point+4*i-2], 255, 255, 255)) 
 
-            face.append(([start_point+4*i-4, start_point+4*i-3, start_point+4*i], 255, 255, 255)) 
-            face.append(([start_point+4*i, start_point+4*i+1, start_point+4*i-3], 255, 255, 255)) 
-            face.append(([start_point+4*i-2, start_point+4*i-1, start_point+4*i+2], 255, 255, 255)) 
-            face.append(([start_point+4*i+2, start_point+4*i+3, start_point+4*i-1], 255, 255, 255)) 
+            face.append(([start_point+4*i-1, start_point+4*i-3, start_point+4*i+3], 255, 255, 255)) 
+            face.append(([start_point+4*i+1, start_point+4*i+3, start_point+4*i-3], 255, 255, 255)) 
 
-    face.append(([start_point+0, start_point+1 , start_point+3], 255, 255, 255))
-    face.append(([start_point+3, start_point+2 , start_point+0], 255, 255, 255))
+            face.append(([start_point+4*i-3, start_point+4*i-4, start_point+4*i], 255, 255, 255)) 
+            face.append(([start_point+4*i-3, start_point+4*i, start_point+4*i+1], 255, 255, 255)) 
+            face.append(([start_point+4*i+2, start_point+4*i-2, start_point+4*i-1], 255, 255, 255)) 
+            face.append(([start_point+4*i+3, start_point+4*i+2, start_point+4*i-1], 255, 255, 255)) 
+
+    face.append(([start_point+3, start_point+0, start_point+1], 255, 255, 255))
+    face.append(([start_point+0, start_point+3, start_point+2], 255, 255, 255))
 
     final = len(vertex)-1
 
-    face.append(([start_point+final-3, start_point+final-2 , start_point+final], 255, 255, 255))
-    face.append(([start_point+final, start_point+final-1 , start_point+final-3], 255, 255, 255))
+    face.append(([start_point+final-3, start_point+final, start_point+final-2], 255, 255, 255))
+    face.append(([start_point+final, start_point+final-3, start_point+final-1], 255, 255, 255))
 
-    return vertex, face, ortho_x_min, ortho_x_max, boundary_points
+    return vertex, face#, ortho_x_min, ortho_x_max, boundary_points
+
+def get_sphere_volume(dtm, projection_model, centroid, r, \
+        theta_min, theta_max, start_point, center_of_mess):
+
+    origin = np.array([0, 0, 0])
+
+    u, v = np.mgrid[0:2*np.pi:20j, theta_min:theta_max:10j]
+    x=np.cos(u)*np.sin(v)*r + centroid[0]
+    y=np.sin(u)*np.sin(v)*r + centroid[1]
+    z=np.cos(v)*r + centroid[2]
+    vertex = []
+    face = []
+
+    for i in range(z.shape[0]):
+        vertex.append((x[i,0], y[i,0], z[i,0]))
+
+    for j in range(1, z.shape[1]):
+        for i in range(z.shape[0]):
+            vertex.append((x[i,j], y[i,j], z[i,j]))
+            if i>0:
+                face.append(([start_point+(j-1)*z.shape[0]+i-1, start_point+j*z.shape[0]+i-1, start_point+j*z.shape[0]+i], 255, 255, 255)) 
+                face.append(([start_point+j*z.shape[0]+i, start_point+(j-1)*z.shape[0]+i, start_point+(j-1)*z.shape[0]+i-1], 255, 255, 255)) 
+    
+    if theta_max> -0.9*np.pi:
+        j = z.shape[1]
+        for i in range(z.shape[0]):
+            image_point = ProjectPoint(projection_model, \
+                    [x[i,j-1] + center_of_mess[0],\
+                    y[i,j-1] + center_of_mess[1]])
+            height = dtm[image_point[1],image_point[0]] - center_of_mess[2]
+            vertex.append((x[i,j-1], y[i,j-1], height))
+            if i>0:
+                face.append(([start_point+(j-1)*z.shape[0]+i-1, start_point+j*z.shape[0]+i-1, start_point+j*z.shape[0]+i], 255, 255, 255)) 
+                face.append(([start_point+j*z.shape[0]+i, start_point+(j-1)*z.shape[0]+i, start_point+(j-1)*z.shape[0]+i-1], 255, 255, 255))
+
+        image_point = ProjectPoint(projection_model, \
+                 [centroid[0] + center_of_mess[0],\
+                 centroid[1] + center_of_mess[1]])
+        height = dtm[image_point[1],image_point[0]] - center_of_mess[2]
+        vertex.append((centroid[0], centroid[1], height))
+        final_index = len(vertex)-1
+        j = z.shape[1]
+        for i in range(z.shape[0]):
+            face.append(([start_point+j*z.shape[0]+(i+1)%z.shape[0], 
+                start_point+j*z.shape[0]+i, 
+                start_point+final_index], 255, 255, 255))
+
+    return vertex, face
 
 def check_poly_point(points, centroid, ex, ey, coefficients,\
         min_axis_z, max_axis_z, ortho_x_min, ortho_x_max,  \

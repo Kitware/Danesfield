@@ -45,14 +45,27 @@ def fit_sphere(points):
     sphere_seg = section_pc.make_segmenter_normals(ksearch=50)
     sphere_seg.set_optimize_coefficients (True)
     sphere_seg.set_model_type (pcl.SACMODEL_SPHERE)
-    sphere_seg.set_normal_distance_weight (0.1)
+    sphere_seg.set_normal_distance_weight (0.3)
     sphere_seg.set_method_type (pcl.SAC_RANSAC)
     sphere_seg.set_max_iterations (1000)
-    sphere_seg.set_distance_threshold(1)
+    sphere_seg.set_distance_threshold(2)
     sphere_seg.set_radius_limits (5, 20)
     sphere_indices, sphere_coefficients = sphere_seg.segment()
-
-    return sphere_indices, sphere_coefficients
+    
+    min_lst = []
+    fitted_indices = []
+    max_lst = []
+    if len(sphere_indices)>100:
+        sphere_points = points[sphere_indices,:]
+        sphere_indices = np.asarray(sphere_indices)
+        points_z = sphere_points[:,2]-sphere_coefficients[2]
+        min_lst, max_lst, fitted_indices = two_D_fitting.get_z_length(points_z,sphere_indices)
+        for i in range(len(max_lst)):
+            if min_lst[i]<-0.8*sphere_coefficients[-1]:
+                min_lst[i]=-1*sphere_coefficients[-1]
+            if max_lst[i]>0.9*sphere_coefficients[-1]:
+                max_lst[i]=sphere_coefficients[-1]
+    return sphere_indices, sphere_coefficients, min_lst, max_lst
 
 def check_sphere(points, c, r):
     distance = points - c
@@ -60,11 +73,22 @@ def check_sphere(points, c, r):
     distance = np.sqrt(np.sum(distance, axis=1))
     error = distance-r
     sphere_indices = np.arange(points.shape[0])
-    sphere_indices = sphere_indices[np.logical_and(error<2, error>-2)]
+    sphere_indices = sphere_indices[np.logical_and(error<3, error>-3)]
     return sphere_indices, error
 
-def draw_sphere(ax, c, r):
-    u, v = np.mgrid[0:2*np.pi:10j, 0:np.pi:10j]
+def get_theta(length, r):
+    if length<-0.8*r:
+        return np.pi
+    if length>0.9*r:
+        return 0
+    if length<0:
+        return np.pi-np.arccos((-1*length)/r)
+    return np.arccos(length/r)
+
+def draw_sphere(ax, c, r, z_min, z_max):
+    theta_max = get_theta(z_min, r)
+    theta_min = get_theta(z_max, r)
+    u, v = np.mgrid[0:2*np.pi:10j, theta_min:theta_max:10j]
     x=np.cos(u)*np.sin(v)*r
     y=np.sin(u)*np.sin(v)*r
     z=np.cos(v)*r
@@ -78,9 +102,6 @@ parser.add_argument(
     '--input_pc', default='/home/xuzhang/project/Core3D/danesfield_gitlab/danesfield/geon_fitting/outlas/out_D4.txt',
     help='Input labelled point cloud. The point cloud should has geon type label. ')
 parser.add_argument(
-    '--input_dtm', default='/dvmm-filer2/projects/Core3D/D4_Jacksonville/DTMs/D4_DTM.tif',
-    help='Input labelled point cloud. The point cloud should has geon type label. ')#D3_UCSD D4_Jacksonville
-parser.add_argument(
     '--output_png', default='../segmentation_graph/out.png',
     help='Output png result file.')
 parser.add_argument("--text_output", action="store_true",
@@ -88,22 +109,10 @@ parser.add_argument("--text_output", action="store_true",
 parser.add_argument(
     '--output_txt', default='../outlas/remain_D4.txt',
     help='Output txt result file.')
+parser.add_argument(
+    '--output_geon', default='../out_geon/D4_Curve_Geon.npy',
+    help='Output txt result file.')
 args = parser.parse_args()
-
-
-original_dtm = gdal.Open(args.input_dtm, gdal.GA_ReadOnly)
-gt = original_dtm.GetGeoTransform() # captures origin and pixel size
-left = gdal.ApplyGeoTransform(gt,0,0)[0]
-top = gdal.ApplyGeoTransform(gt,0,0)[1]
-right = gdal.ApplyGeoTransform(gt,original_dtm.RasterXSize,original_dtm.RasterYSize)[0]
-bottom = gdal.ApplyGeoTransform(gt,original_dtm.RasterXSize,original_dtm.RasterYSize)[1]
-
-dtm = original_dtm.ReadAsArray()
-
-projection_model = {}
-projection_model['corners'] = [left, top, right, bottom]
-projection_model['project_model'] = gt 
-projection_model['scale'] = 1.0
 
 point_list, building_label_list, geon_label_list = utils.read_geon_type_pc(args.input_pc)
 center_of_mess = np.mean(point_list, axis = 0)
@@ -137,7 +146,7 @@ sphere_index = 3
 point_number_scale = 1
 c_index = 0
 for indices in building_index_list:
-    print('new building: {}'.format(len(indices)))
+    #print('new building: {}'.format(len(indices)))
     if len(indices)<300:
         if len(all_remaining_index) == 0:
             all_remaining_index = copy.copy(indices)
@@ -145,7 +154,6 @@ for indices in building_index_list:
             all_remaining_index = np.concatenate((all_remaining_index,indices), axis = None)
         continue
     
-    current_model = []
 
     geon_index_list = []
     for i in range(geon_type_number):
@@ -174,10 +182,11 @@ for indices in building_index_list:
         
         current_cloud = pcl.PointCloud()
         current_cloud.from_array(points)
-
-        vg = current_cloud.make_voxel_grid_filter()
-        vg.set_leaf_size(1, 1, 1)
-        current_cloud = vg.filter()
+        
+        if num_building_points>10000:
+            vg = current_cloud.make_voxel_grid_filter()
+            vg.set_leaf_size(1, 1, 1)
+            current_cloud = vg.filter()
 
         current_points = np.zeros((current_cloud.size,3), dtype=np.float32)
         for i in range(current_cloud.size):
@@ -207,7 +216,8 @@ for indices in building_index_list:
                 cylinder_points[i][2] = current_points[indice][2]
 
             #ax.scatter(cylinder_points[:,0],cylinder_points[:,1],cylinder_points[:,2],\
-            #                        zdir='z', s=1, c='C{}'.format(0), rasterized=True, alpha=0.5)
+            #                        zdir='z', s=1, c='C{}'.format(2), rasterized=True, alpha=0.5)
+
             centroid, ex, ey, ez, fitted_indices, coefficients, min_axis_z, max_axis_z, mean_diff \
                 = two_D_fitting.fit_2D_curve(cylinder_coefficients[3:-1], cylinder_points, fit_type='poly2', dist_threshold=10)
 
@@ -217,28 +227,22 @@ for indices in building_index_list:
                 fitted_points = np.zeros((len(fitted_indices[i]), 3),np.float32)
                 for j, tmp_idx in enumerate(fitted_indices[i]):
                     fitted_points[j,:] = cylinder_points[tmp_idx,:]
+                
+                ortho_x = np.matmul(fitted_points - centroid,ex)
+                ortho_x_max = np.max(ortho_x)
+                ortho_x_min = np.min(ortho_x)
 
-                fitted_wire = utils.draw_poly_curve(ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(i))
+                fitted_wire = utils.draw_poly_curve(ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(2))
                 c_index += 1
                 print(c_index,i,len(fitted_indices[i]))
                 #c_index = (c_index)%4
 
-                current_model.append({'name': 'poly', 'model': [centroid + center_of_mess, ex, ey, len(fitted_indices[i]), coefficients, min_axis_z[i],\
-                        max_axis_z[i], mean_diff]})
+                geon_model.append({'name': 'poly_cylinder', 'model': [centroid, ex, ey, coefficients, min_axis_z[i],\
+                        max_axis_z[i], ortho_x_min, ortho_x_max, len(fitted_indices[i]), mean_diff]})
 
             all_fitted_indices, error = two_D_fitting.check_2D_curve(ez,
                     coefficients, centroid, building_points,
                     fit_type='poly2', dist_threshold=10)
-        #    
-        #    vertex, face, ortho_x_min, ortho_x_max, boundary_points = utils.get_poly_ply_volume(dtm, projection_model, centroid, ex, ey,\
-        #            fitted_points, coefficients, min_axis_z[i], max_axis_z[i], len(all_vertex), center_of_mess)
-        #    
-        #    if len(all_vertex) > 0: 
-        #        all_vertex.extend(vertex)
-        #        all_face.extend(face)
-        #    else:
-        #        all_vertex = vertex
-        #        all_face = face
             
             fitted_index[all_fitted_indices] = True
             print('Fitted Point: ')
@@ -254,7 +258,7 @@ for indices in building_index_list:
                 current_points[i][1] = current_cloud[i][1]
                 current_points[i][2] = current_cloud[i][2]
     
-    print([len(x) for x in geon_index_list])
+    #print([len(x) for x in geon_index_list])
     if len(geon_index_list[sphere_index])>0.3*len(indices):
         points = np.zeros((len(geon_index_list[sphere_index]),3), dtype=np.float32)
         for i, indice in enumerate(geon_index_list[sphere_index]):
@@ -265,22 +269,23 @@ for indices in building_index_list:
         current_cloud = pcl.PointCloud()
         current_cloud.from_array(points)
 
-        vg = current_cloud.make_voxel_grid_filter()
-        vg.set_leaf_size(1, 1, 1)
-        current_cloud = vg.filter()
+        if num_building_points>10000:
+            vg = current_cloud.make_voxel_grid_filter()
+            vg.set_leaf_size(1, 1, 1)
+            current_cloud = vg.filter()
 
         current_points = np.zeros((current_cloud.size,3), dtype=np.float32)
         for i in range(current_cloud.size):
             current_points[i] = current_cloud[i]
 
         while True:
-            sphere_indices, sphere_coefficients = fit_sphere(current_points)
+            sphere_indices, sphere_coefficients, min_lst, max_lst = fit_sphere(current_points)
             if len(sphere_indices)<200*point_number_scale:
                 break
             
             if sphere_coefficients[-1]>0:
-                draw_sphere(ax, sphere_coefficients[0:3] , sphere_coefficients[-1])
-
+                draw_sphere(ax, sphere_coefficients[0:3] , sphere_coefficients[-1], min_lst[0], max_lst[0])
+            
             sphere_points = np.zeros((len(sphere_indices), 3), dtype=np.float32)
             for i, indice in enumerate(sphere_indices):
                 sphere_points[i][0] = current_points[indice][0]
@@ -289,9 +294,11 @@ for indices in building_index_list:
             
             ax.scatter(sphere_points[:,0],sphere_points[:,1],sphere_points[:,2],\
                                     zdir='z', s=1, c='C{}'.format(3), rasterized=True, alpha=0.5)
-            
+
+            geon_model.append({'name': 'sphere', 'model': [sphere_coefficients[0:3],
+                sphere_coefficients[-1], min_lst[0], max_lst[0], len(sphere_indices)]})
+
             all_fitted_indices, error = check_sphere(building_points, sphere_coefficients[0:3], sphere_coefficients[-1])
-            print(len(all_fitted_indices)) 
             fitted_index[all_fitted_indices] = True
 
             current_cloud = current_cloud.extract(sphere_indices, True)
@@ -309,10 +316,8 @@ for indices in building_index_list:
     
     if len(all_remaining_index) == 0:
         all_remaining_index = copy.copy(remaining_index_list)
-        print(all_remaining_index.shape)
     else:
         all_remaining_index = np.concatenate((all_remaining_index, remaining_index_list), axis=None)
-        print(all_remaining_index.shape, remaining_index_list.shape)
 
 remaining_point_list = []
 remaining_geon_list = []
@@ -322,8 +327,8 @@ for index in all_remaining_index:
 
 remaining_point_list = np.asarray(remaining_point_list)
 
-#ax.scatter(remaining_point_list[:,0],remaining_point_list[:,1],remaining_point_list[:,2],\
-#                zdir='z', s=1, c='C{}'.format(4), rasterized=True, alpha=0.5)
+ax.scatter(remaining_point_list[:,0],remaining_point_list[:,1],remaining_point_list[:,2],\
+                zdir='z', s=1, c='C{}'.format(4), rasterized=True, alpha=0.005)
 
 remaining_point_list = remaining_point_list + center_of_mess
 
@@ -337,5 +342,7 @@ for point_idx in range(remaining_point_list.shape[0]):
 
 
 utils.axisEqual3D(ax)
-plt.savefig('./test.png', bbox_inches='tight')
+plt.savefig(args.output_png, bbox_inches='tight')
 plt.close()
+
+pickle.dump([center_of_mess, geon_model], open(args.output_geon, "wb" ))
