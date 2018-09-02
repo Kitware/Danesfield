@@ -9,7 +9,8 @@ class RoofDataset():
         self.root = root
         self.split = split
         self.num_category = num_category
-        self.data_filename = os.path.join(self.root, 'roof_seg_%s%s.pickle' % (split, appendix))
+        self.data_filename = os.path.join(
+            self.root, 'roof_seg_%s%s.pickle' % (split, appendix))
         print("data_filename", self.data_filename)
         with open(self.data_filename, 'rb') as fp:
             self.scene_points_list = pickle.load(fp)
@@ -47,13 +48,15 @@ class RoofDataset():
                           (cur_point_set <= (curmax + 0.01)), axis=1) == 3
             vidx = np.ceil((cur_point_set[mask, :] - curmin) /
                            (curmax - curmin) * [62.0, 62.0, 62.0])
-            vidx = np.unique(vidx[:, 0] * 62.0 * 62.0 + vidx[:, 1] * 62.0 + vidx[:, 2])
+            vidx = np.unique(vidx[:, 0] * 62.0 * 62.0 +
+                             vidx[:, 1] * 62.0 + vidx[:, 2])
             # np.sum(cur_semantic_seg > 0) / len(cur_semantic_seg) >= 0.7 and
             isvalid = len(vidx) / 62.0 / 62.0 / 62.0 >= 0.02
             if isvalid:
                 break
 
-        choice = np.random.choice(cur_point_set.shape[0], self.npoints, replace=True)
+        choice = np.random.choice(
+            cur_point_set.shape[0], self.npoints, replace=True)
         point_set = cur_point_set[choice, :]
         new_label = cur_segment_set[choice]
         return point_set, new_label, self.filename_list[index]

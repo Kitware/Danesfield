@@ -8,14 +8,10 @@ Email: xu.zhang@columbia.edu.cn
 
 #! /usr/bin/env python2
 
-import numpy as np
-import scipy.io as sio
-import time
 import os
 import sys
 import subprocess
 import shlex
-import argparse
 
 ####################################################################
 # Parse command line
