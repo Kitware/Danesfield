@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# Euclidean Cluster Extraction
-# http://pointclouds.org/documentation/tutorials/cluster_extraction.php#cluster-extraction
 import numpy as np
 import pcl
 import os
@@ -11,6 +8,7 @@ if os.environ.get('DISPLAY', '') == '':
     mpl.use('Agg')
 #import plotly.plotly as py
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d, Axes3D
 import two_D_fitting
 import utils
 import pickle
@@ -103,18 +101,16 @@ def draw_sphere(ax, c, r, z_min, z_max):
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--input_pc', default='/home/xuzhang/project/Core3D/danesfield_gitlab/danesfield/geon_fitting/outlas/out_D4.txt',
-    help='Input labelled point cloud. The point cloud should has geon type label. ')
+    help='Input labelled point cloud. The point cloud should has geon type label, output txt from roof_segmentation.py. ')
 parser.add_argument(
     '--output_png', default='../segmentation_graph/out.png',
     help='Output png result file.')
-parser.add_argument("--text_output", action="store_true",
-                    help="Output full text result or not")
 parser.add_argument(
     '--output_txt', default='../outlas/remain_D4.txt',
-    help='Output txt result file.')
+    help='Output txt result file includes all planar points for Purdue to process.')
 parser.add_argument(
     '--output_geon', default='../out_geon/D4_Curve_Geon.npy',
-    help='Output txt result file.')
+    help='Output geon file.')
 args = parser.parse_args()
 
 point_list, building_label_list, geon_label_list = utils.read_geon_type_pc(
@@ -192,6 +188,8 @@ for indices in building_index_list:
             vg = current_cloud.make_voxel_grid_filter()
             vg.set_leaf_size(1, 1, 1)
             current_cloud = vg.filter()
+        
+        num_filtered_building_points = current_cloud.size
 
         current_points = np.zeros((current_cloud.size, 3), dtype=np.float32)
         for i in range(current_cloud.size):
@@ -209,9 +207,7 @@ for indices in building_index_list:
         while True:
             cylinder_indices, cylinder_coefficients = fit_cylinder(
                 current_points, max_r, min_r)
-            # if cylinder_coefficients[-2]<0
-            #    cylinder_coefficients[-2] = -1*cylinder_coefficients[-2]
-            print(cylinder_coefficients)
+
             if len(cylinder_indices) < 500*point_number_scale:
                 break
 
@@ -243,8 +239,7 @@ for indices in building_index_list:
                 fitted_wire = utils.draw_poly_curve(
                     ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(2))
                 c_index += 1
-                print(c_index, i, len(fitted_indices[i]))
-                #c_index = (c_index)%4
+                #print(c_index, i, len(fitted_indices[i]))
 
                 geon_model.append({'name': 'poly_cylinder', 'model': [centroid, ex, ey, coefficients, min_axis_z[i],
                                                                       max_axis_z[i], ortho_x_min, ortho_x_max, len(fitted_indices[i]), mean_diff]})
@@ -254,11 +249,9 @@ for indices in building_index_list:
                                                                      fit_type='poly2', dist_threshold=10)
 
             fitted_index[all_fitted_indices] = True
-            print('Fitted Point: ')
-            print(len(all_fitted_indices), np.sum(fitted_index))
 
             current_cloud = current_cloud.extract(cylinder_indices, True)
-            if current_cloud.size < 1000*point_number_scale:
+            if current_cloud.size < 0.1*num_filtered_building_points:
                 break
 
             current_points = np.zeros(

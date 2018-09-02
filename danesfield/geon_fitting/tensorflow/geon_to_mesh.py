@@ -24,10 +24,10 @@ parser.add_argument(
     help='input geon file.')
 parser.add_argument(
     '--input_dtm', default='/dvmm-filer2/projects/Core3D/D4_Jacksonville/DTMs/D4_DTM.tif',
-    help='Input labelled point cloud. The point cloud should has geon type label. ')  # D3_UCSD D4_Jacksonville
+    help='Input dtm')  # D3_UCSD D4_Jacksonville
 parser.add_argument(
     '--output_mesh', default='../out_geon/D4_Curve_Mesh.ply',
-    help='Output txt result file.')
+    help='Output ply mesh file.')
 args = parser.parse_args()
 
 original_dtm = gdal.Open(args.input_dtm, gdal.GA_ReadOnly)

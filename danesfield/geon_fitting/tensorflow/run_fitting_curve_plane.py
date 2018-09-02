@@ -1,21 +1,8 @@
-"""
-Run multiple parameter with multiple GPUs and one python script 
-Usage: python run_all.py
-
-Author: Xu Zhang
-Email: xu.zhang@columbia.edu.cn
-"""
-
 #! /usr/bin/env python2
 
 import os
 import sys
 import subprocess
-
-####################################################################
-# Parse command line
-####################################################################
-
 
 def usage():
     print >> sys.stderr
@@ -47,7 +34,7 @@ for idx, parameter in enumerate(parameter_set):
     command = 'python fitting_curved_plane.py \
             --input_pc=../outlas/out_{}.txt \
             --output_png=../segmentation_graph/fit_{}.png \
-            --text_output --output_txt=../outlas/remain_{}.txt \
+            --output_txt=../outlas/remain_{}.txt \
             --output_geon=../out_geon/{}_Curve_Geon.npy '.format(parameter,
                                                                  parameter, parameter, parameter)
 

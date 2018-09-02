@@ -1,11 +1,3 @@
-"""
-Run multiple parameter with multiple GPUs and one python script 
-Usage: python run_all.py
-
-Author: Xu Zhang
-Email: xu.zhang@columbia.edu.cn
-"""
-
 #! /usr/bin/env python2
 
 import os
