@@ -25,7 +25,7 @@ parser.add_argument(
     '--model', default='../model/dayton_geon',
     help='Classification Model.')
 parser.add_argument(
-    '--input_pc', default='/home/xuzhang/project/Core3D/core3d-columbia/data/D4_mls_building.txt',
+    '--input_pc', default='/home/xuzhang/project/Core3D/core3d-columbia/data/D4_Purdue_building.txt',
     help='Input p3d point cloud. The point cloud has to be clipped by building mask and smoothed by mls. ')
 parser.add_argument(
     '--output_png', default='../segmentation_graph/out.png',
@@ -47,7 +47,7 @@ def read_txt_pc(filename):
     point_list = []
     with open(filename, 'r') as pc_file:
         for line in pc_file:
-            point_coordinate = line.split(',')
+            point_coordinate = line.split(' ')
             point_list.append(
                 [float(point_coordinate[0]),
                     float(point_coordinate[1]),
@@ -76,6 +76,10 @@ point_list = point_list - center_of_mess
 
 cloud = pcl.PointCloud()
 cloud.from_array(point_list)
+
+#vg = cloud.make_voxel_grid_filter()
+#vg.set_leaf_size(1, 1, 1)
+#cloud = vg.filter()
 
 remaining_cloud = cloud
 nr_points = remaining_cloud.size
@@ -221,9 +225,8 @@ def get_pc_batch(dataset, start_idx, end_idx):
 def test_pc(sess, ops):
     """ ops: dict mapping from string to tf ops """
     is_training = False
-
     for index in range(len(dataset_point_list)):
-
+        
         if args.text_output:
             fout = open('{}'.format(args.output_txt), mode='w')
 
@@ -252,15 +255,21 @@ def test_pc(sess, ops):
                     tmp_original_points = original_point_list[index][start_idx+i]
                     tmp_show_points = show_point_list[index][start_idx+i]
                     tmp_label = np.zeros((tmp_original_points.shape[0],))
-                    matrix_distance = scipy.spatial.distance_matrix(tmp_original_points,
+                    matrix_distance = scipy.spatial.distance_matrix(tmp_original_points-center_of_mess,
                                                                     tmp_show_points)
-                    best_idx = np.argmax(matrix_distance, axis=1)
-
+                    best_idx = np.argmin(matrix_distance, axis=1)
+                    #if np.sum(pred_val[i,:]==2)>200:
+                    #    print(start_idx+i)
+                    #    print(np.sum(pred_val[i,:]==2))
+                    #    print(tmp_original_points.shape)
+                    #    print(tmp_show_points.shape)
+                    #    print(best_idx[:100])
                     for point_idx in range(tmp_original_points.shape[0]):
                         tmp_label[point_idx] = pred_val[i, best_idx[point_idx]]
-                        fout.write('{},{},{},{}\n'.format(tmp_original_points[point_idx, 0],
+                        fout.write('{} {} {} {} {}\n'.format(tmp_original_points[point_idx, 0],
                                                           tmp_original_points[point_idx, 1],
                                                           tmp_original_points[point_idx, 2],
+                                                          start_idx+i,
                                                           pred_val[i, best_idx[point_idx]]))
         if args.text_output:
             fout.close()
