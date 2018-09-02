@@ -135,7 +135,6 @@ show_point_list.append(tmp_show_point_list)
 original_point_list.append(tmp_original_point_list)
 choice_list.append(tmp_choice_list)
 
-
 def save_png_file(point_matrix, label, filename, original_flag=False):
     fig = plt.figure(figsize=(4, 4), dpi=160)
     ax = Axes3D(fig)
