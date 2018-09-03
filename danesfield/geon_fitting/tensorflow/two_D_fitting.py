@@ -49,24 +49,25 @@ def get_z_length(points_z, fitted_indices):
 def check_2D_curve(ex, ey, ez, coefficients, centroid, points, min_axis_z, max_axis_z, fit_type='poly2', dist_threshold=0.05):
     #centroid = get_centroid(points)
     # points_2d has been move to centroid and e1, e2 as axes
-    projection_matrix = np.zeros((3,3),dtype = np.float)
-    projection_matrix[:,0] = ex
-    projection_matrix[:,1] = ey
-    projection_matrix[:,2] = ez
+    projection_matrix = np.zeros((3, 3), dtype=np.float)
+    projection_matrix[:, 0] = ex
+    projection_matrix[:, 1] = ey
+    projection_matrix[:, 2] = ez
 
     new_points = np.matmul(points - centroid, projection_matrix)
 
     fitted_indices, error = check2Dshapes(
-        new_points[:,0:2], coefficients, fit_type=fit_type,  dist_threshold=dist_threshold)
+        new_points[:, 0:2], coefficients, fit_type=fit_type,  dist_threshold=dist_threshold)
 
-    z_flag = np.logical_and(new_points[:,2]>min_axis_z, new_points[:,2]<max_axis_z)
+    z_flag = np.logical_and(
+        new_points[:, 2] > min_axis_z, new_points[:, 2] < max_axis_z)
 
     fitted_indices = np.arange(new_points.shape[0])
 
-    final_flag = np.logical_and(z_flag,error < 3)
+    final_flag = np.logical_and(z_flag, error < 3)
 
     fitted_indices = fitted_indices[final_flag]
-    x_val = new_points[fitted_indices,0]
+    x_val = new_points[fitted_indices, 0]
 
     ortho_x_max = np.max(x_val)
     ortho_x_min = np.min(x_val)
@@ -156,6 +157,7 @@ def project2plane(points_3d, centroid, n, x=None):
     # points_2d has been move to centroid and e1, e2 as axes
     return points_2d, e1, e2
 
+
 def project2plane(points_3d, centroid, n, x=None):
     if x is None:
         e2x = 1.0
@@ -227,7 +229,7 @@ def fit2Dshapes(points_2d, fit_type="poly2", dist_threshold=0.05):
         error = poly_coefficients[0] * data[0]**2 + \
             poly_coefficients[1] * data[0] + poly_coefficients[2] - data[1]
         error = error**2
-        fitted_indices = fitted_indices[error<3]
+        fitted_indices = fitted_indices[error < 3]
         # def poly(X, P):
         #    P_cond = poly_coefficients[0] * P[0]**2 +poly_coefficients[1] * P[0] + poly_coefficients[2] - P[1]
         #    X_cond = poly_coefficients[0] * X[0]**2 +poly_coefficients[1] * X[0] + poly_coefficients[2] - X[1]
@@ -263,11 +265,11 @@ def check2Dshapes(points_2d, coefficients, fit_type="poly2",  dist_threshold=0.0
     # poly curve
     if fit_type == "poly2":
         poly_coefficients = coefficients
-        
+
         error = poly_coefficients[0] * data[0]**2 + \
             poly_coefficients[1] * data[0] + poly_coefficients[2] - data[1]
         error = np.sqrt(error**2)
-        fitted_indices = []# fitted_indices[error < 3]
+        fitted_indices = []  # fitted_indices[error < 3]
         return fitted_indices, error
 
 

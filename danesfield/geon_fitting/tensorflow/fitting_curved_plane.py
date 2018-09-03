@@ -55,7 +55,7 @@ def fit_sphere(points):
         sphere_points = points[sphere_indices, :]
         sphere_indices = np.asarray(sphere_indices)
         points_z = sphere_points[:, 2]-sphere_coefficients[2]
-        if np.max(points_z)-np.min(points_z)<8:
+        if np.max(points_z)-np.min(points_z) < 8:
             sphere_indices = []
             return [], sphere_coefficients, min_lst, max_lst
         min_lst, max_lst, fitted_indices = two_D_fitting.get_z_length(
@@ -190,7 +190,7 @@ for indices in building_index_list:
             vg = current_cloud.make_voxel_grid_filter()
             vg.set_leaf_size(1, 1, 1)
             current_cloud = vg.filter()
-        
+
         num_filtered_building_points = current_cloud.size
 
         current_points = np.zeros((current_cloud.size, 3), dtype=np.float32)
@@ -237,8 +237,8 @@ for indices in building_index_list:
                     ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(2))
 
                 all_fitted_indices, ortho_x_max, ortho_x_min, error = two_D_fitting.check_2D_curve(ex, ey, ez,
-                                                                         coefficients, centroid, building_points,
-                                                                         min_axis_z[i], max_axis_z[i],fit_type='poly2')
+                                                                                                   coefficients, centroid, building_points,
+                                                                                                   min_axis_z[i], max_axis_z[i], fit_type='poly2')
                 fitted_index[all_fitted_indices] = True
 
                 ortho_x = np.matmul(fitted_points - centroid, ex)
@@ -338,7 +338,7 @@ remaining_point_list = remaining_point_list + center_of_mess
 
 #fout = open('{}'.format(args.output_txt), mode='w')
 #
-#for point_idx in range(remaining_point_list.shape[0]):
+# for point_idx in range(remaining_point_list.shape[0]):
 #    fout.write('{} {} {} {}\n'.format(remaining_point_list[point_idx, 0],
 #                                      remaining_point_list[point_idx, 1],
 #                                      remaining_point_list[point_idx, 2],
