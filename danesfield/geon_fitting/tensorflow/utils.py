@@ -189,6 +189,10 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,
     original_grid_point = np.reshape(
         original_grid_point, (ortho_grid_x.shape[0], ortho_grid_z.shape[0], 3))
 
+    flag = False
+    if original_grid_point[0, 0, 0]<original_grid_point[0, 1, 0]:
+        flag=True
+
     for i in range(ortho_grid_x.shape[0]):
         for j in range(ortho_grid_z.shape[0]):
             vertex.append(
@@ -200,34 +204,66 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,
             vertex.append(
                 (original_grid_point[i, j, 0], original_grid_point[i, j, 1], height))
         if i != 0:
-            face.append(([start_point+4*i, start_point+4*i -
-                          4, start_point+4*i-2], 255, 255, 255))
-            face.append(([start_point+4*i+2, start_point+4 *
-                          i, start_point+4*i-2], 255, 255, 255))
+            if flag:
+                face.append(([start_point+4*i - 4,
+                    start_point+4*i,  start_point+4*i-2], 255, 255, 255))
+                face.append(([start_point+4 *
+                              i, start_point+4*i+2,  start_point+4*i-2], 255, 255, 255))
 
-            face.append(([start_point+4*i-1, start_point+4*i -
-                          3, start_point+4*i+3], 255, 255, 255))
-            face.append(([start_point+4*i+1, start_point+4*i +
-                          3, start_point+4*i-3], 255, 255, 255))
+                face.append(([start_point+4*i -
+                              3, start_point+4*i-1,  start_point+4*i+3], 255, 255, 255))
+                face.append(([start_point+4*i +
+                              3, start_point+4*i+1,  start_point+4*i-3], 255, 255, 255))
 
-            face.append(([start_point+4*i-3, start_point+4 *
-                          i-4, start_point+4*i], 255, 255, 255))
-            face.append(([start_point+4*i-3, start_point+4 *
-                          i, start_point+4*i+1], 255, 255, 255))
-            face.append(([start_point+4*i+2, start_point+4*i -
-                          2, start_point+4*i-1], 255, 255, 255))
-            face.append(([start_point+4*i+3, start_point+4*i +
-                          2, start_point+4*i-1], 255, 255, 255))
+                face.append(([start_point+4 *
+                              i-4, start_point+4*i-3,  start_point+4*i], 255, 255, 255))
+                face.append(([start_point+4 *
+                              i, start_point+4*i-3,  start_point+4*i+1], 255, 255, 255))
+                face.append(([start_point+4*i -
+                              2, start_point+4*i+2,  start_point+4*i-1], 255, 255, 255))
+                face.append(([start_point+4*i +
+                              2, start_point+4*i+3,  start_point+4*i-1], 255, 255, 255))
 
-    face.append(([start_point+3, start_point+0, start_point+1], 255, 255, 255))
-    face.append(([start_point+0, start_point+3, start_point+2], 255, 255, 255))
+            else:
+                face.append(([start_point+4*i, start_point+4*i -
+                              4, start_point+4*i-2], 255, 255, 255))
+                face.append(([start_point+4*i+2, start_point+4 *
+                              i, start_point+4*i-2], 255, 255, 255))
 
-    final = len(vertex)-1
+                face.append(([start_point+4*i-1, start_point+4*i -
+                              3, start_point+4*i+3], 255, 255, 255))
+                face.append(([start_point+4*i+1, start_point+4*i +
+                              3, start_point+4*i-3], 255, 255, 255))
 
-    face.append(([start_point+final-3, start_point+final,
-                  start_point+final-2], 255, 255, 255))
-    face.append(([start_point+final, start_point+final -
-                  3, start_point+final-1], 255, 255, 255))
+                face.append(([start_point+4*i-3, start_point+4 *
+                              i-4, start_point+4*i], 255, 255, 255))
+                face.append(([start_point+4*i-3, start_point+4 *
+                              i, start_point+4*i+1], 255, 255, 255))
+                face.append(([start_point+4*i+2, start_point+4*i -
+                              2, start_point+4*i-1], 255, 255, 255))
+                face.append(([start_point+4*i+3, start_point+4*i +
+                              2, start_point+4*i-1], 255, 255, 255))
+    
+    if flag:
+        face.append(([start_point+0, start_point+3,  start_point+1], 255, 255, 255))
+        face.append(([start_point+3, start_point+0, start_point+2], 255, 255, 255))
+
+        final = len(vertex)-1
+
+        face.append(([start_point+final, start_point+final-3, start_point+final-2], 255, 255, 255))
+        face.append(([start_point+final -
+                      3, start_point+final,  start_point+final-1], 255, 255, 255))
+
+    else:
+        face.append(([start_point+3, start_point+0, start_point+1], 255, 255, 255))
+        face.append(([start_point+0, start_point+3, start_point+2], 255, 255, 255))
+
+        final = len(vertex)-1
+
+        face.append(([start_point+final-3, start_point+final,
+                      start_point+final-2], 255, 255, 255))
+        face.append(([start_point+final, start_point+final -
+                      3, start_point+final-1], 255, 255, 255))
 
     return vertex, face  # , ortho_x_min, ortho_x_max, boundary_points
 

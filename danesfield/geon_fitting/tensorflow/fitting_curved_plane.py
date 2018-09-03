@@ -55,6 +55,9 @@ def fit_sphere(points):
         sphere_points = points[sphere_indices, :]
         sphere_indices = np.asarray(sphere_indices)
         points_z = sphere_points[:, 2]-sphere_coefficients[2]
+        if np.max(points_z)-np.min(points_z)<8:
+            sphere_indices = []
+            return [], sphere_coefficients, min_lst, max_lst
         min_lst, max_lst, fitted_indices = two_D_fitting.get_z_length(
             points_z, sphere_indices)
         for i in range(len(max_lst)):
@@ -146,7 +149,7 @@ sphere_index = 3
 point_number_scale = 1
 c_index = 0
 for indices in building_index_list:
-    #print('new building: {}'.format(len(indices)))
+    print('New Building: {}'.format(len(indices)))
     if len(indices) < 300:
         if len(all_remaining_index) == 0:
             all_remaining_index = copy.copy(indices)
@@ -208,7 +211,7 @@ for indices in building_index_list:
             cylinder_indices, cylinder_coefficients = fit_cylinder(
                 current_points, max_r, min_r)
 
-            if len(cylinder_indices) < 500*point_number_scale:
+            if len(cylinder_indices) < 1000*point_number_scale:
                 break
 
             cylinder_points = np.zeros(
@@ -218,40 +221,33 @@ for indices in building_index_list:
                 cylinder_points[i][1] = current_points[indice][1]
                 cylinder_points[i][2] = current_points[indice][2]
 
-            # ax.scatter(cylinder_points[:,0],cylinder_points[:,1],cylinder_points[:,2],\
-            #                        zdir='z', s=1, c='C{}'.format(2), rasterized=True, alpha=0.5)
-
             centroid, ex, ey, ez, fitted_indices, coefficients, min_axis_z, max_axis_z, mean_diff \
                 = two_D_fitting.fit_2D_curve(cylinder_coefficients[3:-1], cylinder_points, fit_type='poly2', dist_threshold=10)
 
             for i in range(len(fitted_indices)):
+
                 if len(fitted_indices[i]) < 500*point_number_scale:
                     continue
+
                 fitted_points = np.zeros(
                     (len(fitted_indices[i]), 3), np.float32)
                 for j, tmp_idx in enumerate(fitted_indices[i]):
                     fitted_points[j, :] = cylinder_points[tmp_idx, :]
 
-                ortho_x = np.matmul(fitted_points - centroid, ex)
-                ortho_x_max = np.max(ortho_x)
-                ortho_x_min = np.min(ortho_x)
-
                 fitted_wire = utils.draw_poly_curve(
                     ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(2))
-                c_index += 1
-                #print(c_index, i, len(fitted_indices[i]))
 
+                all_fitted_indices, ortho_x_max, ortho_x_min, error = two_D_fitting.check_2D_curve(ex, ey, ez,
+                                                                         coefficients, centroid, building_points,
+                                                                         min_axis_z[i], max_axis_z[i],fit_type='poly2')
+                fitted_index[all_fitted_indices] = True
+
+                ortho_x = np.matmul(fitted_points - centroid, ex)
                 geon_model.append({'name': 'poly_cylinder', 'model': [centroid, ex, ey, coefficients, min_axis_z[i],
                                                                       max_axis_z[i], ortho_x_min, ortho_x_max, len(fitted_indices[i]), mean_diff]})
 
-            all_fitted_indices, error = two_D_fitting.check_2D_curve(ez,
-                                                                     coefficients, centroid, building_points,
-                                                                     fit_type='poly2', dist_threshold=10)
-
-            fitted_index[all_fitted_indices] = True
-
             current_cloud = current_cloud.extract(cylinder_indices, True)
-            if current_cloud.size < 0.1*num_filtered_building_points:
+            if current_cloud.size < max(500, 0.1*num_filtered_building_points):
                 break
 
             current_points = np.zeros(
@@ -341,13 +337,13 @@ ax.scatter(remaining_point_list[:, 0], remaining_point_list[:, 1], remaining_poi
 
 remaining_point_list = remaining_point_list + center_of_mess
 
-fout = open('{}'.format(args.output_txt), mode='w')
-
-for point_idx in range(remaining_point_list.shape[0]):
-    fout.write('{} {} {} {}\n'.format(remaining_point_list[point_idx, 0],
-                                      remaining_point_list[point_idx, 1],
-                                      remaining_point_list[point_idx, 2],
-                                      remaining_geon_list[point_idx]))
+#fout = open('{}'.format(args.output_txt), mode='w')
+#
+#for point_idx in range(remaining_point_list.shape[0]):
+#    fout.write('{} {} {} {}\n'.format(remaining_point_list[point_idx, 0],
+#                                      remaining_point_list[point_idx, 1],
+#                                      remaining_point_list[point_idx, 2],
+#                                      remaining_geon_list[point_idx]))
 
 
 utils.axisEqual3D(ax)
