@@ -149,7 +149,6 @@ sphere_index = 3
 point_number_scale = 1
 c_index = 0
 for indices in building_index_list:
-    print('New Building: {}'.format(len(indices)))
     if len(indices) < 300:
         if len(all_remaining_index) == 0:
             all_remaining_index = copy.copy(indices)
