@@ -332,17 +332,17 @@ for index in all_remaining_index:
 remaining_point_list = np.asarray(remaining_point_list)
 
 ax.scatter(remaining_point_list[:, 0], remaining_point_list[:, 1], remaining_point_list[:, 2],
-           zdir='z', s=1, c='C{}'.format(4), rasterized=True, alpha=0.005)
+           zdir='z', s=1, c='C{}'.format(9), alpha=0.01)
 
 remaining_point_list = remaining_point_list + center_of_mess
 
-#fout = open('{}'.format(args.output_txt), mode='w')
-#
-# for point_idx in range(remaining_point_list.shape[0]):
-#    fout.write('{} {} {} {}\n'.format(remaining_point_list[point_idx, 0],
-#                                      remaining_point_list[point_idx, 1],
-#                                      remaining_point_list[point_idx, 2],
-#                                      remaining_geon_list[point_idx]))
+fout = open('{}'.format(args.output_txt), mode='w')
+
+for point_idx in range(remaining_point_list.shape[0]):
+   fout.write('{} {} {} {}\n'.format(remaining_point_list[point_idx, 0],
+                                     remaining_point_list[point_idx, 1],
+                                     remaining_point_list[point_idx, 2],
+                                     remaining_geon_list[point_idx]))
 
 
 utils.axisEqual3D(ax)

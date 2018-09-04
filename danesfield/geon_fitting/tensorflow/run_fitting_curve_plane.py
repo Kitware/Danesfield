@@ -33,7 +33,7 @@ for idx, parameter in enumerate(parameter_set):
 
     command = 'python fitting_curved_plane.py \
             --input_pc=../outlas/out_{}.txt \
-            --output_png=../segmentation_graph/fit_{}.png \
+            --output_png=../segmentation_graph/fit_{}.pdf \
             --output_txt=../outlas/remain_{}.txt \
             --output_geon=../out_geon/{}_Curve_Geon.npy '.format(parameter,
                                                                  parameter, parameter, parameter)
