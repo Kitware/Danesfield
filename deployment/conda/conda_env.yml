@@ -43,3 +43,6 @@ dependencies:
 - torchvision
 - tqdm
 - tensorflow
+- tensorboard
+- tensorflow-gpu
+- core3d-tf_ops
