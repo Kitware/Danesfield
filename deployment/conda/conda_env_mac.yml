@@ -1,0 +1,45 @@
+# conda_env.yml
+# Configuration file for creating a Conda Environment with dependencies needed for Danesfield.
+# Create the environment by running the following command (after installing Miniconda):
+#   $ conda env create -f conda_env.yml
+
+name: core3d-dev
+
+channels:
+- kitware-geospatial
+- pytorch
+- conda-forge
+- defaults
+
+dependencies:
+- pubgeo-core3d-metrics
+- gdal
+- pdal
+- python-pdal
+- texture-atlas
+- gaia
+- pyproj
+- scipy
+- vtk
+- opencv
+- jsonschema
+- geojson
+- flake8
+- pytest
+- pytorch=0.3.*
+- shapely
+- scikit-learn
+- scikit-image
+- liblas
+- flann
+- python-pcl
+- pcl
+- cgal
+- xorg-libsm
+- xorg-libX11
+- core3d-purdue
+- pip:
+  - ubelt
+- torchvision
+- tqdm
+- tensorflow
