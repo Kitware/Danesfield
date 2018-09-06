@@ -61,6 +61,20 @@ def save_image(image, save_path, overwrite):
         dst = None
 
 
+def transfer_metadata(aligned_image_path, original_image_path):
+    aligned_dataset = gdal.Open(aligned_image_path, gdal.GA_Update)
+    original_dataset = gdal.Open(original_image_path, gdal.GA_ReadOnly)
+
+    aligned_dataset.SetMetadata(original_dataset.GetMetadata())
+    rpcs = original_dataset.GetMetadata('RPC')
+    aligned_dataset.SetMetadata(rpcs, 'RPC')
+    aligned_dataset.SetGeoTransform(original_dataset.GetGeoTransform())
+    aligned_dataset.SetProjection(original_dataset.GetProjection())
+
+    aligned_dataset = None
+    original_dataset = None
+
+
 def main(args):
     num_images = len(args.image_paths)
     if num_images == 1:
@@ -88,10 +102,10 @@ def main(args):
                 save_image(aligned_image, image_path, overwrite=True)
             else:
                 image_name = get_name(image_path)
-                print(image_name)
                 # TODO: Check that name of output aligned image is fine
                 save_path = os.path.join(args.save_dir, image_name+'_aligned.tif')
                 save_image(aligned_image, save_path, overwrite=False)
+                transfer_metadata(save_path, image_path)
 
 
 if __name__ == '__main__':
