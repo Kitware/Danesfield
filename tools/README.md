@@ -140,7 +140,7 @@ Curve fitting provided by Columbia University.
 ### Output
 
 - Point cloud of remaining (planar) points (las text)
-- Geon file of fitted curves
+- Geon file of fitted curves (npy)
 
 ### Tools
 
@@ -156,6 +156,38 @@ python fitting_curved_plane.py \
     --output_png=<path_to_output_png> \
     --output_txt=<path_to_output_remainingpoints_pointcloud> \
     --output_geon=<path_to_geon_output>
+```
+
+## Geon to mesh
+
+Script to convert geon file to mesh provided by Columbia University.
+
+### Authors
+
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- Geon file (npy)
+- DTM file (tif)
+
+### Output
+
+- Mesh file (ply)
+
+### Tools
+
+- `geon_to_mesh.py`
+
+### Prerequisites
+
+### Usage
+
+```bash
+python geon_to_mesh.py \
+    --input_geon=<path_to_input_geon_npy> \
+    --input_dtm=<path_to_input_dtm> \
+    --output_mesh=<path_to_output_mesh_ply>
 ```
 
 ## Third-party tools
