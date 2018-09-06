@@ -14,7 +14,6 @@ channels:
 dependencies:
 - pubgeo-core3d-metrics
 - gdal
-- conda-forge/label/broken::libgdal=2.2.4=5
 - pdal
 - python-pdal
 - texture-atlas
@@ -41,11 +40,6 @@ dependencies:
 - core3d-purdue
 - pip:
   - ubelt
-  - plyfile
 - torchvision
 - tqdm
 - tensorflow
-- tensorboard
-- tensorflow-gpu
-- core3d-tf_ops
-- matplotlib
