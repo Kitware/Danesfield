@@ -125,6 +125,39 @@ python roof_segmentation.py \
     --output_png=<path_to_output_graphic> \
 ```
 
+## Curve Fitting
+
+Curve fitting provided by Columbia University.
+
+### Authors
+
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- Point cloud with roof type labels (las text)
+
+### Output
+
+- Point cloud of remaining (planar) points (las text)
+- Geon file of fitted curves
+
+### Tools
+
+- `fitting_curved_plane.py`
+
+### Prerequisites
+
+### Usage
+
+```bash
+python fitting_curved_plane.py \
+    --input_pc=<path_to_input_pointcloud> \
+    --output_png=<path_to_output_png> \
+    --output_txt=<path_to_output_remainingpoints_pointcloud> \
+    --output_geon=<path_to_geon_output>
+```
+
 ## Third-party tools
 
 ### Core3D JSON data representation and parser
