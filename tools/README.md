@@ -88,6 +88,43 @@ When running the script, specify the path to this file using the `--model-path` 
 python material_classifier.py --image_paths <image_paths> --info_paths <info_paths> --output_dir <output_dir> --model_path <model_path> --cuda
 ```
 
+## PointNet Geon Extraction
+
+PointNet Geon Extraction provided by Columbia University.
+
+### Authors
+
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- Building point cloud (las text)
+
+### Output
+
+- Building point cloud with root type labels (las text)
+
+### Tools
+
+- `roof_segmentation.py`
+
+### Prerequisites
+
+Download the files in [this folder](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24).
+When running the script, specify the path to this folder using the `--model_dir` argument
+and the common prefix of the model files using the `--model_prefix` argument, i.e. "dayton_geon".
+
+### Usage
+
+```bash
+python roof_segmentation.py \
+    --model_dir=<path_to_model_dir> \
+    --model_prefix=<model_prefix> \
+    --input_pc=<path_to_input_pointcloud> \
+    --output_txt=<path_to_output_pointcloud> \
+    --output_png=<path_to_output_graphic> \
+```
+
 ## Third-party tools
 
 ### Core3D JSON data representation and parser
