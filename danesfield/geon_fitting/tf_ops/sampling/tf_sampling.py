@@ -7,9 +7,12 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 import sys
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(BASE_DIR)
-sampling_module = tf.load_op_library(BASE_DIR+'/tf_sampling_so.so')
+try:
+    sampling_module = tf.load_op_library('tf_sampling_so.so')
+except tf.errors.NotFoundError as e:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    sys.path.append(BASE_DIR)
+    sampling_module = tf.load_op_library(os.path.join(BASE_DIR, 'tf_sampling_so.so'))
 
 
 def prob_sample(inp, inpr):

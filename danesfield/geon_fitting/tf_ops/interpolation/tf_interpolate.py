@@ -2,9 +2,14 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 import sys
 import os
-BASE_DIR = os.path.dirname(__file__)
-sys.path.append(BASE_DIR)
-interpolate_module=tf.load_op_library(BASE_DIR+'/tf_interpolate_so.so')
+try:
+    interpolate_module = tf.load_op_library('tf_interpolate_so.so')
+except tf.errors.NotFoundError as e:
+    BASE_DIR = os.path.dirname(__file__)
+    sys.path.append(BASE_DIR)
+    interpolate_module = tf.load_op_library(os.path.join(BASE_DIR, 'tf_interpolate_so.so'))
+
+
 def three_nn(xyz1, xyz2):
     '''
     Input:
