@@ -79,6 +79,20 @@ def create_mode_img(stacked_img, save_path):
     color_image.save(save_path+'mode_color.png')
 
 
+def transfer_metadata(corrected_image_path, original_image_path):
+    corrected_dataset = gdal.Open(corrected_image_path, gdal.GA_Update)
+    original_dataset = gdal.Open(original_image_path, gdal.GA_ReadOnly)
+
+    corrected_dataset.SetMetadata(original_dataset.GetMetadata())
+    rpcs = original_dataset.GetMetadata('RPC')
+    corrected_dataset.SetMetadata(rpcs, 'RPC')
+    corrected_dataset.SetGeoTransform(original_dataset.GetGeoTransform())
+    corrected_dataset.SetProjection(original_dataset.GetProjection())
+
+    corrected_dataset = None
+    original_dataset = None
+
+
 def save_output(img, out_path):
     img = img.astype(int)
 
