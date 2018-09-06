@@ -1,6 +1,6 @@
 import numpy as np
 
-import utils
+from danesfield.geon_fitting.tensorflow import utils
 import pickle
 import plyfile
 import gdal

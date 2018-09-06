@@ -9,8 +9,8 @@ if os.environ.get('DISPLAY', '') == '':
 #import plotly.plotly as py
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D
-import two_D_fitting
-import utils
+from danesfield.geon_fitting.tensorflow import two_D_fitting
+from danesfield.geon_fitting.tensorflow import utils
 import pickle
 import copy
 
