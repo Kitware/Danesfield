@@ -190,6 +190,51 @@ python geon_to_mesh.py \
     --output_mesh=<path_to_output_mesh_ply>
 ```
 
+## Roof geon extraction
+
+Wrapper script for running Purdue's point cloud segmentation and
+reconstruction code, and Columbia's roof segmentation and geon fitting
+code in the right sequence.
+
+### Authors
+
+- Bo Xu (<xu1128@purdue.edu>)
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- P3D Point cloud (las)
+- Threshold CLS file (tif)
+- DTM file (tif)
+- Roof segmentation model dir / prefix
+
+### Output
+
+- Mesh files (ply, obj)
+- Geon JSON (json)
+
+### Tools
+
+- `roof_geon_extraction.py`
+
+### Prerequisites
+
+Download the files in [this folder](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24).
+When running the script, specify the path to this folder using the `--model_dir` argument
+and the common prefix of the model files using the `--model_prefix` argument, i.e. "dayton_geon".
+
+### Usage
+
+```bash
+python roof_geon_extraction.py \
+    --las=<path_to_p3d_pointcloud> \
+    --dtm=<path_to_input_dtm> \
+    --cls=<path_to_input_threshold_cls> \
+    --model_prefix=<prefix_for_model_files> \
+    --model_dir=<directory_containing_model_files> \
+    --output_dir=<path_to_output_directory>
+```
+
 ## Third-party tools
 
 ### Core3D JSON data representation and parser
