@@ -8,7 +8,8 @@ from danesfield.surface.geon import Geon
 
 
 def main(args):
-    parser = argparse.ArgumentParser(description='Generate OBJ file from PLY file.')
+    parser = argparse.ArgumentParser(
+        description='Generate OBJ file from PLY file.')
     parser.add_argument('-p', '--ply_dir',
                         help='PLY file folder to read', required=True)
     parser.add_argument('-d', '--dem',
@@ -16,10 +17,11 @@ def main(args):
     args = parser.parse_args(args)
 
     if not os.path.isdir(args.ply_dir):
-        raise RuntimeError("Error: Failed to open PLY folder {}".format(args.PLY_folder))
+        raise RuntimeError(
+            "Error: Failed to open PLY folder {}".format(args.ply_dir))
 
     if not os.path.exists(args.dem):
-        raise RuntimeError("Error: Failed to open DEM {}".format(args.DEM_file_name))
+        raise RuntimeError("Error: Failed to open DEM {}".format(args.dem))
 
     start_time = time.time()
     m = Geon()

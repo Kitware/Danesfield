@@ -140,13 +140,17 @@ def main(args):
                     curve_fitting_remaining_las_seg],
                    check=True)
 
+    # Road files will get written to the following paths if the road
+    # segmentation exists
+    road_segmentation_las = "{}_road_seg.las".format(args.las)
+    road_segmentation_las_seg = "{}_seg.txt".format(
+        road_segmentation_las)
     if os.path.exists(road_segmentation_txt):
         print("* Found road segmentation output")
 
         # Step #1_5
         # Process road segmentation results
         print("* Converting road segmentation points from las text to las")
-        road_segmentation_las = "{}_road_seg.las".format(args.las)
         convert_lastext_to_las(road_segmentation_txt,
                                road_segmentation_las)
 
@@ -154,8 +158,6 @@ def main(args):
         subprocess.run(['segmentation',
                         road_segmentation_las],
                        check=True)
-        road_segmentation_las_seg = "{}_seg.txt".format(
-            road_segmentation_las)
 
         # Step #1_6
         # Reconstruct road segmentation results
@@ -168,20 +170,26 @@ def main(args):
     road_ply_dir = "{}_plys".format(road_segmentation_las_seg)
 
     all_ply_dir = os.path.join(args.output_dir, "all_plys")
+    # Create all ply output directory
+    if not os.path.exists(all_ply_dir):
+        os.makedirs(all_ply_dir)
 
     # Move all ply files to the same directory
     for f in itertools.chain(Path(remaining_ply_dir).glob("*.ply"),
-                             # Path.glob doesn't complain if the directory doesn't exist
+                             # Path.glob doesn't complain if the directory
+                             # doesn't exist
                              Path(road_ply_dir).glob("*.ply"),
                              [mesh_output]):
         shutil.move(str(f), all_ply_dir)
 
     # Step #7
     # Convert all of our PLY files to OBJ
+    print("* Converting PLY files to OBJ")
     ply2obj.main(['--ply_dir', all_ply_dir,
                   '--dem', args.dtm,
                   '--offset'])
 
+    print("* Converting PLY files to geon JSON")
     # Convert all PLY files to geon JSON
     ply2geon.main(['--ply_dir', all_ply_dir,
                    '--dem', args.dtm])

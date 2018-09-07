@@ -1,4 +1,4 @@
-import ellipses as el
+from . import ellipses as el
 import numpy as np
 from scipy.optimize import fmin_cobyla
 
