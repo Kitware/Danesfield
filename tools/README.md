@@ -88,6 +88,153 @@ When running the script, specify the path to this file using the `--model-path` 
 python material_classifier.py --image_paths <image_paths> --info_paths <info_paths> --output_dir <output_dir> --model_path <model_path> --cuda
 ```
 
+## PointNet Geon Extraction
+
+PointNet Geon Extraction provided by Columbia University.
+
+### Authors
+
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- Building point cloud (las text)
+
+### Output
+
+- Building point cloud with root type labels (las text)
+
+### Tools
+
+- `roof_segmentation.py`
+
+### Prerequisites
+
+Download the files in [this folder](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24).
+When running the script, specify the path to this folder using the `--model_dir` argument
+and the common prefix of the model files using the `--model_prefix` argument, i.e. "dayton_geon".
+
+### Usage
+
+```bash
+python roof_segmentation.py \
+    --model_dir=<path_to_model_dir> \
+    --model_prefix=<model_prefix> \
+    --input_pc=<path_to_input_pointcloud> \
+    --output_txt=<path_to_output_pointcloud> \
+    --output_png=<path_to_output_graphic> \
+```
+
+## Curve Fitting
+
+Curve fitting provided by Columbia University.
+
+### Authors
+
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- Point cloud with roof type labels (las text)
+
+### Output
+
+- Point cloud of remaining (planar) points (las text)
+- Geon file of fitted curves (npy)
+
+### Tools
+
+- `fitting_curved_plane.py`
+
+### Prerequisites
+
+### Usage
+
+```bash
+python fitting_curved_plane.py \
+    --input_pc=<path_to_input_pointcloud> \
+    --output_png=<path_to_output_png> \
+    --output_txt=<path_to_output_remainingpoints_pointcloud> \
+    --output_geon=<path_to_geon_output>
+```
+
+## Geon to mesh
+
+Script to convert geon file to mesh provided by Columbia University.
+
+### Authors
+
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- Geon file (npy)
+- DTM file (tif)
+
+### Output
+
+- Mesh file (ply)
+
+### Tools
+
+- `geon_to_mesh.py`
+
+### Prerequisites
+
+### Usage
+
+```bash
+python geon_to_mesh.py \
+    --input_geon=<path_to_input_geon_npy> \
+    --input_dtm=<path_to_input_dtm> \
+    --output_mesh=<path_to_output_mesh_ply>
+```
+
+## Roof geon extraction
+
+Wrapper script for running Purdue's point cloud segmentation and
+reconstruction code, and Columbia's roof segmentation and geon fitting
+code in the right sequence.
+
+### Authors
+
+- Bo Xu (<xu1128@purdue.edu>)
+- Xu Zhang (<xu.zhang@columbia.edu>)
+
+### Input
+
+- P3D Point cloud (las)
+- Threshold CLS file (tif)
+- DTM file (tif)
+- Roof segmentation model dir / prefix
+
+### Output
+
+- Mesh files (ply, obj)
+- Geon JSON (json)
+
+### Tools
+
+- `roof_geon_extraction.py`
+
+### Prerequisites
+
+Download the files in [this folder](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24).
+When running the script, specify the path to this folder using the `--model_dir` argument
+and the common prefix of the model files using the `--model_prefix` argument, i.e. "dayton_geon".
+
+### Usage
+
+```bash
+python roof_geon_extraction.py \
+    --las=<path_to_p3d_pointcloud> \
+    --dtm=<path_to_input_dtm> \
+    --cls=<path_to_input_threshold_cls> \
+    --model_prefix=<prefix_for_model_files> \
+    --model_dir=<directory_containing_model_files> \
+    --output_dir=<path_to_output_directory>
+```
+
 ## Third-party tools
 
 ### Core3D JSON data representation and parser
