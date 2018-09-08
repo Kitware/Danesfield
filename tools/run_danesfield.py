@@ -294,8 +294,21 @@ def main(config_fpath):
     most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
     ndvi_output_fpath = os.path.join(working_dir, 'ndvi.tif')
     threshold_output_mask_fpath = os.path.join(working_dir, 'threshold_CLS.tif')
-    cmd_args = [dsm_file, dtm_file, threshold_output_mask_fpath, '--msi', most_nadir_pan_fpath,
+    cmd_args = [dsm_file,
+                dtm_file,
+                threshold_output_mask_fpath,
+                '--msi', most_nadir_pan_fpath,
                 '--ndvi', ndvi_output_fpath]
+    osm_roads_shapefiles_dir = config['paths'].get('osm_roads_shapefiles_dir')
+    osm_roads_shapefiles_prefix = config['paths'].get('osm_roads_shapefiles_prefix')
+    if osm_roads_shapefiles_dir and osm_roads_shapefiles_prefix:
+        cmd_args.extend(['--road-vector',
+                         os.path.join(osm_roads_shapefiles_dir,
+                                      '{}.shx'.format(osm_roads_shapefiles_prefix)),
+                         '--road-rasterized',
+                         os.path.join(working_dir, 'road_rasterized.tif'),
+                         '--road-rasterized-bridge',
+                         os.path.join(working_dir, 'road_rasterized_bridge.tif')])
     segment_by_height.main(cmd_args)
 
     #############################################
