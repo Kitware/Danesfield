@@ -1,5 +1,36 @@
 # Danesfield Tools
 
+## Segmentation by Height
+
+### Tools
+
+- `segment_by_height.py`
+
+### Prerequisites
+
+### Usage
+
+```bash
+python segment_by_height.py \
+       <dsm_image_path> \
+       <dtm_image_path> \
+       <output_mask_path> \
+       --msi <msi_image_path>
+```
+
+Can optionally pass in OpenStreetMap road data as a shapefile to include roads in the output mask.  Note that a "shapfile" is comprised of a `.shx`, `.shp`, `.prj`, and `.dbf` file, all of which should share the same basename.
+
+``bash
+python segment_by_height.py \
+       <dsm_image_path> \
+       <dtm_image_path> \
+       <output_mask_path> \
+       --msi <msi_image_path> \
+       --road-vector <shapefile_basename>.shx \
+       --road-rasterized <output_road_raster> \
+       --road-rasterized-bridge <output_road_bridge_raster>
+```
+
 ## Columbia Building Segmentation
 
 ### Tools
