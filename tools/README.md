@@ -20,7 +20,7 @@ python segment_by_height.py \
 
 Can optionally pass in OpenStreetMap road data as a shapefile to include roads in the output mask.  Note that a "shapfile" is comprised of a `.shx`, `.shp`, `.prj`, and `.dbf` file, all of which should share the same basename.
 
-``bash
+```bash
 python segment_by_height.py \
        <dsm_image_path> \
        <dtm_image_path> \
