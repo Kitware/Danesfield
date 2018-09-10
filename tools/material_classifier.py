@@ -5,14 +5,14 @@ import os
 import sys
 
 from danesfield.materials.pixel_prediction.util.model import Classifier
-from danesfield.materials.pixel_prediction.util.misc import save_output, Combine_Result
+from danesfield.materials.pixel_prediction.util.misc import save_output, Combine_Result, transfer_metadata  # noqa: E501
 
 
 def main(args):
     parser = argparse.ArgumentParser(description='Classify materials in an orthorectifed image.')
 
     parser.add_argument('--image_paths', nargs='*', required=True,
-                        help='List of image paths.')
+                        help='List of image paths. Images should be orthorectified.')
 
     parser.add_argument('--info_paths', nargs='*', required=True,
                         help='List of metadata files for image files. (.tar or .imd)')
@@ -52,6 +52,8 @@ def main(args):
     combined_result = combine_result.call()
 
     save_output(combined_result, output_path)
+
+    transfer_metadata(output_path, args.image_paths[0])
 
 
 if __name__ == '__main__':
