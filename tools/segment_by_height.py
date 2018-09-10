@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 
 import cv2
 import gdal
@@ -94,6 +95,9 @@ def main(args):
     parser.add_argument("--ndvi",
                         help="Write out the Normalized Difference Vegetation "
                              "Index image")
+    parser.add_argument('--road-vector-shapefile-dir',
+                        help='Path to road vector shapefile directory')
+    parser.add_argument('--road-vector-shapefile-prefix', help='Prefix for road vector shapefile')
     parser.add_argument('--road-vector', help='Path to road vector file')
     # XXX this is not ideal
     parser.add_argument('--road-rasterized', help='Path to save rasterized road image')
@@ -147,18 +151,38 @@ def main(args):
         # reduce seeds to areas with high confidence non-vegetation
         seeds[ndvi > 0.1] = False
 
-    use_roads = args.road_vector or args.road_rasterized or args.road_rasterized_bridge
+    use_roads = (args.road_vector or
+                 args.road_vector_shapefile_dir or
+                 args.road_vector_shapefile_prefix or
+                 args.road_rasterized or
+                 args.road_rasterized_bridge)
     if use_roads:
-        if not (args.road_vector and args.road_rasterized and args.road_rasterized_bridge):
+        use_shapefile_dir_with_prefix = (args.road_vector_shapefile_dir and
+                                         args.road_vector_shapefile_prefix)
+        if not ((args.road_vector or
+                 use_shapefile_dir_with_prefix) and
+                args.road_rasterized and
+                args.road_rasterized_bridge):
             raise RuntimeError("All road path arguments must be provided if any is provided")
+
+        if args.road_vector and use_shapefile_dir_with_prefix:
+            raise RuntimeError("Should specify EITHER --road-vector OR \
+both --road-vector-shapefile-dir AND --road-vector-shapefile-prefix")
+
+        if use_shapefile_dir_with_prefix:
+            input_road_vector = os.path.join(
+                args.road_vector_shapefile_dir,
+                "{}.shx".format(args.road_vector_shapefile_prefix))
+        else:
+            input_road_vector = args.road_vector
 
         # The dilation is intended to create semi-realistic widths
         roads = rasterize_file_dilated_line(
-            args.road_vector, dsm_file, args.road_rasterized,
+            input_road_vector, dsm_file, args.road_rasterized,
             numpy.ones((3, 3)), dilation_iterations=20,
         )
         road_bridges = rasterize_file_dilated_line(
-            args.road_vector, dsm_file, args.road_rasterized_bridge,
+            input_road_vector, dsm_file, args.road_rasterized_bridge,
             numpy.ones((3, 3)), dilation_iterations=20,
             query=ELEVATED_ROADS_QUERY,
         )
