@@ -75,6 +75,12 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
       pip install --upgrade pip && \
       pip install -e ./danesfield"]
 
+# Install core3d-tf_ops package from kitware-geospatial / defaults
+RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+      conda activate core3d && \
+      conda install -c kitware-geospatial -y core3d-tf_ops && \
+      conda clean -tipsy"]
+
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
 
