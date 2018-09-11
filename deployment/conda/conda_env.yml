@@ -14,7 +14,7 @@ channels:
 dependencies:
 - pubgeo-core3d-metrics
 - gdal
-- conda-forge/label/broken::libgdal=2.2.4=5
+- libgdal
 - pdal
 - python-pdal
 - texture-atlas
@@ -27,7 +27,7 @@ dependencies:
 - geojson
 - flake8
 - pytest
-- pytorch=0.3.*
+- pytorch
 - shapely
 - scikit-learn
 - scikit-image
@@ -44,8 +44,6 @@ dependencies:
   - plyfile
 - torchvision
 - tqdm
-- tensorflow
-- tensorboard
-- tensorflow-gpu
+- tensorflow-gpu=1.9.0
 - core3d-tf_ops
 - matplotlib
