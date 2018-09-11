@@ -222,6 +222,10 @@ def fix_intersection(plane):
     :param plane: plane coordinates
     :return: None self-intersection plane coordinates
     '''
+
+    # If a polygon is a triangle or quad, return
+    if plane.shape[0] <= 4:
+        return plane
     temp_cor = plane
     p_n = fit_plane(temp_cor)
     p_n = np.array(p_n[0:3])
