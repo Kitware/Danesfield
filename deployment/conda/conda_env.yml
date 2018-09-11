@@ -2,6 +2,11 @@
 # Configuration file for creating a Conda Environment with dependencies needed for Danesfield.
 # Create the environment by running the following command (after installing Miniconda):
 #   $ conda env create -f conda_env.yml
+#
+# then:
+#
+# source activate core3d-dev
+# conda install -c kitware-geospatial core3d-tf_ops
 
 name: core3d-dev
 
@@ -44,6 +49,4 @@ dependencies:
   - plyfile
 - torchvision
 - tqdm
-- tensorflow-gpu=1.9.0
-- core3d-tf_ops
 - matplotlib
