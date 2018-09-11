@@ -114,7 +114,8 @@ def main(args):
     mesh_output = os.path.join(args.output_dir, "output_curves.ply")
     geon_to_mesh.main(['--input_geon', curve_fitting_geon,
                        '--input_dtm', args.dtm,
-                       '--output_mesh', mesh_output])
+                       '--output_mesh', mesh_output,
+                       '--as-text'])
 
     # Step #3_5 (Note the step numbering here is in reference to the
     # data flow diagram provided by Purdue / Columbia)
