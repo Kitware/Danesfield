@@ -28,7 +28,7 @@ def fit_cylinder(points, max_r=80, min_r=40):
     cylinder_seg.set_normal_distance_weight(0.1)
     cylinder_seg.set_method_type(pcl.SAC_RANSAC)
     cylinder_seg.set_max_iterations(1000)
-    cylinder_seg.set_distance_threshold(2)
+    cylinder_seg.set_distance_threshold(3)
     cylinder_seg.set_radius_limits(min_r, max_r)
     cylinder_indices, cylinder_coefficients = cylinder_seg.segment()
 
@@ -197,7 +197,8 @@ def main(args):
             current_cloud = pcl.PointCloud()
             current_cloud.from_array(points)
 
-            if num_building_points > 10000:
+            num_current_cylinder_point = current_cloud.size
+            if num_building_points > 15000:
                 vg = current_cloud.make_voxel_grid_filter()
                 vg.set_leaf_size(1, 1, 1)
                 current_cloud = vg.filter()
@@ -210,7 +211,7 @@ def main(args):
 
             max_r = 80
             min_r = 40
-            if num_building_points > 10000:
+            if num_current_cylinder_point > 10000:
                 max_r = 80
                 min_r = 40
             else:
@@ -236,7 +237,7 @@ def main(args):
 
                 for i in range(len(fitted_indices)):
 
-                    if len(fitted_indices[i]) < 500*point_number_scale:
+                    if len(fitted_indices[i]) < max(500, 0.05*num_filtered_building_points):
                         continue
 
                     fitted_points = np.zeros(
@@ -344,7 +345,17 @@ def main(args):
 
     remaining_point_list = np.asarray(remaining_point_list)
 
-    ax.scatter(remaining_point_list[:, 0], remaining_point_list[:, 1], remaining_point_list[:, 2],
+    show_cloud = pcl.PointCloud()
+    show_cloud.from_array(remaining_point_list)
+    
+    vg = show_cloud.make_voxel_grid_filter()
+    vg.set_leaf_size(2, 2, 2)
+    show_cloud = vg.filter()
+    show_points = np.zeros((show_cloud.size, 3), dtype=np.float32)
+    for i in range(show_cloud.size):
+        show_points[i,:] = show_cloud[i]
+
+    ax.scatter(show_points[:, 0], show_points[:, 1], show_points[:, 2],
                zdir='z', s=1, c='C{}'.format(9), alpha=0.01)
 
     remaining_point_list = remaining_point_list + center_of_mess
