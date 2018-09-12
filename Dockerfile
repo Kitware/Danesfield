@@ -81,6 +81,12 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
       conda install -c kitware-geospatial -y core3d-tf_ops && \
       conda clean -tipsy"]
 
+# Install opencv package from conda-forge
+RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+      conda activate core3d && \
+      conda install -c conda-forge -y opencv && \
+      conda clean -tipsy"]
+
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
 

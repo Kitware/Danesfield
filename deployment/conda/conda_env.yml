@@ -7,6 +7,7 @@
 #
 # source activate core3d-dev
 # conda install -c kitware-geospatial core3d-tf_ops
+# conda install -c conda-forge opencv
 #
 # For macs (that dont have nvidia GPUS) you don't execute the last step.
 
@@ -29,7 +30,6 @@ dependencies:
 - pyproj
 - scipy
 - vtk
-- opencv
 - jsonschema
 - geojson
 - flake8
