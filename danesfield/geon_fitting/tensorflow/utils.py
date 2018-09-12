@@ -210,19 +210,19 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,
                 face.append(([start_point+4 *
                               i, start_point+4*i+2,  start_point+4*i-2], 255, 255, 255))
 
-                face.append(([start_point+4*i -
-                              3, start_point+4*i-1,  start_point+4*i+3], 255, 255, 255))
-                face.append(([start_point+4*i +
-                              3, start_point+4*i+1,  start_point+4*i-3], 255, 255, 255))
+                #face.append(([start_point+4*i -
+                #              3, start_point+4*i-1,  start_point+4*i+3], 255, 255, 255))
+                #face.append(([start_point+4*i +
+                #              3, start_point+4*i+1,  start_point+4*i-3], 255, 255, 255))
 
-                face.append(([start_point+4 *
-                              i-4, start_point+4*i-3,  start_point+4*i], 255, 255, 255))
-                face.append(([start_point+4 *
-                              i, start_point+4*i-3,  start_point+4*i+1], 255, 255, 255))
-                face.append(([start_point+4*i -
-                              2, start_point+4*i+2,  start_point+4*i-1], 255, 255, 255))
-                face.append(([start_point+4*i +
-                              2, start_point+4*i+3,  start_point+4*i-1], 255, 255, 255))
+                #face.append(([start_point+4 *
+                #              i-4, start_point+4*i-3,  start_point+4*i], 255, 255, 255))
+                #face.append(([start_point+4 *
+                #              i, start_point+4*i-3,  start_point+4*i+1], 255, 255, 255))
+                #face.append(([start_point+4*i -
+                #              2, start_point+4*i+2,  start_point+4*i-1], 255, 255, 255))
+                #face.append(([start_point+4*i +
+                #              2, start_point+4*i+3,  start_point+4*i-1], 255, 255, 255))
 
             else:
                 face.append(([start_point+4*i, start_point+4*i -
@@ -230,45 +230,45 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,
                 face.append(([start_point+4*i+2, start_point+4 *
                               i, start_point+4*i-2], 255, 255, 255))
 
-                face.append(([start_point+4*i-1, start_point+4*i -
-                              3, start_point+4*i+3], 255, 255, 255))
-                face.append(([start_point+4*i+1, start_point+4*i +
-                              3, start_point+4*i-3], 255, 255, 255))
+                #face.append(([start_point+4*i-1, start_point+4*i -
+                #              3, start_point+4*i+3], 255, 255, 255))
+                #face.append(([start_point+4*i+1, start_point+4*i +
+                #              3, start_point+4*i-3], 255, 255, 255))
 
-                face.append(([start_point+4*i-3, start_point+4 *
-                              i-4, start_point+4*i], 255, 255, 255))
-                face.append(([start_point+4*i-3, start_point+4 *
-                              i, start_point+4*i+1], 255, 255, 255))
-                face.append(([start_point+4*i+2, start_point+4*i -
-                              2, start_point+4*i-1], 255, 255, 255))
-                face.append(([start_point+4*i+3, start_point+4*i +
-                              2, start_point+4*i-1], 255, 255, 255))
+                #face.append(([start_point+4*i-3, start_point+4 *
+                #              i-4, start_point+4*i], 255, 255, 255))
+                #face.append(([start_point+4*i-3, start_point+4 *
+                #              i, start_point+4*i+1], 255, 255, 255))
+                #face.append(([start_point+4*i+2, start_point+4*i -
+                #              2, start_point+4*i-1], 255, 255, 255))
+                #face.append(([start_point+4*i+3, start_point+4*i +
+                #              2, start_point+4*i-1], 255, 255, 255))
 
-    if flag:
-        face.append(
-            ([start_point+0, start_point+3,  start_point+1], 255, 255, 255))
-        face.append(
-            ([start_point+3, start_point+0, start_point+2], 255, 255, 255))
+    #if flag:
+    #    face.append(
+    #        ([start_point+0, start_point+3,  start_point+1], 255, 255, 255))
+    #    face.append(
+    #        ([start_point+3, start_point+0, start_point+2], 255, 255, 255))
 
-        final = len(vertex)-1
+    #    final = len(vertex)-1
 
-        face.append(([start_point+final, start_point+final -
-                      3, start_point+final-2], 255, 255, 255))
-        face.append(([start_point+final -
-                      3, start_point+final,  start_point+final-1], 255, 255, 255))
+    #    face.append(([start_point+final, start_point+final -
+    #                  3, start_point+final-2], 255, 255, 255))
+    #    face.append(([start_point+final -
+    #                  3, start_point+final,  start_point+final-1], 255, 255, 255))
 
-    else:
-        face.append(
-            ([start_point+3, start_point+0, start_point+1], 255, 255, 255))
-        face.append(
-            ([start_point+0, start_point+3, start_point+2], 255, 255, 255))
+    #else:
+    #    face.append(
+    #        ([start_point+3, start_point+0, start_point+1], 255, 255, 255))
+    #    face.append(
+    #        ([start_point+0, start_point+3, start_point+2], 255, 255, 255))
 
-        final = len(vertex)-1
+    #    final = len(vertex)-1
 
-        face.append(([start_point+final-3, start_point+final,
-                      start_point+final-2], 255, 255, 255))
-        face.append(([start_point+final, start_point+final -
-                      3, start_point+final-1], 255, 255, 255))
+    #    face.append(([start_point+final-3, start_point+final,
+    #                  start_point+final-2], 255, 255, 255))
+    #    face.append(([start_point+final, start_point+final -
+    #                  3, start_point+final-1], 255, 255, 255))
 
     return vertex, face  # , ortho_x_min, ortho_x_max, boundary_points
 
@@ -297,31 +297,31 @@ def get_sphere_volume(dtm, projection_model, centroid, r,
                 face.append(([start_point+j*z.shape[0]+i, start_point+(j-1) *
                               z.shape[0]+i, start_point+(j-1)*z.shape[0]+i-1], 255, 255, 255))
 
-    if theta_max > -0.9*np.pi:
-        j = z.shape[1]
-        for i in range(z.shape[0]):
-            image_point = ProjectPoint(projection_model,
-                                       [x[i, j-1] + center_of_mess[0],
-                                        y[i, j-1] + center_of_mess[1]])
-            height = dtm[image_point[1], image_point[0]] - center_of_mess[2]
-            vertex.append((x[i, j-1], y[i, j-1], height))
-            if i > 0:
-                face.append(([start_point+(j-1)*z.shape[0]+i-1, start_point +
-                              j*z.shape[0]+i-1, start_point+j*z.shape[0]+i], 255, 255, 255))
-                face.append(([start_point+j*z.shape[0]+i, start_point+(j-1) *
-                              z.shape[0]+i, start_point+(j-1)*z.shape[0]+i-1], 255, 255, 255))
+    #if theta_max > -0.9*np.pi:
+    #    j = z.shape[1]
+    #    for i in range(z.shape[0]):
+    #        image_point = ProjectPoint(projection_model,
+    #                                   [x[i, j-1] + center_of_mess[0],
+    #                                    y[i, j-1] + center_of_mess[1]])
+    #        height = dtm[image_point[1], image_point[0]] - center_of_mess[2]
+    #        vertex.append((x[i, j-1], y[i, j-1], height))
+    #        if i > 0:
+    #            face.append(([start_point+(j-1)*z.shape[0]+i-1, start_point +
+    #                          j*z.shape[0]+i-1, start_point+j*z.shape[0]+i], 255, 255, 255))
+    #            face.append(([start_point+j*z.shape[0]+i, start_point+(j-1) *
+    #                          z.shape[0]+i, start_point+(j-1)*z.shape[0]+i-1], 255, 255, 255))
 
-        image_point = ProjectPoint(projection_model,
-                                   [centroid[0] + center_of_mess[0],
-                                    centroid[1] + center_of_mess[1]])
-        height = dtm[image_point[1], image_point[0]] - center_of_mess[2]
-        vertex.append((centroid[0], centroid[1], height))
-        final_index = len(vertex)-1
-        j = z.shape[1]
-        for i in range(z.shape[0]):
-            face.append(([start_point+j*z.shape[0]+(i+1) % z.shape[0],
-                          start_point+j*z.shape[0]+i,
-                          start_point+final_index], 255, 255, 255))
+    #    image_point = ProjectPoint(projection_model,
+    #                               [centroid[0] + center_of_mess[0],
+    #                                centroid[1] + center_of_mess[1]])
+    #    height = dtm[image_point[1], image_point[0]] - center_of_mess[2]
+    #    vertex.append((centroid[0], centroid[1], height))
+    #    final_index = len(vertex)-1
+    #    j = z.shape[1]
+    #    for i in range(z.shape[0]):
+    #        face.append(([start_point+j*z.shape[0]+(i+1) % z.shape[0],
+    #                      start_point+j*z.shape[0]+i,
+    #                      start_point+final_index], 255, 255, 255))
 
     return vertex, face
 
