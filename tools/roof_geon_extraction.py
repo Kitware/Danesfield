@@ -22,7 +22,7 @@ from pathlib import Path
 import roof_segmentation
 import fitting_curved_plane
 import geon_to_mesh
-import ply2geon
+# import ply2geon
 import ply2obj
 
 
@@ -191,10 +191,11 @@ def main(args):
                   '--dem', args.dtm,
                   '--offset'])
 
-    print("* Converting PLY files to geon JSON")
-    # Convert all PLY files to geon JSON
-    ply2geon.main(['--ply_dir', all_ply_dir,
-                   '--dem', args.dtm])
+    # Skipping this step for now
+    # print("* Converting PLY files to geon JSON")
+    # # Convert all PLY files to geon JSON
+    # ply2geon.main(['--ply_dir', all_ply_dir,
+    #                '--dem', args.dtm])
 
     # The buildings_to_dsm.py script requires a certain naming
     # convention for the OBJ files based on whether they're roads or
