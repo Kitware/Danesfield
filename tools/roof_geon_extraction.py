@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import re
 
 from pathlib import Path
 
@@ -193,6 +194,34 @@ def main(args):
     # Convert all PLY files to geon JSON
     ply2geon.main(['--ply_dir', all_ply_dir,
                    '--dem', args.dtm])
+
+    # The buildings_to_dsm.py script requires a certain naming
+    # convention for the OBJ files based on whether they're roads or
+    # buildings, this step copies / renames the OBJ files to suit that
+    # convention
+    print("* Collating OBJ files for buildings_to_dsm.py")
+    # Output obj directory; want to collate the renamed OBJ files into
+    # a single output directory
+    output_obj_dir = os.path.join(args.output_dir, "output_obj")
+    if not os.path.exists(output_obj_dir):
+        os.makedirs(output_obj_dir)
+
+    all_obj_dir = "{}_obj".format(all_ply_dir)
+    road_re = re.compile("road_([0-9]+)\\.obj")
+    for f in Path(all_obj_dir).glob("road_*.obj"):
+        match = re.match(road_re, os.path.basename(str(f)))
+        if match:
+            out_fname = "Road_{}.obj".format(match[1])
+            shutil.copy(str(f), os.path.join(output_obj_dir, out_fname))
+        else:
+            print("** Warning: couldn't match road OBJ filename '{}' with \
+expected regexp.  Skipping".format(str(f)))
+
+    # Copy the rest of the OBJ files
+    for i, f in enumerate(sorted(Path(all_obj_dir).glob("*.obj"), key=str)):
+        basename = os.path.basename(str(f))
+        # Prefix the filename with a number
+        shutil.copy(str(f), os.path.join(output_obj_dir, "{}_{}".format(i, basename)))
 
 
 if __name__ == '__main__':
