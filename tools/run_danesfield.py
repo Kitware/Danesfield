@@ -23,6 +23,7 @@ import segment_by_height
 import kwsemantic_segment
 import building_segmentation
 import roof_geon_extraction
+import buildings_to_dsm
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -407,6 +408,31 @@ def main(config_fpath):
 
     # Collaborate with Bastien Jacquet on what to run here
     # Dan Lipsa is helping with conda packaging
+
+    #############################################
+    # Buildings to DSM
+    #############################################
+    logging.info('---- Running buildings to dsm ----')
+    objs_dir = os.path.join(working_dir, "output_obj")
+
+    # Generate the output DSM
+    output_dsm = os.path.join(working_dir, "buildings_to_dsm_DSM.tif")
+    cmd_args = [
+        objs_dir,
+        dtm_file,
+        output_dsm]
+    logging.info(cmd_args)
+    buildings_to_dsm.main(cmd_args)
+
+    # Generate the output CLS
+    output_cls = os.path.join(working_dir, "buildings_to_dsm_CLS.tif")
+    cmd_args = [
+        objs_dir,
+        dtm_file,
+        output_cls,
+        '--render_cls']
+    logging.info(cmd_args)
+    buildings_to_dsm.main(cmd_args)
 
 
 if __name__ == '__main__':
