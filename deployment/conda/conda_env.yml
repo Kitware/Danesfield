@@ -2,9 +2,7 @@
 # Configuration file for creating a Conda Environment with dependencies needed for Danesfield.
 # Create the environment by running the following command (after installing Miniconda):
 #   $ conda env create -f conda_env.yml
-#
 # then:
-#
 # source activate core3d-dev
 # conda install -c kitware-geospatial core3d-tf_ops
 # conda install -c conda-forge opencv
@@ -34,7 +32,8 @@ dependencies:
 - geojson
 - flake8
 - pytest
-- pytorch
+# specific version required by Rutgers material classifier
+- pytorch=0.3.*
 - shapely
 - scikit-learn
 - scikit-image
