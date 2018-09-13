@@ -109,10 +109,13 @@ both --road-vector-shapefile-dir AND --road-vector-shapefile-prefix")
     # label the larger mask image
     label_img = ndm.label(mask)[0]
     # extract the unique labels that match the seeds
-    selected = numpy.unique(label_img)
+    selected, counts = numpy.unique(label_img, return_counts=True)
     # filter out very oblong objects
     subselected = []
-    for i in selected:
+    for i, n in zip(selected, counts):
+        # skip the background and small components
+        if i == 0 or n < 500:
+            continue
         dim_large, dim_small = estimate_object_scale(label_img == i)
         if dim_large / dim_small < 6:
             subselected.append(i)
