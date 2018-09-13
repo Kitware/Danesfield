@@ -29,6 +29,9 @@ def main(args):
     parser.add_argument('--batch_size', type=int, default=20000,
                         help='Number of pixels classified at a time.')
 
+    parser.add_argument('--outfile_prefix', type=str,
+                        help='Output filename prefix.')
+
     args = parser.parse_args(args)
 
     # Load model and select option to use CUDA
@@ -47,7 +50,13 @@ def main(args):
         combine_result.update(prob_output)
 
     # Save results
-    output_path = os.path.join(args.output_dir, 'max_prob' + '.tif')
+    if args.outfile_prefix:
+        output_file_basename = '{}_MTL'.format(args.outfile_prefix)
+    else:
+        # This is the old / default output file basename
+        output_file_basename = 'max_prob'
+
+    output_path = os.path.join(args.output_dir, output_file_basename + '.tif')
 
     combined_result = combine_result.call()
 
