@@ -100,6 +100,7 @@ both --road-vector-shapefile-dir AND --road-vector-shapefile-prefix")
 
         # Remove building candidates that overlap with a road
         mask[roads] = False
+        road_bridges = morphology.binary_closing(road_bridges, numpy.ones((3, 3)), iterations=3)
 
     # use morphology to clean up the mask
     mask = morphology.binary_opening(mask, numpy.ones((3, 3)), iterations=1)
