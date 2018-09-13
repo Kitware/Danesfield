@@ -110,7 +110,7 @@ both --road-vector-shapefile-dir AND --road-vector-shapefile-prefix")
     subselected = []
     for i, n in zip(selected, counts):
         # skip the background and small components
-        if i == 0 or n < 500:
+        if i == 0 or n < 64:
             continue
         dim_large, dim_small = estimate_object_scale(label_img == i)
         if dim_small > 0 and dim_large / dim_small < 6:
