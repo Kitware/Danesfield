@@ -124,6 +124,7 @@ def main(args):
     print('Locating crops in directory: ' + dst_root_dir)
     print('Cropping to AOI: ' + AOI)
 
+    corrected_rpc_dir = None
     if args.rpc_dir:
         corrected_rpc_dir = os.path.join(args.rpc_dir, '')
         print('Using update RPCs from: ' + corrected_rpc_dir)
@@ -254,7 +255,7 @@ def main(args):
                                  [ul_lon, ul_lat, elevation - elevation_range]])
             rpc_md = src_image.GetMetadata('RPC')
             model = rpc.rpc_from_gdal_dict(rpc_md)
-            if (corrected_rpc_dir):
+            if corrected_rpc_dir:
                 updated_rpc = read_raytheon_RPC(corrected_rpc_dir, file_)
                 if updated_rpc is None:
                     print('No RPC file exists for image file, skipping: ' +
