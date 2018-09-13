@@ -6,8 +6,6 @@ Run the Danesfield processing pipeline on an AOI from start to finish.
 
 import configparser
 import datetime
-import gdal
-import gdalconst
 import glob
 import logging
 import os
@@ -16,6 +14,7 @@ import subprocess
 import sys
 
 # import other tools
+import gdal
 import generate_dsm
 import fit_dtm
 import material_classifier
@@ -26,7 +25,10 @@ import kwsemantic_segment
 import building_segmentation
 import roof_geon_extraction
 import buildings_to_dsm
-
+import merge_raw_obj_meshes
+import triangulate_mesh
+import crop_images
+import preprocess_images_for_texture_mapping
 
 def create_working_dir(working_dir, imagery_dir):
     """
@@ -136,8 +138,6 @@ def main(config_fpath):
     # created (based on the time of creation)
     working_dir = create_working_dir(config['paths'].get('work_dir'),
                                      config['paths']['imagery_dir'])
-
-    imagery_dir = config['paths']['imagery_dir']
 
     aoi_name = config['aoi']['name']
     aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
@@ -249,7 +249,6 @@ def main(config_fpath):
 
         orthorectify.main(cmd_args)
         files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
-        copy_tif_info(pan_ntf_fpath, pan_ortho_img_fpath)
 
         # Orthorectify the msi images
         msi_ntf_fpath = files['msi']['image']
@@ -263,7 +262,6 @@ def main(config_fpath):
 
         orthorectify.main(cmd_args)
         files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
-        copy_tif_info(msi_ntf_fpath, msi_ortho_img_fpath)
     #
     # Note: we may eventually select a subset of input images
     # on which to run this and the following steps
@@ -294,7 +292,6 @@ def main(config_fpath):
         if angle < lowest_angle:
             lowest_angle = angle
             most_nadir_collection_id = collection_id
-        copy_tif_info(ortho_pan_fpath, pansharpened_output_image)
 
     #############################################
     # Convert to 8-bit RGB
@@ -442,14 +439,15 @@ def main(config_fpath):
 
     # -------- Prepare images --------
     # crop PAN images
-    cmd_args = [aoi_name, path_to_PAN_images, output_path_to_PAN_crop_images, path_to_ba_updated_rpcs]
-    crop_images.crop_images(cmd_args)
+    cmd_args = [aoi_name, input_path_to_PAN_images, output_path_to_PAN_crop_images, path_to_ba_updated_rpcs]
+    crop_images.main(cmd_args)
     # crop MSI images
     cmd_args = [aoi_name, path_to_MSI_images, output_path_to_MSI_crop_images, path_to_ba_updated_rpcs]
-    crop_images.crop_images(cmd_args)
+    crop_images.main(cmd_args)
 
     # Pansharpen the crop images
-
+    # - need to find the corresponding pairs of images PAN-MSI
+    # - need to use copy_tif_info to copy tif metadata such as RPC from input to output images
 
     # Pre-process images for texture mapping to match the format expected by the C++ code and to have visually nice textures
     cmd_args = [input_dir_with_pansharpen_crop_images, output_dir_with_preprocessed_pansharpen_crop_images]]
