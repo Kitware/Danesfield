@@ -102,10 +102,6 @@ both --road-vector-shapefile-dir AND --road-vector-shapefile-prefix")
         mask[roads] = False
         road_bridges = morphology.binary_closing(road_bridges, numpy.ones((3, 3)), iterations=3)
 
-    # use morphology to clean up the mask
-    mask = morphology.binary_opening(mask, numpy.ones((3, 3)), iterations=1)
-    mask = morphology.binary_closing(mask, numpy.ones((3, 3)), iterations=1)
-
     # label the larger mask image
     label_img = ndm.label(mask)[0]
     # extract the unique labels that match the seeds
