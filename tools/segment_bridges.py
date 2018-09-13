@@ -117,7 +117,7 @@ both --road-vector-shapefile-dir AND --road-vector-shapefile-prefix")
         if i == 0 or n < 500:
             continue
         dim_large, dim_small = estimate_object_scale(label_img == i)
-        if dim_large / dim_small < 6:
+        if dim_small > 0 and dim_large / dim_small < 6:
             subselected.append(i)
 
     logging.info("Keeping {} connected components".format(len(subselected)))
