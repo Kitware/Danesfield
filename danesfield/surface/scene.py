@@ -139,7 +139,7 @@ class Model(object):
         for fp in file_name:
             process = ''.join(['Now loading the PLY: ' + fp + '\n'])
             sys.stdout.write(process)
-            if 'curved' in fp:
+            if 'curve' in fp:
                 self.buildings.append(self.load_from_curved_ply(os.path.join(self.ply_path, fp)))
             else:
                 self.buildings.append(self.load_from_ply(os.path.join(self.ply_path, fp)))
