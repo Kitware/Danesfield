@@ -97,10 +97,12 @@ def main(args):
     useDSM = False
     if os.path.isfile(args.aoi):
         useDSM = True
-    if len(args.src_root) > 1:
+    if os.path.isfile(args.src_root[0]):
         src_root = args.src_root
+        print('Cropping a list of {} images'.format(len(args.src_root)))
     else:
         src_root = os.path.join(args.src_root[0], '')
+        print('Cropping all images from directory: {}'.format(args.src_root))
 
     dest_dir = os.path.join(args.dest_dir, '')
 
@@ -109,12 +111,12 @@ def main(args):
 
     rpc_dir = None
     if args.rpc_dir:
-        if len(args.rpc_dir) > 1:
+        if os.path.isfile(args.rpc_dir[0]):
             rpc_dir = args.rpc_dir
-            print('Using RPCs from {} file list'.format(len(args.rpc_dir)))
+            print('Using a list of {} RPCs.'.format(len(args.rpc_dir)))
         else:
             rpc_dir = os.path.join(args.rpc_dir[0], '')
-            print("Using RPCs from directory: {}".format(rpc_dir))
+            print("Using all RPCs from directory: {}".format(rpc_dir))
     else:
         print('Using RPCs from image metadata.')
 
