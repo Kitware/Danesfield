@@ -7,7 +7,7 @@ import numpy as np
 from osgeo import gdal
 from pathlib import Path
 from plyfile import PlyData
-from .poly_functions import list_intersect, list_union
+from .poly_functions import list_intersect, list_union, ply_parser
 from .base_surface import Building
 from .base_surface import Surface
 from .curve_surface import Curved_building
@@ -35,50 +35,109 @@ class Model(object):
         self.offset_flag = True
 
     def get_offset(self, fp):
-        plydata = PlyData.read(fp)
-        cor = np.vstack((plydata['vertex']['x'],
-                         plydata['vertex']['y'],
-                         plydata['vertex']['z'])).transpose()
+        try:
+            plydata = PlyData.read(fp)
+            if plydata['vertex'].count == 0:
+                return
 
-        if self.x_offset is None:
-            self.x_offset = min(cor[:, 0])
-            self.y_offset = min(cor[:, 1])
-            self.z_offset = min(cor[:, 2])
-        else:
-            self.x_offset = min(self.x_offset, min(cor[:, 0]))
-            self.y_offset = min(self.y_offset, min(cor[:, 1]))
-            self.z_offset = min(self.z_offset, min(cor[:, 2]))
+            cor = np.vstack((plydata['vertex']['x'],
+                             plydata['vertex']['y'],
+                             plydata['vertex']['z'])).transpose()
+
+            if self.x_offset is None:
+                self.x_offset = min(cor[:, 0])
+                self.y_offset = min(cor[:, 1])
+                self.z_offset = min(cor[:, 2])
+            else:
+                self.x_offset = min(self.x_offset, min(cor[:, 0]))
+                self.y_offset = min(self.y_offset, min(cor[:, 1]))
+                self.z_offset = min(self.z_offset, min(cor[:, 2]))
+
+        except:
+            cor, f = ply_parser(fp)
+
+            for i in range(0, len(f)):
+                for j in range(0, len(f[i])):
+                    f[i][j] = int(f[i][j])
+                del f[i][0]
+
+            for face_index in f:
+                face_cor = cor[face_index]
+                if self.x_offset == None:
+                    self.x_offset = min(face_cor[:, 0])
+                    self.y_offset = min(face_cor[:, 1])
+                    self.z_offset = min(face_cor[:, 2])
+                else:
+                    self.x_offset = min(self.x_offset, min(face_cor[:, 0]))
+                    self.y_offset = min(self.y_offset, min(face_cor[:, 1]))
+                    self.z_offset = min(self.z_offset, min(face_cor[:, 2]))
+
 
     def load_from_ply(self, fp):
         scene_name = Path(fp).with_suffix('').name
-        plydata = PlyData.read(fp)
-        cor = np.vstack((plydata['vertex']['x'],
-                         plydata['vertex']['y'],
-                         plydata['vertex']['z'])).transpose()
 
-        building_model = Building()
-        building_model.scene_name = scene_name
-        face_name = plydata['face'].data.dtype.names[0]
+        try:
+            plydata = PlyData.read(fp)
+            if plydata['vertex'].count == 0:
+                return Building()
+            cor = np.vstack((plydata['vertex']['x'],
+                             plydata['vertex']['y'],
+                             plydata['vertex']['z'])).transpose()
+            building_model = Building()
+            building_model.scene_name = scene_name
+            face_name = plydata['face'].data.dtype.names[0]
 
-        for face_index in plydata['face'].data[face_name]:
-            face_cor = cor[face_index]
-            building_model.add_topsurface(Surface(face_cor))
+            for face_index in plydata['face'].data[face_name]:
+                face_cor = cor[face_index]
+                building_model.add_topsurface(Surface(face_cor))
 
-        return building_model
+            return building_model
+        except:
+            cor, f = ply_parser(fp)
+
+            for i in range(0, len(f)):
+                for j in range(0, len(f[i])):
+                    f[i][j] = int(f[i][j])
+                del f[i][0]
+
+            building_model = Building()
+            building_model.scene_name = scene_name
+
+            for face_index in range(len(f)):
+                face_cor = cor[f[face_index]]
+                building_model.add_topsurface(Surface(face_cor))
+
+            return building_model
+
+
 
     def load_from_curved_ply(self, fp):
-
         scene_name = Path(fp).with_suffix('').name
-        plydata = PlyData.read(fp)
-        cor = np.vstack((plydata['vertex']['x'],
-                         plydata['vertex']['y'],
-                         plydata['vertex']['z'])).transpose()
+        try:
+            plydata = PlyData.read(fp)
+            if plydata['vertex'].count == 0:
+                return Curved_building()
+    
+            cor = np.vstack((plydata['vertex']['x'],
+                             plydata['vertex']['y'],
+                             plydata['vertex']['z'])).transpose()
+    
+            building_model = Curved_building()
+            building_model.scene_name = scene_name
+            face_name = plydata['face'].data.dtype.names[0]
+            fi = np.array([face_index for face_index
+                           in plydata['face'].data[face_name]])
+        except:
+            cor, f = ply_parser(fp)
 
-        building_model = Curved_building()
-        building_model.scene_name = scene_name
-        face_name = plydata['face'].data.dtype.names[0]
-        fi = np.array([face_index for face_index
-                       in plydata['face'].data[face_name]])
+            for i in range(0, len(f)):
+                for j in range(0, len(f[i])):
+                    f[i][j] = int(f[i][j])
+                del f[i][0]
+
+            building_model = Curved_building()
+            building_model.scene_name = scene_name
+            fi = np.array(f)
 
         c_cor = []
         c_cor_index = []
@@ -139,7 +198,7 @@ class Model(object):
         for fp in file_name:
             process = ''.join(['Now loading the PLY: ' + fp + '\n'])
             sys.stdout.write(process)
-            if 'curve' in fp:
+            if 'curved' in fp:
                 self.buildings.append(self.load_from_curved_ply(os.path.join(self.ply_path, fp)))
             else:
                 self.buildings.append(self.load_from_ply(os.path.join(self.ply_path, fp)))
