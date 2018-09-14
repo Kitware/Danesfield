@@ -108,7 +108,7 @@ def main(args):
     print("Reading the buildings ...")
     # labels for buildings and elevated roads
     labels = [6, 17]
-    if (os.path.isfile(args.input_vtp_path)):
+    if (args.input_vtp_path and os.path.isfile(args.input_vtp_path)):
         polyReader = vtk.vtkXMLPolyDataReader()
         polyReader.SetFileName(args.input_buildings)
         polyReader.Update()
