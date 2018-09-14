@@ -9,6 +9,7 @@ import datetime
 import logging
 import os
 import re
+import glob
 import subprocess
 import sys
 
@@ -418,19 +419,21 @@ def main(config_fpath):
     # Generate the output DSM
     output_dsm = os.path.join(working_dir, "buildings_to_dsm_DSM.tif")
     cmd_args = [
-        working_dir,
         dtm_file,
         output_dsm]
+    cmd_args.append('--input_obj_paths')
+    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
     logging.info(cmd_args)
     buildings_to_dsm.main(cmd_args)
 
     # Generate the output CLS
     output_cls = os.path.join(working_dir, "buildings_to_dsm_CLS.tif")
     cmd_args = [
-        working_dir,
         dtm_file,
         output_cls,
         '--render_cls']
+    cmd_args.append('--input_obj_paths')
+    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
     logging.info(cmd_args)
     buildings_to_dsm.main(cmd_args)
 
