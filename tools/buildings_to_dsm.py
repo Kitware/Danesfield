@@ -2,7 +2,6 @@
 
 import argparse
 import gdal
-import glob
 import numpy
 import logging
 import os
@@ -15,14 +14,14 @@ from vtk.util import numpy_support
 def main(args):
     parser = argparse.ArgumentParser(
         description='Render a DSM from a DTM and polygons representing buildings.')
-    parser.add_argument("input_buildings",
-                        help="Input buildings polygonal file (.vtp) or folder "
-                             "containing .obj files. Building object files start "
+    parser.add_argument("--input_vtp_path", type=str,
+                        help="Input buildings polygonal file (.vtp)")
+    parser.add_argument("--input_obj_paths", nargs="*",
+                        help="List of input building (.obj) file paths.  Building object files start "
                              "with a digit, road object files start with \"Road\". "
                              "All obj files start with comments specifying the offsets "
                              "that are added the coordinats. There are three comment lines, "
-                             "one for each coordinate: "
-                             "\"#c offset: value\" where c is x, y and z.")
+                             "one for each coordinate: \"#c offset: value\" where c is x, y and z.")
     parser.add_argument("input_dtm", help="Input digital terain model (DTM)")
     parser.add_argument("output_dsm", help="Output digital surface model (DSM)")
     parser.add_argument("--render_png", action="store_true",
@@ -109,17 +108,22 @@ def main(args):
     print("Reading the buildings ...")
     # labels for buildings and elevated roads
     labels = [6, 17]
-    if (os.path.isfile(args.input_buildings)):
+    if (os.path.isfile(args.input_vtp_path)):
         polyReader = vtk.vtkXMLPolyDataReader()
         polyReader.SetFileName(args.input_buildings)
         polyReader.Update()
         polyVtkList = [polyReader.GetOutput()]
-    else:
-        # assume a folder with OBJ files,
+    elif (args.input_obj_paths):
         # buildings start with numbers
         # optional elevated roads start with Road*.obj
-        files = [glob.glob(args.input_buildings + "/[0-9]*.obj"),
-                 glob.glob(args.input_buildings + "/Road*.obj")]
+        bldg_re = re.compile(".*/[0-9][^/]*\\.obj")
+        bldg_files = [f for f in args.input_obj_paths
+                      if bldg_re.match(f)]
+        road_re = re.compile(".*/Road[^/]*\\.obj")
+        road_files = [f for f in args.input_obj_paths
+                      if road_re.match(f)]
+        files = [bldg_files,
+                 road_files]
         files = [x for x in files if x]
         if len(files) >= 2:
             print("Found {} buildings and {} roads".format(len(files[0]), len(files[1])))
@@ -155,6 +159,8 @@ def main(args):
                 append.AddInputConnection(transformFilter.GetOutputPort())
             append.Update()
             polyVtkList.append(append.GetOutput())
+    else:
+        raise RuntimeError("Must provide either --input_vtp_path, or --input_obj_paths")
 
     arrayName = "Elevation"
     append = vtk.vtkAppendPolyData()
