@@ -25,19 +25,13 @@ import numpy as np
 
 from danesfield import rpc
 from danesfield import raytheon_rpc
+from danesfield import gdal_utils
 
 import gdalconst
 import gdal
 
 import pyproj
-
-
-def gdal_get_transform(src_image):
-    geo_trans = src_image.GetGeoTransform()
-    if geo_trans == (0.0, 1.0, 0.0, 0.0, 0.0, 1.0):
-        geo_trans = gdal.GCPsToGeoTransform(src_image.GetGCPs())
-
-    return geo_trans
+import sys
 
 
 def gdal_get_projection(src_image):
@@ -47,115 +41,108 @@ def gdal_get_projection(src_image):
     return projection
 
 
-def world_to_pixel(geoMatrix, x, y):
-    """
-    Uses a gdal geomatrix (gdal.GetGeoTransform()) to calculate
-    the pixel location of a geospatial coordinate
-    """
-    tX = x - geoMatrix[0]
-    tY = y - geoMatrix[3]
-    a = geoMatrix[1]
-    b = geoMatrix[2]
-    c = geoMatrix[4]
-    d = geoMatrix[5]
-    div = 1.0 / (a * d - b * c)
-    pixel = int((tX * d - tY * b) * div)
-    line = int((tY * a - tX * c) * div)
-    return (pixel, line)
-
-
 def read_raytheon_RPC(rpc_path, img_file):
-    # image file name for pattern of raytheon RPC
-    file_no_ext = os.path.splitext(img_file)[0]
-    rpc_file = rpc_path + 'GRA_' + file_no_ext + '.up.rpc'
-    if os.path.isfile(rpc_file) is False:
-        rpc_file = rpc_path + 'GRA_' + file_no_ext + '_0.up.rpc'
+    file_no_ext = os.path.splitext(os.path.basename(img_file))[0]
+    if type(rpc_path) is list:
+        rpc_file = [f for f in rpc_path if f.find(file_no_ext) > 0][0]
+        if rpc_file is None or os.path.isfile(rpc_file) is False:
+            return None
+    else:
+        rpc_file = rpc_path + 'GRA_' + file_no_ext + '.up.rpc'
         if os.path.isfile(rpc_file) is False:
-                    return None
-
+            rpc_file = rpc_path + 'GRA_' + file_no_ext + '_0.up.rpc'
+            if os.path.isfile(rpc_file) is False:
+                        return None
     with open(rpc_file, 'r') as f:
         return raytheon_rpc.parse_raytheon_rpc_file(f)
 
 
-def get_corners(gt, cols, rows):
-    corners = []
-    xarr = [0, cols]
-    yarr = [0, rows]
-    for px in xarr:
-        for py in yarr:
-            x = gt[0] + (px * gt[1]) + (py * gt[2])
-            y = gt[3] + (px * gt[4]) + (py * gt[5])
-            corners.append([x, y])
-        yarr.reverse()
-    return corners
+def filesFromArgs(src_root, dest_dir):
+    if type(src_root) is list:
+        for src_file in src_root:
+            name = os.path.basename(src_file)
+            yield src_file, dest_dir + "/" + name
+    else:
+        for root, dirs, files in os.walk(src_root):
+            for file_ in files:
+                new_root = root.replace(src_root, dest_dir)
+                if not os.path.exists(new_root):
+                    os.makedirs(new_root)
+                ext = os.path.splitext(file_)[-1].lower()
+                if ext != ".ntf":
+                    continue
 
-
-def utm_to_latlong(pts, utm_zone):
-    wgs84 = pyproj.Proj(init="epsg:326" + str(utm_zone))
-    utm = pyproj.Proj(init='epsg:4326')
-    new_pts = np.zeros_like(pts)
-    new_pts[:, 0], new_pts[:, 1], new_pts[:, 2] = pyproj.transform(
-            wgs84, utm, pts[:, 0], pts[:, 1], pts[:, 2])
-    return new_pts
+                src_img_file = os.path.join(root, file_)
+                dst_img_file = os.path.join(new_root, file_)
+                yield src_img_file, dst_img_file
 
 
 def main(args):
     parser = argparse.ArgumentParser(
         description="Crop out images for each of the CORE3D AOIs")
     parser.add_argument("aoi",
-                        choices=['D1', 'D2', 'D3', 'D4'],
-                        help="dataset_AOI options: D1 (WPAFB), D2 (WPAFB), "
-                             "D3 (USCD), D4 (Jacksonville)")
-    parser.add_argument("src_root",
-                        help="Source imagery root directory")
+                        help="dataset AOI: D1 (WPAFB), D2 (WPAFB), "
+                             "D3 (USCD), D4 (Jacksonville) or "
+                             "DSM used to get the cropping bounds and elevation")
     parser.add_argument("dest_dir",
                         help="Destination directory for writing crops")
+    parser.add_argument("src_root",
+                        help="Source imagery root directory or list of images",
+                        nargs="+")
     parser.add_argument("--rpc_dir",
-                        help="Source directory for RPC text files")
-    parser.add_argument("--dsm",
-                        help="Source DSM used to get the cropping bounds")
+                        help="Source directory for RPCs or list of RPC files",
+                        nargs="+")
     args = parser.parse_args(args)
 
-    AOI = args.aoi
-    src_root_dir = os.path.join(args.src_root, '')
-    dst_root_dir = os.path.join(args.dest_dir, '')
-
-    print('Cropping images from: ' + src_root_dir)
-    print('Locating crops in directory: ' + dst_root_dir)
-    print('Cropping to AOI: ' + AOI)
-
-    corrected_rpc_dir = None
-    if args.rpc_dir:
-        corrected_rpc_dir = os.path.join(args.rpc_dir, '')
-        print('Using update RPCs from: ' + corrected_rpc_dir)
+    useDSM = False
+    if os.path.isfile(args.aoi):
+        useDSM = True
+    if len(args.src_root) > 1:
+        src_root = args.src_root
     else:
-        print('Not using updated RPCs')
+        src_root = os.path.join(args.src_root[0], '')
 
-    if args.dsm and os.path.isfile(args.dsm):
-        # Determine the cropping bounds from DSM
-        data_dsm = gdal.Open(args.dsm)
-        dsm_w = data_dsm.RasterXSize
-        dsm_h = data_dsm.RasterYSize
-        gt = data_dsm.GetGeoTransform()
-        utm_corners = get_corners(gt, dsm_w, dsm_h)
-        dsm = data_dsm.GetRasterBand(1).ReadAsArray(0, 0, dsm_w, dsm_h, buf_type=gdal.GDT_Float32)
+    dest_dir = os.path.join(args.dest_dir, '')
+
+    print('Writing crops in directory: ' + dest_dir)
+    print('Cropping to AOI: ' + args.aoi)
+
+    rpc_dir = None
+    if args.rpc_dir:
+        if len(args.rpc_dir) > 1:
+            rpc_dir = args.rpc_dir
+            print('Using RPCs from {} file list'.format(len(args.rpc_dir)))
+        else:
+            rpc_dir = os.path.join(args.rpc_dir[0], '')
+            print("Using RPCs from directory: {}".format(rpc_dir))
+    else:
+        print('Using RPCs from image metadata.')
+
+    if useDSM:
+        data_dsm = gdal_utils.gdal_open(args.aoi)
+        # Elevation
+        dsm = data_dsm.GetRasterBand(1).ReadAsArray(
+            0, 0, data_dsm.RasterXSize, data_dsm.RasterYSize, buf_type=gdal.GDT_Float32)
         no_data_value = data_dsm.GetRasterBand(1).GetNoDataValue()
         dsm_without_no_data = dsm[dsm != no_data_value]
         elevations = np.array([[dsm_without_no_data.min()], [dsm_without_no_data.max()]])
-        utm_corners = np.hstack((np.tile(utm_corners, (2, 1)), np.repeat(elevations, 4, axis=0)))
-
-        if AOI == 'D1' or AOI == 'D2':
-            utm_zone = 16
-        elif AOI == 'D3':
-            utm_zone = 11
-        elif AOI == 'D4':
-            utm_zone = 17
-        latlong_corners = utm_to_latlong(utm_corners, utm_zone)
+        # Cropping bounds from DSM
+        [minX, minY, maxX, maxY] = gdal_utils.gdal_bounding_box(
+            data_dsm, pyproj.Proj('+proj=longlat +datum=WGS84'))
+        latlong_corners = np.array(
+            [[minX, minY, elevations[0]],
+             [maxX, minY, elevations[0]],
+             [maxX, maxY, elevations[0]],
+             [minX, maxY, elevations[0]],
+             [minX, minY, elevations[1]],
+             [maxX, minY, elevations[1]],
+             [maxX, maxY, elevations[1]],
+             [minX, maxY, elevations[1]]])
         print("Cropping bounds extracted from DSM")
     else:
         elevation_range = 100
         # WPAFB AOI D1
-        if AOI == 'D1':
+        if args.aoi == 'D1':
             elevation = 240
             ul_lon = -84.11236693243779
             ul_lat = 39.77747025512961
@@ -170,7 +157,7 @@ def main(args):
             ll_lat = 39.78287156225952
 
         # WPAFB AOI D2
-        if AOI == 'D2':
+        if args.aoi == 'D2':
             elevation = 300
             ul_lon = -84.08847226672408
             ul_lat = 39.77650841377968
@@ -185,7 +172,7 @@ def main(args):
             ll_lat = 39.78430009793551
 
         # UCSD AOI D3
-        if AOI == 'D3':
+        if args.aoi == 'D3':
             elevation = 120
             ul_lon = -117.24298768132505
             ul_lat = 32.882791370856857
@@ -200,7 +187,7 @@ def main(args):
             ll_lat = 32.882811496466012
 
         # Jacksonville AOI D4
-        if AOI == 'D4':
+        if args.aoi == 'D4':
             elevation = 2
             ul_lon = -81.67078466333165
             ul_lat = 30.31698808384777
@@ -214,163 +201,155 @@ def main(args):
             ll_lon = -81.67062242425624
             ll_lat = 30.32997669492018
 
-    for root, dirs, files in os.walk(src_root_dir):
-        for file_ in files:
-            new_root = root.replace(src_root_dir, dst_root_dir)
-            if not os.path.exists(new_root):
-                os.makedirs(new_root)
-            ext = os.path.splitext(file_)[-1].lower()
-            if ext != ".ntf":
-                continue
+    for src_img_file, dst_img_file in filesFromArgs(src_root, dest_dir):
+        dst_file_no_ext = os.path.splitext(dst_img_file)[0]
+        dst_img_file = dst_file_no_ext + ".tif"
 
-            src_img_file = os.path.join(root, file_)
-            dst_img_file = os.path.join(new_root, file_)
-            dst_file_no_ext = os.path.splitext(dst_img_file)[0]
-            dst_img_file = dst_file_no_ext + ".tif"
+        print('Converting img: ' + src_img_file)
+        src_image = gdal.Open(src_img_file, gdalconst.GA_ReadOnly)
 
-            print('Converting img: ' + src_img_file)
-            src_image = gdal.Open(src_img_file, gdalconst.GA_ReadOnly)
+        nodata_values = []
+        nodata = 0
+        for i in range(src_image.RasterCount):
+            nodata_value = src_image.GetRasterBand(i+1).GetNoDataValue()
+            if not nodata_value:
+                nodata_value = nodata
+            nodata_values.append(nodata_value)
 
-            nodata_values = []
-            nodata = 0
-            for i in range(src_image.RasterCount):
-                nodata_value = src_image.GetRasterBand(i+1).GetNoDataValue()
-                if not nodata_value:
-                    nodata_value = nodata
-                nodata_values.append(nodata_value)
-
-            if args.dsm and os.path.isfile(args.dsm):
-                poly = latlong_corners.copy()
-                elevation = np.median(dsm)
+        if useDSM:
+            poly = latlong_corners.copy()
+            elevation = np.median(dsm)
+        else:
+            poly = np.array([[ul_lon, ul_lat, elevation + elevation_range],
+                             [ur_lon, ur_lat, elevation + elevation_range],
+                             [lr_lon, lr_lat, elevation + elevation_range],
+                             [ll_lon, ll_lat, elevation + elevation_range],
+                             [ul_lon, ul_lat, elevation + elevation_range],
+                             [ul_lon, ul_lat, elevation - elevation_range],
+                             [ur_lon, ur_lat, elevation - elevation_range],
+                             [lr_lon, lr_lat, elevation - elevation_range],
+                             [ll_lon, ll_lat, elevation - elevation_range],
+                             [ul_lon, ul_lat, elevation - elevation_range]])
+        if rpc_dir:
+            # using file RPC
+            model = read_raytheon_RPC(rpc_dir, src_img_file)
+            if model is None:
+                print('No RPC file exists using image metadata RPC: ' +
+                      src_img_file + '\n')
+                rpc_md = src_image.GetMetadata('RPC')
+                model = rpc.rpc_from_gdal_dict(rpc_md)
             else:
-                poly = np.array([[ul_lon, ul_lat, elevation + elevation_range],
-                                 [ur_lon, ur_lat, elevation + elevation_range],
-                                 [lr_lon, lr_lat, elevation + elevation_range],
-                                 [ll_lon, ll_lat, elevation + elevation_range],
-                                 [ul_lon, ul_lat, elevation + elevation_range],
-                                 [ul_lon, ul_lat, elevation - elevation_range],
-                                 [ur_lon, ur_lat, elevation - elevation_range],
-                                 [lr_lon, lr_lat, elevation - elevation_range],
-                                 [ll_lon, ll_lat, elevation - elevation_range],
-                                 [ul_lon, ul_lat, elevation - elevation_range]])
+                rpc_md = rpc.rpc_to_gdal_dict(model)
+        else:
+            # using image metadata RPC
             rpc_md = src_image.GetMetadata('RPC')
             model = rpc.rpc_from_gdal_dict(rpc_md)
-            if corrected_rpc_dir:
-                updated_rpc = read_raytheon_RPC(corrected_rpc_dir, file_)
-                if updated_rpc is None:
-                    print('No RPC file exists for image file, skipping: ' +
-                          src_img_file + '\n')
-                    continue
-                else:
-                    model = updated_rpc
-                    rpc_md = rpc.rpc_to_gdal_dict(updated_rpc)
 
-            # Project the world point locations into the image
-            pixel_poly = model.project(poly)
+        # Project the world point locations into the image
+        pixel_poly = model.project(poly)
 
-            ul_x, ul_y = map(int, pixel_poly.min(0))
-            lr_x, lr_y = map(int, pixel_poly.max(0))
-            min_x, min_y, z = poly.min(0)
-            max_x, max_y, z = poly.max(0)
+        ul_x, ul_y = map(int, pixel_poly.min(0))
+        lr_x, lr_y = map(int, pixel_poly.max(0))
+        min_x, min_y, z = poly.min(0)
+        max_x, max_y, z = poly.max(0)
 
-            ul_x = max(0, ul_x)
-            ul_y = max(0, ul_y)
-            lr_x = min(src_image.RasterXSize - 1, lr_x)
-            lr_y = min(src_image.RasterYSize - 1, lr_y)
+        ul_x = max(0, ul_x)
+        ul_y = max(0, ul_y)
+        lr_x = min(src_image.RasterXSize - 1, lr_x)
+        lr_y = min(src_image.RasterYSize - 1, lr_y)
 
-            samp_off = rpc_md['SAMP_OFF']
-            samp_off = float(samp_off) - ul_x
-            rpc_md['SAMP_OFF'] = str(samp_off)
+        samp_off = rpc_md['SAMP_OFF']
+        samp_off = float(samp_off) - ul_x
+        rpc_md['SAMP_OFF'] = str(samp_off)
 
-            line_off = rpc_md['LINE_OFF']
-            line_off = float(line_off) - ul_y
-            rpc_md['LINE_OFF'] = str(line_off)
+        line_off = rpc_md['LINE_OFF']
+        line_off = float(line_off) - ul_y
+        rpc_md['LINE_OFF'] = str(line_off)
 
-            model.image_offset[0] -= ul_x
-            model.image_offset[1] -= ul_y
+        model.image_offset[0] -= ul_x
+        model.image_offset[1] -= ul_y
 
-            # Calculate the pixel size of the new image
-            # Constrain the width and height to the bounds of the image
-            px_width = int(lr_x - ul_x + 1)
-            if px_width + ul_x > src_image.RasterXSize - 1:
-                px_width = int(src_image.RasterXSize - ul_x - 1)
+        # Calculate the pixel size of the new image
+        # Constrain the width and height to the bounds of the image
+        px_width = int(lr_x - ul_x + 1)
+        if px_width + ul_x > src_image.RasterXSize - 1:
+            px_width = int(src_image.RasterXSize - ul_x - 1)
 
-            px_height = int(lr_y - ul_y + 1)
-            if px_height + ul_y > src_image.RasterYSize - 1:
-                px_height = int(src_image.RasterYSize - ul_y - 1)
+        px_height = int(lr_y - ul_y + 1)
+        if px_height + ul_y > src_image.RasterYSize - 1:
+            px_height = int(src_image.RasterYSize - ul_y - 1)
 
-            # We've constrained x & y so they are within the image.
-            # If the width or height ends up negative at this point,
-            # the AOI is completely outside the image
-            if px_width < 0 or px_height < 0:
-                print('AOI out of range, skipping\n')
-                continue
+        # We've constrained x & y so they are within the image.
+        # If the width or height ends up negative at this point,
+        # the AOI is completely outside the image
+        if px_width < 0 or px_height < 0:
+            print('AOI out of range, skipping\n')
+            continue
 
-            corners = [[0, 0], [px_width, 0], [px_width, px_height], [0, px_height]]
-            corner_names = ['UpperLeft', 'UpperRight', 'LowerRight', 'LowerLeft']
-            world_corners = model.back_project(corners, elevation)
+        corners = [[0, 0], [px_width, 0], [px_width, px_height], [0, px_height]]
+        corner_names = ['UpperLeft', 'UpperRight', 'LowerRight', 'LowerLeft']
+        world_corners = model.back_project(corners, elevation)
 
-            corner_gcps = []
-            for (p, l), (x, y, h), n in zip(corners, world_corners, corner_names):
-                corner_gcps.append(gdal.GCP(x, y, h, p, l, "", n))
+        corner_gcps = []
+        for (p, l), (x, y, h), n in zip(corners, world_corners, corner_names):
+            corner_gcps.append(gdal.GCP(x, y, h, p, l, "", n))
 
-            # Load the source data as a gdalnumeric array
-            clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
+        # Load the source data as a gdalnumeric array
+        clip = src_image.ReadAsArray(ul_x, ul_y, px_width, px_height)
 
-            # create output raster
-            raster_band = src_image.GetRasterBand(1)
-            output_driver = gdal.GetDriverByName('MEM')
+        # create output raster
+        raster_band = src_image.GetRasterBand(1)
+        output_driver = gdal.GetDriverByName('MEM')
 
-            # In the event we have multispectral images,
-            # shift the shape dimesions we are after,
-            # since position 0 will be the number of bands
-            try:
-                clip_shp_0 = clip.shape[0]
-                clip_shp_1 = clip.shape[1]
-                if clip.ndim > 2:
-                    clip_shp_0 = clip.shape[1]
-                    clip_shp_1 = clip.shape[2]
-            except (AttributeError):
-                print('Error decoding image, skipping\n')
-                continue
+        # In the event we have multispectral images,
+        # shift the shape dimesions we are after,
+        # since position 0 will be the number of bands
+        try:
+            clip_shp_0 = clip.shape[0]
+            clip_shp_1 = clip.shape[1]
+            if clip.ndim > 2:
+                clip_shp_0 = clip.shape[1]
+                clip_shp_1 = clip.shape[2]
+        except (AttributeError):
+            print('Error decoding image, skipping\n')
+            continue
 
-            output_dataset = output_driver.Create(
-                '', clip_shp_1, clip_shp_0,
-                src_image.RasterCount, raster_band.DataType)
+        output_dataset = output_driver.Create(
+            '', clip_shp_1, clip_shp_0,
+            src_image.RasterCount, raster_band.DataType)
 
-            # Copy All metadata data from src to dst
-            domains = src_image.GetMetadataDomainList()
-            for tag in domains:
-                md = src_image.GetMetadata(tag)
-                if md:
-                    output_dataset.SetMetadata(md, tag)
+        # Copy All metadata data from src to dst
+        domains = src_image.GetMetadataDomainList()
+        for tag in domains:
+            md = src_image.GetMetadata(tag)
+            if md:
+                output_dataset.SetMetadata(md, tag)
 
-            # Rewrite the rpc_md that we modified above.
-            output_dataset.SetMetadata(rpc_md, 'RPC')
-            output_dataset.SetGeoTransform(gdal.GCPsToGeoTransform(corner_gcps))
-            output_dataset.SetProjection(gdal_get_projection(src_image))
+        # Rewrite the rpc_md that we modified above.
+        output_dataset.SetMetadata(rpc_md, 'RPC')
+        output_dataset.SetGeoTransform(gdal.GCPsToGeoTransform(corner_gcps))
+        output_dataset.SetProjection(gdal_get_projection(src_image))
 
-            # End logging, print blank line for clarity
-            print('')
-            bands = src_image.RasterCount
-            if bands > 1:
-                for i in range(bands):
-                    outBand = output_dataset.GetRasterBand(i + 1)
-                    outBand.SetNoDataValue(nodata_values[i])
-                    outBand.WriteArray(clip[i])
-            else:
-                outBand = output_dataset.GetRasterBand(1)
-                outBand.SetNoDataValue(nodata_values[0])
-                outBand.WriteArray(clip)
+        # End logging, print blank line for clarity
+        print('')
+        bands = src_image.RasterCount
+        if bands > 1:
+            for i in range(bands):
+                outBand = output_dataset.GetRasterBand(i + 1)
+                outBand.SetNoDataValue(nodata_values[i])
+                outBand.WriteArray(clip[i])
+        else:
+            outBand = output_dataset.GetRasterBand(1)
+            outBand.SetNoDataValue(nodata_values[0])
+            outBand.WriteArray(clip)
 
-            if dst_img_file:
-                output_driver = gdal.GetDriverByName('GTiff')
-                output_driver.CreateCopy(
-                    dst_img_file, output_dataset, False)
+        if dst_img_file:
+            output_driver = gdal.GetDriverByName('GTiff')
+            output_driver.CreateCopy(
+                dst_img_file, output_dataset, False)
 
 
 if __name__ == '__main__':
-    import sys
     try:
         main(sys.argv[1:])
     except Exception as e:
