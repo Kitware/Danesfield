@@ -38,6 +38,11 @@ def main(args):
         # default='../out_geon/D4_Curve_Mesh.ply',
         type=str,
         help='Output ply mesh file.')
+    parser.add_argument(
+        '--as-text',
+        action='store_true',
+        default=False,
+        help='Output ply as ASCII instead of binary')
     args = parser.parse_args(args)
 
     original_dtm = gdal.Open(args.input_dtm, gdal.GA_ReadOnly)
@@ -107,7 +112,8 @@ def main(args):
 
     el_vertex = plyfile.PlyElement.describe(all_vertex, 'vertex')
     el_face = plyfile.PlyElement.describe(all_face, 'face')
-    plyfile.PlyData([el_vertex, el_face]).write(args.output_mesh)
+    plyfile.PlyData([el_vertex, el_face],
+                    text=args.as_text).write(args.output_mesh)
 
 
 if __name__ == "__main__":

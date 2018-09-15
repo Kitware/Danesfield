@@ -9,6 +9,7 @@ import datetime
 import logging
 import os
 import re
+import glob
 import subprocess
 import sys
 
@@ -23,6 +24,7 @@ import segment_by_height
 import kwsemantic_segment
 import building_segmentation
 import roof_geon_extraction
+import buildings_to_dsm
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -372,7 +374,8 @@ def main(config_fpath):
     cmd_args.append('--info_paths')
     cmd_args.extend(info_paths)
     cmd_args.extend(['--output_dir', working_dir,
-                     '--model_path', config['material']['model_fpath']])
+                     '--model_path', config['material']['model_fpath'],
+                     '--outfile_prefix', aoi_name])
     if config.has_option('material', 'batch_size'):
         cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
     if config['material'].getboolean('cuda'):
@@ -407,6 +410,32 @@ def main(config_fpath):
 
     # Collaborate with Bastien Jacquet on what to run here
     # Dan Lipsa is helping with conda packaging
+
+    #############################################
+    # Buildings to DSM
+    #############################################
+    logging.info('---- Running buildings to dsm ----')
+
+    # Generate the output DSM
+    output_dsm = os.path.join(working_dir, "buildings_to_dsm_DSM.tif")
+    cmd_args = [
+        dtm_file,
+        output_dsm]
+    cmd_args.append('--input_obj_paths')
+    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
+    logging.info(cmd_args)
+    buildings_to_dsm.main(cmd_args)
+
+    # Generate the output CLS
+    output_cls = os.path.join(working_dir, "buildings_to_dsm_CLS.tif")
+    cmd_args = [
+        dtm_file,
+        output_cls,
+        '--render_cls']
+    cmd_args.append('--input_obj_paths')
+    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
+    logging.info(cmd_args)
+    buildings_to_dsm.main(cmd_args)
 
 
 if __name__ == '__main__':

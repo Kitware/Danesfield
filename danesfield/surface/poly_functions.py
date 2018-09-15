@@ -222,6 +222,10 @@ def fix_intersection(plane):
     :param plane: plane coordinates
     :return: None self-intersection plane coordinates
     '''
+
+    # If a polygon is a triangle or quad, return
+    if plane.shape[0] <= 4:
+        return plane
     temp_cor = plane
     p_n = fit_plane(temp_cor)
     p_n = np.array(p_n[0:3])
@@ -251,18 +255,21 @@ def fix_intersection(plane):
     else:
         t_cor = poly_cor.buffer(0, join_style=2)
         poly_cor = t_cor.buffer(0, join_style=2)
-        if poly_cor.geom_type == 'MultiPolygon':
-            area = [poly_cor[geo_index].area for geo_index in range(0, len(poly_cor))]
-            temp_cor = np.array(poly_cor[area.index(max(area))].exterior.coords[:])
-        else:
-            temp_cor = np.array(poly_cor.exterior.coords[:])
+        try:
+            if poly_cor.geom_type == 'MultiPolygon':
+                area = [poly_cor[geo_index].area for geo_index in range(0, len(poly_cor))]
+                temp_cor = np.array(poly_cor[area.index(max(area))].exterior.coords[:])
+            else:
+                temp_cor = np.array(poly_cor.exterior.coords[:])
 
-        temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
-        if rotate_flag == 1:
-            temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
-        else:
-            temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
-        return remove_close_point(temp_cor)
+            temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
+            if rotate_flag == 1:
+                temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
+            else:
+                temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
+            return remove_close_point(temp_cor)
+        except:
+            return plane
 
 
 def fix_height(plane, new_cor):

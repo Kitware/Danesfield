@@ -15,13 +15,14 @@ import os
 import shutil
 import subprocess
 import sys
+import re
 
 from pathlib import Path
 
 import roof_segmentation
 import fitting_curved_plane
 import geon_to_mesh
-import ply2geon
+# import ply2geon
 import ply2obj
 
 
@@ -113,7 +114,8 @@ def main(args):
     mesh_output = os.path.join(args.output_dir, "output_curves.ply")
     geon_to_mesh.main(['--input_geon', curve_fitting_geon,
                        '--input_dtm', args.dtm,
-                       '--output_mesh', mesh_output])
+                       '--output_mesh', mesh_output,
+                       '--as-text'])
 
     # Step #3_5 (Note the step numbering here is in reference to the
     # data flow diagram provided by Purdue / Columbia)
@@ -189,10 +191,36 @@ def main(args):
                   '--dem', args.dtm,
                   '--offset'])
 
-    print("* Converting PLY files to geon JSON")
-    # Convert all PLY files to geon JSON
-    ply2geon.main(['--ply_dir', all_ply_dir,
-                   '--dem', args.dtm])
+    # Skipping this step for now
+    # print("* Converting PLY files to geon JSON")
+    # # Convert all PLY files to geon JSON
+    # ply2geon.main(['--ply_dir', all_ply_dir,
+    #                '--dem', args.dtm])
+
+    # The buildings_to_dsm.py script requires a certain naming
+    # convention for the OBJ files based on whether they're roads or
+    # buildings, this step copies / renames the OBJ files to suit that
+    # convention
+    print("* Collating OBJ files for buildings_to_dsm.py")
+    # Output obj directory; want to collate the renamed OBJ files into
+    # a single output directory.  NOTE ** just dumping these into the
+    # top level output directory for now
+    all_obj_dir = "{}_obj".format(all_ply_dir)
+    road_re = re.compile("road_([0-9]+)\\.obj")
+    for f in Path(all_obj_dir).glob("road_*.obj"):
+        match = re.match(road_re, os.path.basename(str(f)))
+        if match:
+            out_fname = "Road_{}.obj".format(match[1])
+            shutil.copy(str(f), os.path.join(args.output_dir, out_fname))
+        else:
+            print("** Warning: couldn't match road OBJ filename '{}' with \
+expected regexp.  Skipping".format(str(f)))
+
+    # Copy the rest of the OBJ files
+    for i, f in enumerate(sorted(Path(all_obj_dir).glob("*.obj"), key=str)):
+        basename = os.path.basename(str(f))
+        # Prefix the filename with a number
+        shutil.copy(str(f), os.path.join(args.output_dir, "{}_{}".format(i, basename)))
 
 
 if __name__ == '__main__':
