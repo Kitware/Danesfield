@@ -197,22 +197,18 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,
         for j in range(ortho_grid_z.shape[0]):
             vertex.append(
                 (original_grid_point[i, j, 0], original_grid_point[i, j, 1], original_grid_point[i, j, 2]))
-            #image_point = ProjectPoint(projection_model,
-            #                           [original_grid_point[i, j, 0] + center_of_mess[0],
-            #                            original_grid_point[i, j, 1] + center_of_mess[1]])
-            #height = dtm[image_point[1], image_point[0]] - center_of_mess[2]
-            #vertex.append(
-            #    (original_grid_point[i, j, 0], original_grid_point[i, j, 1], 0))
+            image_point = ProjectPoint(projection_model,
+                                       [original_grid_point[i, j, 0] + center_of_mess[0],
+                                        original_grid_point[i, j, 1] + center_of_mess[1]])
+            height = dtm[image_point[1], image_point[0]] - center_of_mess[2]
+            vertex.append(
+                (original_grid_point[i, j, 0], original_grid_point[i, j, 1], height))
         if i != 0:
             if flag:
-                #face.append(([start_point+4*i - 4,
-                #              start_point+4*i,  start_point+4*i-2], 255, 255, 255))
-                #face.append(([start_point+4 *
-                #              i, start_point+4*i+2,  start_point+4*i-2], 255, 255, 255))
-                face.append(([start_point+2*i - 2,
-                              start_point+2*i,  start_point+2*i-1], 255, 255, 255))
-                face.append(([start_point+2 *
-                              i, start_point+2*i+1,  start_point+2*i-1], 255, 255, 255))
+                face.append(([start_point+4*i - 4,
+                              start_point+4*i,  start_point+4*i-2], 255, 255, 255))
+                face.append(([start_point+4 *
+                              i, start_point+4*i+2,  start_point+4*i-2], 255, 255, 255))
 
                 #face.append(([start_point+4*i -
                 #              3, start_point+4*i-1,  start_point+4*i+3], 255, 255, 255))
@@ -229,14 +225,10 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,
                 #              2, start_point+4*i+3,  start_point+4*i-1], 255, 255, 255))
 
             else:
-                #face.append(([start_point+4*i, start_point+4*i -
-                #              4, start_point+4*i-2], 255, 255, 255))
-                #face.append(([start_point+4*i+2, start_point+4 *
-                #              i, start_point+4*i-2], 255, 255, 255))
-                face.append(([start_point+2*i, start_point+2*i -
-                              2, start_point+2*i-1], 255, 255, 255))
-                face.append(([start_point+2*i+1, start_point+2 *
-                              i, start_point+2*i-1], 255, 255, 255))
+                face.append(([start_point+4*i, start_point+4*i -
+                              4, start_point+4*i-2], 255, 255, 255))
+                face.append(([start_point+4*i+2, start_point+4 *
+                              i, start_point+4*i-2], 255, 255, 255))
 
                 #face.append(([start_point+4*i-1, start_point+4*i -
                 #              3, start_point+4*i+3], 255, 255, 255))
