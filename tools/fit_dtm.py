@@ -35,7 +35,11 @@ def main(args):
         win_xsize=dsm.RasterXSize, win_ysize=dsm.RasterYSize)
     print("DSM raster shape {}".format(dsmRaster.shape))
 
-    dtm = dsmRaster
+    # Estimate the DTM data from the DSM data
+    estimator = danesfield.dtm.DTMEstimator(band.GetNoDataValue(),
+                                            args.num_iterations,
+                                            args.tension)
+    dtm = estimator.fit_dtm(dsmRaster)
 
     # create the DTM image
     driver = dsm.GetDriver()
@@ -53,15 +57,15 @@ def main(args):
         bands=dsm.RasterCount, eType=band.DataType,
         options=options)
 
+    print("Copying metadata")
     gdalnumeric.CopyDatasetInfo(dsm, destImage)
 
-    estimator = danesfield.dtm.DTMEstimator(band.GetNoDataValue(),
-                                            args.num_iterations,
-                                            args.tension)
-    dtm = estimator.fit_dtm(dtm)
-
+    print("Writing image data")
     destBand = destImage.GetRasterBand(1)
     destBand.WriteArray(dtm)
+    del destImage
+
+    print("Done")
 
 
 if __name__ == '__main__':
