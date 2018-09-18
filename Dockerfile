@@ -67,14 +67,6 @@ COPY ./deployment/conda/conda_env.yml \
 RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.yml -n core3d && \
     ${CONDA_EXECUTABLE} clean -tipsy
 
-# Install Danesfield package into CORE3D Conda environment
-COPY . ./danesfield
-RUN rm -rf ./danesfield/deployment
-RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-      conda activate core3d && \
-      pip install --upgrade pip && \
-      pip install -e ./danesfield"]
-
 # Install core3d-tf_ops package from kitware-geospatial / defaults
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
       conda activate core3d && \
@@ -86,6 +78,14 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
       conda activate core3d && \
       conda install -c conda-forge -y opencv && \
       conda clean -tipsy"]
+
+# Install Danesfield package into CORE3D Conda environment
+COPY . ./danesfield
+RUN rm -rf ./danesfield/deployment
+RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+      conda activate core3d && \
+      pip install --upgrade pip && \
+      pip install -e ./danesfield"]
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
