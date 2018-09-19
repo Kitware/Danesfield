@@ -10,6 +10,22 @@ import vtk
 from vtk.numpy_interface import dataset_adapter as dsa
 from vtk.util import numpy_support
 
+def read_offset_obj(fileName, offset):
+    offset = [0.0, 0.0, 0.0]
+    axes = ['x', 'y', 'z']
+    reFloatList = list("#. offset: ([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)")
+    with open(files[0][0]) as f:
+        for i in range(3):
+            reFloatList[1] = axes[i]
+            reFloat = re.compile("".join(reFloatList))
+            line = f.readline()
+            match = reFloat.search(line)
+            if match:
+                offset[i] = float(match.group(1))
+            else:
+                break
+    print("Offset: {}".format(offset))
+
 
 def main(args):
     parser = argparse.ArgumentParser(

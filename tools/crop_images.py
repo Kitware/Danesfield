@@ -57,23 +57,24 @@ def read_raytheon_RPC(rpc_path, img_file):
         return raytheon_rpc.parse_raytheon_rpc_file(f)
 
 
-def filesFromArgs(src_root, dest_dir):
+def filesFromArgs(src_root, dest_dir, dest_file_postfix=''):
     if type(src_root) is list:
         for src_file in src_root:
-            name = os.path.basename(src_file)
-            yield src_file, dest_dir + "/" + name
+            name_ext = os.path.basename(src_file)
+            name, ext = os.path.splitext(name_ext)
+            yield src_file, dest_dir + "/" + name + dest_file_postfix + ext
     else:
         for root, dirs, files in os.walk(src_root):
             for file_ in files:
                 new_root = root.replace(src_root, dest_dir)
                 if not os.path.exists(new_root):
                     os.makedirs(new_root)
-                ext = os.path.splitext(file_)[-1].lower()
-                if ext != ".ntf":
+                name, ext = os.path.splitext(file_)
+                if ext.lower() != ".ntf":
                     continue
 
                 src_img_file = os.path.join(root, file_)
-                dst_img_file = os.path.join(new_root, file_)
+                dst_img_file = os.path.join(new_root, name + dest_file_postfix + ext)
                 yield src_img_file, dst_img_file
 
 
@@ -85,10 +86,13 @@ def main(args):
                              "D3 (USCD), D4 (Jacksonville) or "
                              "DSM used to get the cropping bounds and elevation")
     parser.add_argument("dest_dir",
-                        help="Destination directory for writing crops")
+                        help="Destination directory for writing crops. Crop files have "
+                             "the same name as source images + an optional postifx.")
     parser.add_argument("src_root",
                         help="Source imagery root directory or list of images",
                         nargs="+")
+    parser.add_argument("--dest_file_postfix",
+                        help="Postfix added to destination files, before the extension")
     parser.add_argument("--rpc_dir",
                         help="Source directory for RPCs or list of RPC files",
                         nargs="+")
@@ -105,6 +109,10 @@ def main(args):
         print('Cropping all images from directory: {}'.format(args.src_root))
 
     dest_dir = os.path.join(args.dest_dir, '')
+    if (not args.dest_file_postfix):
+        dest_file_postfix = "_crop"
+    else:
+        dest_file_postfix = args.dest_file_postfix
 
     print('Writing crops in directory: ' + dest_dir)
     print('Cropping to AOI: ' + args.aoi)
@@ -203,7 +211,7 @@ def main(args):
             ll_lon = -81.67062242425624
             ll_lat = 30.32997669492018
 
-    for src_img_file, dst_img_file in filesFromArgs(src_root, dest_dir):
+    for src_img_file, dst_img_file in filesFromArgs(src_root, dest_dir, dest_file_postfix):
         dst_file_no_ext = os.path.splitext(dst_img_file)[0]
         dst_img_file = dst_file_no_ext + ".tif"
 

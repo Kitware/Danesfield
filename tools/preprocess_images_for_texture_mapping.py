@@ -76,21 +76,42 @@ def process_image(image_in, image_out):
     os.remove(temp_8bit_image)
 
 
+def filesFromArgs(src_dir, dest_dir, dest_file_postfix):
+    if os.path.isfile(src_dir[0]):
+        for src_file in src_dir:
+            name_ext = os.path.basename(src_file)
+            name, ext = os.path.splitext(name_ext)
+            yield src_file, dest_dir + "/" + name + dest_file_postfix + ext
+    else:
+        for src_file in glob.glob(os.path.join(src_dir, "*.tif")):
+            name_ext = os.path.basename(src_file)
+            name, ext = os.path.splitext(name_ext)
+            dest_file = os.path.join(dest_dir, name + dest_file_postfix + ext)
+            yield src_file, dest_file
+
+
 def main(args):
     parser = argparse.ArgumentParser(description='Preprocess images before texture mapping')
-    parser.add_argument("input_dir", help="Input directory")
+    parser.add_argument("input_dir", help="Input directory or list of files",
+                        nargs="+")
     parser.add_argument("output_dir", help="Output directory")
+    parser.add_argument("--dest_file_postfix",
+                        help="Postfix added to destination files, before the extension")
     args = parser.parse_args(args)
     input_dir = args.input_dir
     output_dir = args.output_dir
+
+    if (not args.dest_file_postfix):
+        dest_file_postfix = "_processed"
+    else:
+        dest_file_postfix = args.dest_file_postfix
 
     # create output directory if needed
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
 
     # iterate over all .tif images from the input directory
-    for input_file in glob.glob(os.path.join(input_dir, "*.tif")):
-        output_file = os.path.join(output_dir, os.path.basename(input_file))
+    for input_file, output_file in filesFromArgs(input_dir, output_dir, dest_file_postfix):
         process_image(input_file, output_file)
         print(input_file)
 
