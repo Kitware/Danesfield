@@ -53,17 +53,20 @@ def check_relation(plane1, plane2):
     '''
     p1 = Polygon(plane1)
     p2 = Polygon(plane2)
-    if p1.intersects(p2):
-        if p1.contains(p2):
-            flag = 1
-        else:
-            if p1.area >= p2.area:
-                flag = 2
+    try:
+        if p1.intersects(p2):
+            if p1.contains(p2):
+                flag = 1
             else:
-                flag = 3
-    else:
-        flag = 4
-    return flag
+                if p1.area >= p2.area:
+                    flag = 2
+                else:
+                    flag = 3
+        else:
+            flag = 4
+        return flag
+    except:
+        return 4
 
 
 def get_height_from_dem(cor, dem):
@@ -95,8 +98,7 @@ def get_height_from_dem(cor, dem):
         try:
             value = data[yOffset][xOffset]
             base_height.append(value)
-        except Exception as e:
-            print(e)
+        except:
             dist_2 = np.sum((r - np.array([yOffset, xOffset])) ** 2, axis=1)
             index = np.argmin(dist_2)
             value = data[r[index, 0]][r[index, 1]]
@@ -124,20 +126,22 @@ def get_difference_plane(plane1, plane2):
     :param plane2:
     :return:
     '''
-    p1 = Polygon(plane1)
-    p2 = Polygon(plane2)
-    pd = p2.difference(p1)
-    pi = p2.intersection(p1)
-    flag = True
     try:
+        p1 = Polygon(plane1)
+        p2 = Polygon(plane2)
+        pd = p2.difference(p1)
+        pi = p2.intersection(p1)
+        flag = True
         p3 = np.array(pd.exterior.coords[:])
         p4 = np.array(pi.exterior.coords[:])
-    except Exception:
+        return [flag, p3, p4]
+
+    except:
         flag = False
         p3 = None
         p4 = None
 
-    return [flag, p3, p4]
+        return [flag, p3, p4]
 
 
 def fit_plane(point):
@@ -222,8 +226,6 @@ def fix_intersection(plane):
     :param plane: plane coordinates
     :return: None self-intersection plane coordinates
     '''
-
-    # If a polygon is a triangle or quad, return
     if plane.shape[0] <= 4:
         return plane
     temp_cor = plane
