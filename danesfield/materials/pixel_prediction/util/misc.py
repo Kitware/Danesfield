@@ -124,7 +124,7 @@ class Combine_Result(object):
                 self.merge_result = result
             else:
                 self.merge_result += result
-                self.update_count += 1
+            self.update_count += 1
 
     def call(self):
         if self.merge_type == 'max_prob':
