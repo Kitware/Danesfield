@@ -241,7 +241,7 @@ def main(args):
                              [ll_lon, ll_lat, elevation - elevation_range],
                              [ul_lon, ul_lat, elevation - elevation_range]])
         if rpc_dir:
-            # using file RPC
+            print("Using file RPC: {}".format(rpc_dir))
             model = read_raytheon_RPC(rpc_dir, src_img_file)
             if model is None:
                 print('No RPC file exists using image metadata RPC: ' +
@@ -251,7 +251,7 @@ def main(args):
             else:
                 rpc_md = rpc.rpc_to_gdal_dict(model)
         else:
-            # using image metadata RPC
+            print("Using image RPC.")
             rpc_md = src_image.GetMetadata('RPC')
             model = rpc.rpc_from_gdal_dict(rpc_md)
 
