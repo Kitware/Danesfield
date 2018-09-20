@@ -2,6 +2,7 @@ import gdal
 import gdalnumeric
 import numpy
 import pyproj
+import re
 import ogr
 import osr
 
@@ -102,3 +103,25 @@ def ogr_get_layer(vectorFile, geometryType):
     if i == layerCount:
         raise RuntimeError("No layer with type {} found".format(geometryType))
     return layer
+
+
+def read_offset(fileName, offset):
+    ''' Read an offset X,Y,Z written as comment lines in a file.
+        Offsets have to be in the first 3 lines of the file. A line that does
+        not match will stop matching.
+    '''
+    offset[0] = 0.0
+    offset[1] = 0.0
+    offset[2] = 0.0
+    axes = ['x', 'y', 'z']
+    reFloatList = list("#. offset: ([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)")
+    with open(fileName) as f:
+        for i in range(3):
+            reFloatList[1] = axes[i]
+            reFloat = re.compile("".join(reFloatList))
+            line = f.readline()
+            match = reFloat.search(line)
+            if match:
+                offset[i] = float(match.group(1))
+            else:
+                break

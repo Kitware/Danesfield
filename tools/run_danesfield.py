@@ -16,6 +16,7 @@ import sys
 
 # import other tools
 import gdal
+import osr
 from danesfield import gdal_utils
 import generate_dsm
 import fit_dtm
@@ -229,7 +230,7 @@ def main(args):
     generate_dsm.main(cmd_args)
 
     # #############################################
-    # # Fit DTM to the DSM
+    # # Fit Dtm to the DSM
     # #############################################
 
     dtm_file = os.path.join(working_dir, aoi_name + '_DTM.tif')
@@ -440,9 +441,6 @@ def main(args):
     #############################################
     # Texture Mapping
     #############################################
-
-    # Collaborate with Bastien Jacquet on what to run here
-    # Dan Lipsa is helping with conda packaging
     logging.info("---- Preparing data for texture mapping ----")
 
     # -------- Prepare images --------
@@ -487,17 +485,22 @@ def main(args):
                      for i in collection_id_to_files.values()]
 
     # -------- Prepare meshes --------
-    # Meshes parameters (should be retrieved from previous steps)
-    x_offset = 0
-    y_offset = 0
-    z_offset = 0
-    utm = 16
+    # Meshes parameters
+    dsm = gdal_utils.gdal_open(dsm_file)
+    dsmProjection = dsm.GetProjection()
+    dsmSrs = osr.SpatialReference(wkt=dsmProjection)
+    utm = dsmSrs.GetUTMZone()
+    print("UTM: {}".format(utm))
 
     # Turn mesh into triangular faces
     tri_meshes_dir = working_dir + "/tri"
     if not os.path.isdir(tri_meshes_dir):
         os.mkdir(tri_meshes_dir)
-    for mesh in glob.glob(os.path.join(working_dir, "*.obj")):
+    orig_meshes = glob.glob(os.path.join(working_dir, "*.obj"))
+    # mesh offset
+    offset = [0.0, 0.0, 0.0]
+    gdal_utils.read_offset(orig_meshes[0], offset)
+    for mesh in orig_meshes:
         cmd_args = [mesh, tri_meshes_dir]
         triangulate_mesh.main(cmd_args)
 
@@ -524,8 +527,8 @@ def main(args):
     #       mesh_X_name: is just the name that we want for the output textured mesh that
     #                    is generated.
     #                    This name is also used for the sub-working-directory of the mesh
-    list_of_meshes = glob.glob(os.path.join(tri_meshes_dir, "*.obj"))
-    meshes = map(lambda x: (x, os.path.splitext(os.path.basename(x))[0]), list_of_meshes)
+    tri_meshes = glob.glob(os.path.join(tri_meshes_dir, "*.obj"))
+    meshes = map(lambda x: (x, os.path.splitext(os.path.basename(x))[0]), tri_meshes)
 
     for mesh, mesh_name in meshes:
         # create a sub-working-directory per mesh
@@ -536,9 +539,9 @@ def main(args):
         # run_texture_mapping does not like a dir that starts with ./ so remove that
         call_args = [mesh, current_working_dir.replace("./", ""), str(utm),
                      "--output-name", "building_" + mesh_name,
-                     "--offset_x", str(x_offset),
-                     "--offset_y", str(y_offset),
-                     "--offset_z", str(z_offset),
+                     "--offset_x", str(offset[0]),
+                     "--offset_y", str(offset[1]),
+                     "--offset_z", str(offset[2]),
                      "--fusion-method", fusion_method,
                      "--shadows", "no",
                      "--images"] + images_to_use
@@ -571,7 +574,9 @@ def main(args):
         dtm_file,
         output_dsm]
     cmd_args.append('--input_obj_paths')
-    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
+    obj_list = glob.glob("{}/*.obj".format(working_dir))
+    obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
+    cmd_args.extend(obj_list)
     logging.info(cmd_args)
     buildings_to_dsm.main(cmd_args)
 
@@ -582,8 +587,9 @@ def main(args):
         output_cls,
         '--render_cls']
     cmd_args.append('--input_obj_paths')
-    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
-    logging.info(cmd_args)
+    cmd_args.extend(obj_list)
+    script_call = ["buildings_to_dsm.py"] + cmd_args
+    print(*script_call)
     buildings_to_dsm.main(cmd_args)
 
 
