@@ -117,11 +117,11 @@ class Model(object):
             plydata = PlyData.read(fp)
             if plydata['vertex'].count == 0:
                 return Curved_building()
-    
+
             cor = np.vstack((plydata['vertex']['x'],
                              plydata['vertex']['y'],
                              plydata['vertex']['z'])).transpose()
-    
+
             building_model = Curved_building()
             building_model.scene_name = scene_name
             face_name = plydata['face'].data.dtype.names[0]
@@ -198,7 +198,7 @@ class Model(object):
         for fp in file_name:
             process = ''.join(['Now loading the PLY: ' + fp + '\n'])
             sys.stdout.write(process)
-            if 'curved' in fp:
+            if 'curve' in fp:
                 self.buildings.append(self.load_from_curved_ply(os.path.join(self.ply_path, fp)))
             else:
                 self.buildings.append(self.load_from_ply(os.path.join(self.ply_path, fp)))
