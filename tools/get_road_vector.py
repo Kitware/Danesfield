@@ -11,7 +11,7 @@ import re
 
 def main(args):
     parser = argparse.ArgumentParser(description="Download Openstreetmap data \
-    for a region and convert to shapefile")
+    for a region and convert to GeoJSON")
     parser.add_argument(
         '--left',
         type=str,
