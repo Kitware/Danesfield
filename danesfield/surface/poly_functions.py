@@ -3,6 +3,7 @@
 import re
 import numpy as np
 from shapely.geometry import Polygon
+import matplotlib.pyplot as plt
 
 
 def list_intersect(a, b):
@@ -256,20 +257,25 @@ def fix_intersection(plane):
         return remove_close_point(plane)
     else:
         t_cor = poly_cor.buffer(0, join_style=2)
-        poly_cor = t_cor.buffer(0, join_style=2)
         try:
-            if poly_cor.geom_type == 'MultiPolygon':
-                area = [poly_cor[geo_index].area for geo_index in range(0, len(poly_cor))]
-                temp_cor = np.array(poly_cor[area.index(max(area))].exterior.coords[:])
+            if (poly_cor.area - t_cor.area) / poly_cor.area > 0.1:
+                return plane
             else:
-                temp_cor = np.array(poly_cor.exterior.coords[:])
+                try:
+                    if t_cor.geom_type == 'MultiPolygon':
+                        area = [t_cor[geo_index].area for geo_index in range(0, len(t_cor))]
+                        temp_cor = np.array(t_cor[area.index(max(area))].exterior.coords[:])
+                    else:
+                        temp_cor = np.array(t_cor.exterior.coords[:])
 
-            temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
-            if rotate_flag == 1:
-                temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
-            else:
-                temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
-            return remove_close_point(temp_cor)
+                    temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
+                    if rotate_flag == 1:
+                        temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
+                    else:
+                        temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
+                    return remove_close_point(temp_cor)
+                except:
+                    return plane
         except:
             return plane
 
