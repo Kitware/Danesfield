@@ -6,6 +6,7 @@ Run the Danesfield processing pipeline on an AOI from start to finish.
 
 import argparse
 import configparser
+import crop_and_pansharpen
 import datetime
 import glob
 import logging
@@ -16,22 +17,17 @@ import sys
 
 # import other tools
 import gdal
-import osr
-from danesfield import gdal_utils
 import generate_dsm
 import fit_dtm
 import material_classifier
 import msi_to_rgb
 import orthorectify
 import segment_by_height
+import texture_mapping
 import kwsemantic_segment
-# import building_segmentation
-# import roof_geon_extraction
+import building_segmentation
+import roof_geon_extraction
 import buildings_to_dsm
-import merge_raw_obj_meshes
-import triangulate_mesh
-import crop_images
-import preprocess_images_for_texture_mapping
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -103,30 +99,6 @@ def classify_fpaths(prefix, fpaths, id_to_files, file_type):
                 id_to_files[prefix]['msi'][file_type] = fpath
             elif '-A1BS-' in fpath:
                 id_to_files[prefix]['swir'][file_type] = fpath
-
-
-def copy_tif_info(in_fpath, out_fpath):
-    """
-    Copy the TIF metadata from in_fpath and save it to the image at out_fpath.
-    :param in_fpath: Filepath for input image which has metadata to copy.
-    :type in_fpath: str
-
-    :param out_fpath: Filepath for image to which we want to save the metadata.
-    :type out_fpath: str
-    """
-    try:
-        logging.info("---- Copying TIF information ----")
-        gdal_in = gdal_utils.gdal_open(in_fpath)
-        gdal_out = gdal_utils.gdal_open(out_fpath, gdal.GA_Update)
-        metadata_domains = gdal_in.GetMetadataDomainList()
-        for domain in metadata_domains:
-            dico = gdal_in.GetMetadata_Dict(domain)
-            for key, val in dico.items():
-                gdal_out.SetMetadataItem(key, val, domain)
-        return True
-    except Exception as e:
-        logging.exception(e)
-        return False
 
 
 # Note: here are the AOI boundaries for the current AOIs
@@ -448,131 +420,30 @@ def main(args):
     # Texture Mapping
     #############################################
     logging.info("---- Preparing data for texture mapping ----")
-
-    dsm = gdal_utils.gdal_open(dsm_file)
-    dsmProjection = dsm.GetProjection()
-    dsmSrs = osr.SpatialReference(wkt=dsmProjection)
-    dsmProj4Ref = dsmSrs.ExportToProj4()
-    dsmUTMZone = dsmSrs.GetUTMZone()
-    print("UTM: {}".format(dsmUTMZone))
-
-    # -------- Prepare images --------
     for collection_id, files in collection_id_to_files.items():
-        for type in ('pan', 'msi'):
-            # Crop images
-            ntf_fpath = files[type]['image']
-            fname = os.path.splitext(os.path.split(ntf_fpath)[1])[0]
-            crop_img_fpath = os.path.join(working_dir, '{}_crop.tif'.format(fname))
-            cmd_args = [dsm_file, working_dir, ntf_fpath, "--dest_file_postfix", "_crop"]
+        cmd_args = [dsm_file, working_dir, "--pan", files['pan']['image']]
+        rpc_fpath = files['pan'].get('rpc', None)
+        if (rpc_fpath):
+            cmd_args.append(rpc_fpath)
+        cmd_args.extend(["--msi", files['msi']['image']])
+        rpc_fpath = files['msi'].get('rpc', None)
+        if (rpc_fpath):
+            cmd_args.append(rpc_fpath)
+        script_call = ["crop_and_pansharpen.py"] + cmd_args
+        print(*script_call)
+        crop_and_pansharpen.main(cmd_args)
 
-            rpc_fpath = files[type].get('rpc', None)
-            if rpc_fpath:
-                cmd_args.extend(['--rpc_dir', rpc_fpath])
-
-            script_call = ["crop_images.py"] + cmd_args
-            print(*script_call)
-            crop_images.main(cmd_args)
-            files[type]['crop_img_fpath'] = crop_img_fpath
-
-        # Pansharpen the cropped images
-        pan_ntf_fpath = files['pan']['image']
-        pan_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
-        crop_pansharpened_image = os.path.join(
-            working_dir, '{}_crop_pansharpened.tif'.format(pan_fname))
-        cmd_args = ['gdal_pansharpen.py', files['pan']['crop_img_fpath'],
-                    files['msi']['crop_img_fpath'],
-                    crop_pansharpened_image]
-        print(*cmd_args)
-        subprocess.run(cmd_args)
-
-        # copy tif metadata such as RPC from input to output images
-        if copy_tif_info(files['pan']['crop_img_fpath'], crop_pansharpened_image):
-            # Pre-process images for texture mapping to match the format expected by the C++ code
-            # and to have visually nice textures
-            cmd_args = [crop_pansharpened_image, ".", "--dest_file_postfix", "_processed"]
-            name, ext = os.path.splitext(crop_pansharpened_image)
-            preprocess_images_for_texture_mapping.main(cmd_args)
-            files['processed_crop_pansharpened_fpath'] = name + "_processed" + ext
-
-    # list of images to use
-    images_to_use = [i['processed_crop_pansharpened_fpath']
-                     for i in collection_id_to_files.values()
-                     if 'processed_crop_pansharpened_fpath' in i]
-
-    # -------- Prepare meshes --------
     occlusion_mesh = "xxxx.obj"
-
-    # Turn mesh into triangular faces
-    tri_meshes_dir = working_dir + "/tri"
-    if not os.path.isdir(tri_meshes_dir):
-        os.mkdir(tri_meshes_dir)
+    images_to_use = glob.glob(os.path.join(working_dir, "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(working_dir, "*.obj"))
     orig_meshes = [e for e in orig_meshes if e.find(occlusion_mesh) < 0]
-    # mesh offset
-    offset = [0.0, 0.0, 0.0]
-    gdal_utils.read_offset(orig_meshes[0], offset)
-    print("Offset: {}".format(offset))
-    for mesh in orig_meshes:
-        cmd_args = [mesh, tri_meshes_dir]
-        triangulate_mesh.main(cmd_args)
-
-    # Generate the occlusion mesh
-    # This mesh is used to compute occlusions and contains all the buildings and roads of the AOI
-    # It is generated by merging all the meshes reconstructed at the previous steps
-    cmd_args = [tri_meshes_dir, occlusion_mesh]
-    merge_raw_obj_meshes.main(cmd_args)
-
-    # -------- Run Texture Mapping --------
-    # Images fusion method
-    fusion_method = "test"
-    logging.info("---- Running texture_mapping ----")
-    building_id = 0
-
-    # The following loop iterates over the different meshes that need to be textured.
-    # A sub-working-directory is created for each mesh and is used to save all the files
-    # generated by run_texture_mapping.
-    #
-    # meshes is a list of tuples as follows: [(mesh_1_filename, mesh_1_name),
-    #                                         (mesh_2_filename, mesh_2_name), ...]
-    #       mesh_X_filename: is the complete filename to the mesh X
-    #       mesh_X_name: is just the name that we want for the output textured mesh that
-    #                    is generated.
-    #                    This name is also used for the sub-working-directory of the mesh
-    tri_meshes = glob.glob(os.path.join(tri_meshes_dir, "*.obj"))
-    meshes = map(lambda x: (x, os.path.splitext(os.path.basename(x))[0]), tri_meshes)
-
-    for mesh, mesh_name in meshes:
-        # create a sub-working-directory per mesh
-        current_working_dir = os.path.join(working_dir, mesh_name)
-        if not os.path.isdir(current_working_dir):
-            os.mkdir(current_working_dir)
-
-        # run_texture_mapping does not like a dir that starts with ./ so remove that
-        call_args = [mesh, current_working_dir.replace("./", ""), str(dsmUTMZone),
-                     "--output-name", "building_" + mesh_name,
-                     "--offset_x", str(offset[0]),
-                     "--offset_y", str(offset[1]),
-                     "--offset_z", str(offset[2]),
-                     "--fusion-method", fusion_method,
-                     "--shadows", "no",
-                     "--images"] + images_to_use
-
-        # adjust the call arguments for the first mesh
-        if building_id == 0:
-            # we output the depthmaps using the specified occlusion mesh
-            call_args += ["--output-depthmap", os.path.join(current_working_dir, "depthmaps.txt"),
-                          "--occlusions", occlusion_mesh]
-            initial_working_dir = current_working_dir
-        else:
-            # for the next meshes, we re-use the generated depthmaps
-            call_args += ["--occlusions", os.path.join(initial_working_dir, "depthmaps.txt")]
-
-        subprocess_args = ["run_texture_mapping"] + call_args
-        print(*subprocess_args)
-        subprocess.call(subprocess_args)
-        print("\n\n")
-        building_id += 1
-    logging.info("Texture Mapping done")
+    cmd_args = [dsm_file, working_dir, occlusion_mesh, "--crops"]
+    cmd_args.extend(images_to_use)
+    cmd_args.append("--buildings")
+    cmd_args.extend(orig_meshes)
+    script_call = ["texture_mapping.py"] + cmd_args
+    print(*script_call)
+    texture_mapping.main(cmd_args)
 
     #############################################
     # Buildings to DSM
