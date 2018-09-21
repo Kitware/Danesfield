@@ -485,20 +485,12 @@ def main(args):
         print(*cmd_args)
         subprocess.run(cmd_args)
 
-        # Convert to UTM
-        utm_crop_pansharpened_image = os.path.join(
-            working_dir, '{}_utm_crop_pansharpened.tif'.format(pan_fname))
-        cmd_args = ['gdalwarp', '-t_srs', dsmProj4Ref,
-                    crop_pansharpened_image, utm_crop_pansharpened_image]
-        print(*cmd_args)
-        subprocess.run(cmd_args)
-
         # copy tif metadata such as RPC from input to output images
-        if copy_tif_info(pan_ntf_fpath, utm_crop_pansharpened_image):
+        if copy_tif_info(files['pan']['crop_img_fpath'], crop_pansharpened_image):
             # Pre-process images for texture mapping to match the format expected by the C++ code
             # and to have visually nice textures
-            cmd_args = [utm_crop_pansharpened_image, ".", "--dest_file_postfix", "_processed"]
-            name, ext = os.path.splitext(utm_crop_pansharpened_image)
+            cmd_args = [crop_pansharpened_image, ".", "--dest_file_postfix", "_processed"]
+            name, ext = os.path.splitext(crop_pansharpened_image)
             preprocess_images_for_texture_mapping.main(cmd_args)
             files['processed_crop_pansharpened_fpath'] = name + "_processed" + ext
 
