@@ -32,7 +32,8 @@ dependencies:
 - geojson
 - flake8
 - pytest
-# specific version required by Rutgers material classifier
+# Rutgers needs 0.3.*, we need cuda 9 and python 3.6
+- cuda90
 - pytorch=0.3.*
 - shapely
 - scikit-learn
