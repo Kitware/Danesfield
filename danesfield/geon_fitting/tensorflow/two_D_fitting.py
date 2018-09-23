@@ -71,25 +71,24 @@ def check_2D_curve(ex, ey, ez, coefficients, centroid, points, min_axis_z, max_a
 
     ortho_x_max = np.max(x_val)
     ortho_x_min = np.min(x_val)
-    bin_num = 30
+    bin_num = 50
     hist, bin_edges = np.histogram(x_val, bins = bin_num)
     max_val = np.max(hist)
 
     min_index = 0
     for i in range(hist.shape[0]):
-        if hist[i]>0.15*max_val:
+        if hist[i]>0.2*max_val:
             min_index = i
             break
 
     max_index = hist.shape[0]
     for i in range(hist.shape[0]-1, 0, -1):
-        if hist[i]>0.15*max_val:
+        if hist[i]>0.2*max_val:
             max_index = i
             break
 
     real_x_max = ortho_x_min+ (ortho_x_max-ortho_x_min)/bin_num*max_index
     real_x_min = ortho_x_min+ (ortho_x_max-ortho_x_min)/bin_num*min_index
-    #print(real_x_max, real_x_min, ortho_x_max, ortho_x_min)
 
     return fitted_indices, real_x_max, real_x_min, error
 
