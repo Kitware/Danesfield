@@ -3,7 +3,6 @@
 import re
 import numpy as np
 from shapely.geometry import Polygon
-import matplotlib.pyplot as plt
 
 
 def list_intersect(a, b):
