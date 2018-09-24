@@ -9,6 +9,7 @@ import re
 import vtk
 from vtk.numpy_interface import dataset_adapter as dsa
 from vtk.util import numpy_support
+from danesfield import gdal_utils
 
 
 def main(args):
@@ -17,7 +18,8 @@ def main(args):
     parser.add_argument("--input_vtp_path", type=str,
                         help="Input buildings polygonal file (.vtp)")
     parser.add_argument("--input_obj_paths", nargs="*",
-                        help="List of input building (.obj) file paths.  Building object files start "
+                        help="List of input building (.obj) file paths.  "
+                             "Building object files start "
                              "with a digit, road object files start with \"Road\". "
                              "All obj files start with comments specifying the offsets "
                              "that are added the coordinats. There are three comment lines, "
@@ -110,40 +112,31 @@ def main(args):
     labels = [6, 17]
     if (args.input_vtp_path and os.path.isfile(args.input_vtp_path)):
         polyReader = vtk.vtkXMLPolyDataReader()
-        polyReader.SetFileName(args.input_buildings)
+        polyReader.SetFileName(args.input_vtp_path)
         polyReader.Update()
         polyVtkList = [polyReader.GetOutput()]
     elif (args.input_obj_paths):
         # buildings start with numbers
         # optional elevated roads start with Road*.obj
-        bldg_re = re.compile(".*/[0-9][^/]*\\.obj")
+        bldg_re = re.compile(".*/?[0-9][^/]*\\.obj")
         bldg_files = [f for f in args.input_obj_paths
                       if bldg_re.match(f)]
-        road_re = re.compile(".*/Road[^/]*\\.obj")
+        print(bldg_files)
+        road_re = re.compile(".*/?Road[^/]*\\.obj")
         road_files = [f for f in args.input_obj_paths
                       if road_re.match(f)]
         files = [bldg_files,
                  road_files]
         files = [x for x in files if x]
+        print(road_files)        
         if len(files) >= 2:
             print("Found {} buildings and {} roads".format(len(files[0]), len(files[1])))
         elif len(files) == 1:
             print("Found {} buildings".format(len(files[0])))
         else:
-            raise RuntimeError("No OBJ files found in {}".format(args.input_buildings))
+            raise RuntimeError("No OBJ files found in {}".format(args.input_obj_paths))
         offset = [0.0, 0.0, 0.0]
-        axes = ['x', 'y', 'z']
-        reFloatList = list("#. offset: ([-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)")
-        with open(files[0][0]) as f:
-            for i in range(3):
-                reFloatList[1] = axes[i]
-                reFloat = re.compile("".join(reFloatList))
-                line = f.readline()
-                match = reFloat.search(line)
-                if match:
-                    offset[i] = float(match.group(1))
-                else:
-                    break
+        gdal_utils.read_offset(files[0][0], offset)
         print("Offset: {}".format(offset))
         transform = vtk.vtkTransform()
         transform.Translate(offset[0], offset[1], offset[2])
