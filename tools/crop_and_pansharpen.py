@@ -79,7 +79,7 @@ def crop_and_pansharpen(dsm_file, files, output_dir):
     if copy_tif_info(files['pan']['crop_img_fpath'], crop_pansharpened_image):
         # Pre-process images for texture mapping to match the format expected by the C++ code
         # and to have visually nice textures
-        cmd_args = [crop_pansharpened_image, ".", "--dest_file_postfix", "_processed"]
+        cmd_args = [crop_pansharpened_image, output_dir, "--dest_file_postfix", "_processed"]
         name, ext = os.path.splitext(crop_pansharpened_image)
         preprocess_images_for_texture_mapping.main(cmd_args)
 
