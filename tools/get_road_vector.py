@@ -21,7 +21,7 @@ def main(args):
         '--bottom',
         type=str,
         required=True,
-        help='Lattitude of bottom / southernmost side of bounding box')
+        help='Latitude of bottom / southernmost side of bounding box')
     parser.add_argument(
         '--right',
         type=str,
@@ -31,7 +31,7 @@ def main(args):
         '--top',
         type=str,
         required=True,
-        help='Lattitude of top / northernmost side of bounding box')
+        help='Latitude of top / northernmost side of bounding box')
     parser.add_argument(
         '--api-endpoint',
         type=str,
@@ -99,9 +99,13 @@ def properties_map(in_properties):
     if "railway" in other_tags:
         properties["railway"] = other_tags["railway"]
 
-    if "bridge" in other_tags:
-        bridge_val = 1 if other_tags["bridge"] == "yes" else 0
-        properties["bridge"] = bridge_val
+    # Forcing bridge in output tags
+    if other_tags.get("bridge") == "yes":
+        bridge_val = 1
+    else:
+        bridge_val = 0
+
+    properties["bridge"] = bridge_val
 
     # Only interested in these classes for now; in priority order
     class_level_properties = ["highway",
