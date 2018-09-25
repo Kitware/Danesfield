@@ -60,7 +60,6 @@ def main(args):
             print('Material classification: {0:2d}/{1:2d}'.format(i+1, num_images))
             prob_output = classifier.Evaluate([image_path], [info_path])
             combine_result.update(prob_output)
-            print('Here')
     else:
         N = 10  # Number of random samples taken
         for i in range(N):
