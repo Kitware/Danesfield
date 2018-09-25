@@ -5,7 +5,7 @@ import os
 import sys
 
 from danesfield.materials.pixel_prediction.util.model import Classifier
-from danesfield.materials.pixel_prediction.util.misc import save_output, Combine_Result, transfer_metadata  # noqa: E501
+from danesfield.materials.pixel_prediction.util.misc import save_output, Combine_Result, transfer_metadata, order_images  # noqa: E501
 
 
 def main(args):
@@ -34,9 +34,6 @@ def main(args):
 
     args = parser.parse_args(args)
 
-    # Load model and select option to use CUDA
-    classifier = Classifier(args.cuda, args.batch_size, args.model_path)
-
     # Use CNN to create material map
     if len(args.image_paths) != len(args.info_paths):
         raise IOError(
@@ -44,10 +41,32 @@ def main(args):
              'does not match the number of metadata paths {}.').format(len(args.image_paths),
                                                                        len(args.info_paths)))
 
+    # Object that merges results
     combine_result = Combine_Result('max_prob')
-    for image_path, info_path in zip(args.image_paths, args.info_paths):
-        _, prob_output = classifier.Evaluate(image_path, info_path)
-        combine_result.update(prob_output)
+
+    # Order image paths and metadata
+    image_paths, info_paths = order_images(args.image_paths, args.info_paths)
+    num_images = len(image_paths)
+
+    # Load model and select option to use CUDA
+    classifier = Classifier(image_paths, args.model_path, batch_size=args.batch_size)
+
+    model_name = os.path.split(args.model_path)[1]
+    img_per_set = int(model_name[9:11])
+
+    # Use different model based on the number of images given
+    if img_per_set == 1:
+        for i, (image_path, info_path) in enumerate(zip(image_paths, info_paths)):
+            print('Material classification: {0:2d}/{1:2d}'.format(i+1, num_images))
+            prob_output = classifier.Evaluate([image_path], [info_path])
+            combine_result.update(prob_output)
+            print('Here')
+    else:
+        N = 10  # Number of random samples taken
+        for i in range(N):
+            print('Material classification: {0:2d}/{1:2d}'.format(i+1, N))
+            prob_output = classifier.Evaluate(image_paths, info_paths)
+            combine_result.update(prob_output)
 
     # Save results
     if args.outfile_prefix:
@@ -62,7 +81,7 @@ def main(args):
 
     save_output(combined_result, output_path)
 
-    transfer_metadata(output_path, args.image_paths[0])
+    transfer_metadata(output_path, image_paths[0])
 
 
 if __name__ == '__main__':
