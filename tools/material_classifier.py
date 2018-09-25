@@ -26,7 +26,7 @@ def main(args):
     parser.add_argument('--cuda', action='store_true',
                         help='Use GPU. (May have to adjust batch_size value)')
 
-    parser.add_argument('--batch_size', type=int, default=20000,
+    parser.add_argument('--batch_size', type=int, default=40000,
                         help='Number of pixels classified at a time.')
 
     parser.add_argument('--outfile_prefix', type=str,
