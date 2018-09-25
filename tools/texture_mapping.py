@@ -7,6 +7,7 @@ This is part of the pipeline to process an AOI from start to finish
 
 import argparse
 from danesfield import gdal_utils
+import dtm_to_mesh
 import glob
 import logging
 import merge_raw_obj_meshes
@@ -17,7 +18,7 @@ import sys
 import triangulate_mesh
 
 
-def texture_mapping(dsm_file, crops, output_dir, orig_meshes, occlusion_mesh):
+def texture_mapping(dsm_file, dtm_file, crops, output_dir, orig_meshes, occlusion_mesh):
     dsm = gdal_utils.gdal_open(dsm_file)
     dsmProjection = dsm.GetProjection()
     dsmSrs = osr.SpatialReference(wkt=dsmProjection)
@@ -27,7 +28,7 @@ def texture_mapping(dsm_file, crops, output_dir, orig_meshes, occlusion_mesh):
     # -------- Prepare meshes --------
 
     # Turn mesh into triangular faces
-    tri_meshes_dir = output_dir + "/tri"
+    tri_meshes_dir = os.path.join(output_dir, "tri")
     if not os.path.isdir(tri_meshes_dir):
         os.mkdir(tri_meshes_dir)
     # mesh offset
@@ -37,6 +38,14 @@ def texture_mapping(dsm_file, crops, output_dir, orig_meshes, occlusion_mesh):
     for mesh in orig_meshes:
         cmd_args = [mesh, tri_meshes_dir]
         triangulate_mesh.main(cmd_args)
+
+    # Generate the mesh of the ground
+    logging.info("---- Generate ground mesh from DTM ----")
+    ground_mesh = os.path.join(tri_meshes_dir, "ground.obj")
+    cmd_args = [dtm_file, ground_mesh, "--offset"] + list(map(str, offset)) + ["--downsample", "40"]
+    script_call = ["dtm_to_mesh.py"] + cmd_args
+    print(*script_call)
+    dtm_to_mesh.main(cmd_args)
 
     # Generate the occlusion mesh
     # This mesh is used to compute occlusions and contains all the buildings and roads of the AOI
@@ -100,6 +109,7 @@ def texture_mapping(dsm_file, crops, output_dir, orig_meshes, occlusion_mesh):
 def main(args):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dsm", help="Digital surface model (DSM) image file name")
+    parser.add_argument("dtm", help="Digital terrain model (DTM) image file name")
     parser.add_argument("output_dir", help="Output directory for cropped pansharpened images")
     parser.add_argument("occlusion_mesh", help="Occlusion mesh name")
     parser.add_argument("--crops", help="List of croped and pansharpened MSI file names",
@@ -107,7 +117,8 @@ def main(args):
     parser.add_argument("--buildings", help="Source OBJ files representing buildings or roads",
                         nargs="+", required=True)
     args = parser.parse_args(args)
-    texture_mapping(args.dsm, args.crops, args.output_dir, args.buildings, args.occlusion_mesh)
+    texture_mapping(args.dsm, args.dtm, args.crops, args.output_dir, args.buildings,
+                    args.occlusion_mesh)
 
 
 if __name__ == '__main__':
