@@ -117,6 +117,13 @@ def main(args):
     parser.add_argument("--buildings", help="Source OBJ files representing buildings or roads",
                         nargs="+", required=True)
     args = parser.parse_args(args)
+
+    # Create the output directory if it doesn't already exist
+    try:
+        os.mkdir(args.output_dir)
+    except FileExistsError as e:
+        pass
+
     texture_mapping(args.dsm, args.dtm, args.crops, args.output_dir, args.buildings,
                     args.occlusion_mesh)
 
