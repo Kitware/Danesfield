@@ -436,7 +436,8 @@ def main(args):
     occlusion_mesh = "xxxx.obj"
     images_to_use = glob.glob(os.path.join(working_dir, "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(working_dir, "*.obj"))
-    orig_meshes = [e for e in orig_meshes if e.find(occlusion_mesh) < 0]
+    orig_meshes = [e for e in orig_meshes
+                   if e.find(occlusion_mesh) < 0  and e.find("building_") < 0]
     cmd_args = [dsm_file, dtm_file, working_dir, occlusion_mesh, "--crops"]
     cmd_args.extend(images_to_use)
     cmd_args.append("--buildings")
@@ -457,8 +458,9 @@ def main(args):
         output_dsm]
     cmd_args.append('--input_obj_paths')
     obj_list = glob.glob("{}/*.obj".format(working_dir))
-    # remove occlusion_mesh
-    obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
+    # remove occlusion_mesh and results (building_<i>.obj)
+    obj_list = [e for e in obj_list
+                if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
     cmd_args.extend(obj_list)
     logging.info(cmd_args)
     buildings_to_dsm.main(cmd_args)
