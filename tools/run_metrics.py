@@ -49,6 +49,10 @@ def main(args):
     # Configure argument parser
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        '--output-dir',
+        type=str,
+        help='Output directory')
+    parser.add_argument(
         '--ref-dir',
         type=str,
         required=True,
@@ -83,7 +87,14 @@ def main(args):
     args = parser.parse_args(args)
 
     # Create working directory with timestamp
-    working_dir = create_working_dir()
+    if args.output_dir:
+        # Create output directory
+        if not os.path.exists(args.output_dir):
+            os.makedirs(args.output_dir)
+
+        working_dir = args.output_dir
+    else:
+        working_dir = create_working_dir()
 
     # Get absolute image paths
     ref_dsm = os.path.join(args.ref_dir, args.ref_prefix + '-DSM.tif')
