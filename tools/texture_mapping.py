@@ -8,11 +8,13 @@ This is part of the pipeline to process an AOI from start to finish
 import argparse
 from danesfield import gdal_utils
 import dtm_to_mesh
+import fnmatch
 import glob
 import logging
 import merge_raw_obj_meshes
 import os
 import osr
+import shutil
 import subprocess
 import sys
 import triangulate_mesh
@@ -103,6 +105,22 @@ def texture_mapping(dsm_file, dtm_file, crops, output_dir, orig_meshes, occlusio
         subprocess.call(subprocess_args)
         print("\n\n")
         building_id += 1
+
+    logging.info("Copy results to output directory")
+    for root, dirs, files in os.walk(output_dir):
+        if root == output_dir:
+            continue
+        for name in files:
+            if fnmatch.fnmatch(name, "building_*.*"):
+                output_file = os.path.join(output_dir, name)
+                try:
+                    os.remove(output_file)
+                except OSError:
+                    pass
+                input_file = os.path.join(root, name)
+                print("copy({}, {})".format(input_file, output_file))
+                shutil.copy(input_file, output_file)
+
     logging.info("Texture Mapping done")
 
 
