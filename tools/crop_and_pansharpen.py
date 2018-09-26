@@ -106,6 +106,12 @@ def main(args):
     if (len(args.msi) > 1):
         files['msi']['rpc'] = args.msi[1]
 
+    # Create the output directory if it doesn't already exist
+    try:
+        os.mkdir(args.output_dir)
+    except FileExistsError as e:
+        pass
+
     crop_and_pansharpen(args.dsm, files, args.output_dir)
 
 
