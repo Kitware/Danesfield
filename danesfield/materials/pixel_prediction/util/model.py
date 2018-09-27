@@ -1,80 +1,123 @@
 import torch
-from torch.autograd import Variable
-import torch.nn as nn
 import numpy as np
+import gdal
+from scipy.ndimage import zoom
+import os
+import matplotlib.pyplot as plt
+
 from ..util import misc
 from ..architecture import ResNet as RN
-from collections import OrderedDict
+
+
+def subsample_image(image, factor):
+    return image[::factor, ::factor]
+
+
+def upsample_image(image, factor):
+    upscale_image = np.zeros((image.shape[0]*factor, image.shape[1]*factor, image.shape[2]))
+    for channel in range(image.shape[2]):
+        upscale_image[:, :, channel] = zoom(image[:, :, channel], factor, order=0)
+    return upscale_image
 
 
 class Classifier():
-    def __init__(self, cuda, batch_size, model_path):
-        # Model
-        self.model = RN.resnet18(num_classes=12)
+    def __init__(self, image_paths, model_path, batch_size=20000, subfactor=2):
+        # Hyperparameter(s)
+        self.batch_size = batch_size
+        self.subfactor = subfactor
+        self.num_classes = 12
+
+        num_images = len(image_paths)
+
+        model_name = os.path.split(model_path)[1]
+        self.images_per_set = int(model_name[9:11])
+
+        if num_images < self.images_per_set:
+            raise IOError('Cannot use model {} with less than {} images.'
+                          'Only {} images are given.'.format(model_name,
+                                                             self.images_per_set,
+                                                             num_images))
+
+        if self.images_per_set == 1:
+            # Use single-image algorithm
+            self.model = RN.model_A(num_classes=self.num_classes)
+            self.model = torch.nn.DataParallel(self.model)
+            self.model_type = 'A'
+        else:
+            # Use multi-image random sampling algorithm
+            self.model = RN.model_B(num_classes=self.num_classes)
+            self.model = torch.nn.DataParallel(self.model)
+            self.model_type = 'B'
 
         # Load the weights from the saved network
-        checkpoint = torch.load(model_path,
-                                map_location=lambda storage,
-                                loc: storage)['state_dict']
+        self.device = torch.device('cuda')
+        checkpoint = torch.load(model_path)['state_dict']
+        self.model.load_state_dict(checkpoint)
+        self.model = self.model.to(self.device)
 
-        # Alter model weights to run on CPU
-        new_state_dict = OrderedDict()
-        for k, v in checkpoint.items():
-            name = k[7:]
-            new_state_dict[name] = v
+        # Load mean and std values from model
+        self.dataset_stats = misc.get_train_data_stats(model_path)
 
-        self.model.load_state_dict(new_state_dict)
+        # Get coordinate set for tiling images
+        self.coordinates = misc.coordinate_set_generator(image_paths[0], self.subfactor)
+        dst = gdal.Open(image_paths[0])
+        self.height, self.width = dst.RasterXSize, dst.RasterYSize
 
-        self.cuda = cuda
+    def Evaluate(self, image_set, info_set):
+        if self.model_type == 'A':
+            sub_image_paths = image_set
+        elif self.model_type == 'B':
+            # Take a random sample of image paths
+            image_indices = np.random.randint(len(image_set), size=self.images_per_set)
+            sub_image_paths = np.take(image_set, image_indices)
+            info_set = np.take(info_set, image_indices)
 
-        if self.cuda is True:
-            # If this is really slow, update your cuda version
-            self.model = self.model.cuda()
+        final_result = np.zeros((self.width // self.subfactor, self.height //
+                                 self.subfactor, self.num_classes), dtype=float)
 
-        # Hyperparameter
-        self.batch_size = batch_size
+        # For each set of coordinates
+        for c, coord in enumerate(self.coordinates):
+            x0, y0, x1, y1 = coord
 
-    def Evaluate(self, img_path, info_path):
-        # Caibrate image
-        img = misc.calibrate_img(img_path, info_path)
+            stack_sub_img = np.zeros((y1, x1, 8*len(sub_image_paths)))
+            for i, (img_path, info_path) in enumerate(zip(sub_image_paths, info_set)):
+                x0s, y0s = x0 * self.subfactor, y0 * self.subfactor
+                x1s, y1s = x1 * self.subfactor, y1 * self.subfactor
+                sub_img = np.transpose(gdal.Open(img_path).ReadAsArray(
+                    x0s, y0s, x1s, y1s), (1, 2, 0))
+                sub_img = subsample_image(sub_img, self.subfactor)
+                sub_img = misc.calibrate_img(sub_img.astype(float), info_path)
+                stack_sub_img[:, :, i*8:(i+1)*8] = sub_img
 
-        # Make a dataloader object out of image in order to put in CNN
-        loader = misc.getTestDataLoader(
-            img, self.batch_size)
+            # If test then classify the sub_img_stack
+            dataloader = misc.create_dataloader(stack_sub_img, self.dataset_stats, self.batch_size)
+            result = self._neural_network(dataloader, self.model, self.device)
+            result = np.reshape(result, [y1, x1, 12])
 
-        # Set model to evaulate (required for batch_norm layers)
+            # Put results in final material map
+            final_result[y0:y0+y1, x0:x0+x1, :] += result
+
+        final_result = upsample_image(final_result, self.subfactor)
+        return final_result
+
+    def _neural_network(self, dataloader, model, device):
         self.model.eval()
-        result = np.array([], dtype=np.int64).reshape(0, 1)
-        out_probs = np.array([], dtype=np.int64).reshape(0, 12)
+        conf_img = torch.Tensor().float()
+        conf_img = conf_img.to(device)
 
-        for i, sig in enumerate(loader, 0):
-            print("Evaluate: {0:4d}/{1:4d}".format(
-                i+1, len(loader)), end="\r")
+        with torch.no_grad():
+            SM = torch.nn.Softmax(dim=1)
+            for i, batch in enumerate(dataloader):
+                data = batch
 
-            if self.cuda is True:
-                sig = sig.cuda()
+                data_v = data.to(device)
+                output = model(data_v)
+                out_prob = SM(output)
 
-            sigv = Variable(sig, volatile=True)
+                del data_v, data
 
-            UP = nn.Upsample(scale_factor=4, mode='linear')
-            sigv = UP(sigv)
+                # Generate confidence map
+                conf_img = torch.cat((conf_img, out_prob))
 
-            out_prob = self.model(sigv)
-            confidence_val, predicted = torch.max(out_prob.data, 1)
-
-            labels = predicted.cpu().numpy()
-            labels = np.reshape(labels, [labels.shape[0], 1])
-            result = np.vstack((result, labels))
-
-            class_probs = out_prob.data.cpu().numpy()
-            class_probs = np.reshape(
-                class_probs, [class_probs.shape[0], 12])
-            out_probs = np.vstack((out_probs, class_probs))
-
-        print(" "*100, end="\r")
-
-        result_img = np.reshape(result, [img.shape[0], img.shape[1]])
-        output_prob_img = np.reshape(
-            out_probs, [img.shape[0], img.shape[1], 12])
-
-        return result_img, output_prob_img
+        conf_vector = conf_img.cpu().numpy()
+        return conf_vector

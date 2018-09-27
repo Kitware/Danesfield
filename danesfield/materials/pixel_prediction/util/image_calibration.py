@@ -2,7 +2,6 @@ import math
 import tarfile
 import os
 import numpy as np
-import gdal
 
 
 def read_txt(file_path):
@@ -36,9 +35,9 @@ def read_tar(file_path):
 
 
 class Image_Calibration(object):
-    def __init__(self, img_path, imd_path, norm=False):
+    def __init__(self, image, imd_path, norm=False):
         super(Image_Calibration).__init__()
-        self.img_path = img_path
+        self.image = image
         self.imd_path = imd_path
         self.norm = norm
 
@@ -46,28 +45,20 @@ class Image_Calibration(object):
         # Get necessary metadata
         metadata = self._get_metadata(self.imd_path)
 
-        # Load image
-        img = np.transpose(
-            gdal.Open(self.img_path).ReadAsArray(), (1, 2, 0)).astype(float)
-
         # Get orthorectification mask
-        zero_mask = self._get_zero_mask(img)
+        # zero_mask = self._get_zero_mask(self.image)
 
         # Absolute radiometic correction
-        arc_img = self._absolute_radiometric_correction(img, metadata)
+        arc_img = self._absolute_radiometric_correction(self.image, metadata)
 
         # Top of atmosphere reflectance
-        toa_img = self._top_of_atmosphere_reflectance(
-            arc_img, metadata)
+        toa_img = self._top_of_atmosphere_reflectance(arc_img, metadata)
 
-        if toa_img.min() < 0:
-            toa_img += abs(toa_img.min())
-
-        if self.norm:
-            toa_img = self._normalize_image(toa_img)
+        # if self.norm:
+        #     toa_img = self._normalize_image(toa_img)
 
         # Zero out occluded pixels
-        toa_img = self._apply_mask(toa_img, zero_mask)
+        # toa_img = self._apply_mask(toa_img, zero_mask)
 
         return toa_img
 

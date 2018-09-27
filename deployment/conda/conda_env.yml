@@ -32,9 +32,9 @@ dependencies:
 - geojson
 - flake8
 - pytest
-# Rutgers needs 0.3.*, we need cuda 9 and python 3.6
+# Rutgers needs 0.4.*, we need cuda 9 and python 3.6
 - cuda90
-- pytorch=0.3.*
+- pytorch=0.4.*
 - shapely
 - scikit-learn
 - scikit-image
