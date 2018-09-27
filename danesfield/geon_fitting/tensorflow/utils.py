@@ -200,6 +200,8 @@ def get_poly_ply_volume(dtm, projection_model, centroid, ex, ey, coefficients,
             image_point = ProjectPoint(projection_model,
                                        [original_grid_point[i, j, 0] + center_of_mess[0],
                                         original_grid_point[i, j, 1] + center_of_mess[1]])
+            image_point[1] = min(max(image_point[1],0),dtm.shape[0])
+            image_point[0] = min(max(image_point[0],0),dtm.shape[1])
             height = dtm[image_point[1], image_point[0]] - center_of_mess[2]
             vertex.append(
                 (original_grid_point[i, j, 0], original_grid_point[i, j, 1], height))

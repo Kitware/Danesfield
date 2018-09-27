@@ -4,12 +4,14 @@
 Run the Danesfield processing pipeline on an AOI from start to finish.
 """
 
+import argparse
 import configparser
+import crop_and_pansharpen
 import datetime
+import glob
 import logging
 import os
 import re
-import glob
 import subprocess
 import sys
 
@@ -21,6 +23,7 @@ import material_classifier
 import msi_to_rgb
 import orthorectify
 import segment_by_height
+import texture_mapping
 import kwsemantic_segment
 import building_segmentation
 import roof_geon_extraction
@@ -97,6 +100,7 @@ def classify_fpaths(prefix, fpaths, id_to_files, file_type):
             elif '-A1BS-' in fpath:
                 id_to_files[prefix]['swir'][file_type] = fpath
 
+
 # Note: here are the AOI boundaries for the current AOIs
 # D1: 747285 747908 4407065 4407640
 # D2: 749352 750082 4407021 4407863
@@ -104,10 +108,16 @@ def classify_fpaths(prefix, fpaths, id_to_files, file_type):
 # D4: 435532 436917 3354107 3355520
 
 
-def main(config_fpath):
+def main(args):
+    parser = argparse.ArgumentParser(
+        description="Run the Danesfield processing pipeline on an AOI from start to finish.")
+    parser.add_argument("ini_file",
+                        help="ini file")
+    args = parser.parse_args(args)
+
     # Read configuration file
     config = configparser.ConfigParser()
-    config.read(config_fpath)
+    config.read(args.ini_file)
 
     # This either parses the working directory from the configuration file and passes it to
     # create the working directory or passes None and so some default working directory is
@@ -142,7 +152,9 @@ def main(config_fpath):
     rpc_fpaths = []
     for root, dirs, files in os.walk(config['paths'].get('rpc_dir')):
         rpc_fpaths.extend([os.path.join(root, file)
-                           for file in files if file.lower().endswith('.rpc')])
+                           for file in files
+                           if file.lower().endswith('.rpc') and
+                           file.lower().startswith('gra_')])
 
     # We start with prefixes as a set so that we're only adding the unique ones.
     prefixes = set()
@@ -195,9 +207,9 @@ def main(config_fpath):
     logging.debug(cmd_args)
     generate_dsm.main(cmd_args)
 
-    #############################################
-    # Fit DTM to the DSM
-    #############################################
+    # #############################################
+    # # Fit Dtm to the DSM
+    # #############################################
 
     dtm_file = os.path.join(working_dir, aoi_name + '_DTM.tif')
     cmd_args = [dsm_file, dtm_file]
@@ -407,9 +419,32 @@ def main(config_fpath):
     #############################################
     # Texture Mapping
     #############################################
+    logging.info("---- Preparing data for texture mapping ----")
+    for collection_id, files in collection_id_to_files.items():
+        cmd_args = [dsm_file, working_dir, "--pan", files['pan']['image']]
+        rpc_fpath = files['pan'].get('rpc', None)
+        if (rpc_fpath):
+            cmd_args.append(rpc_fpath)
+        cmd_args.extend(["--msi", files['msi']['image']])
+        rpc_fpath = files['msi'].get('rpc', None)
+        if (rpc_fpath):
+            cmd_args.append(rpc_fpath)
+        script_call = ["crop_and_pansharpen.py"] + cmd_args
+        print(*script_call)
+        crop_and_pansharpen.main(cmd_args)
 
-    # Collaborate with Bastien Jacquet on what to run here
-    # Dan Lipsa is helping with conda packaging
+    occlusion_mesh = "xxxx.obj"
+    images_to_use = glob.glob(os.path.join(working_dir, "*_crop_pansharpened_processed.tif"))
+    orig_meshes = glob.glob(os.path.join(working_dir, "*.obj"))
+    orig_meshes = [e for e in orig_meshes
+                   if e.find(occlusion_mesh) < 0  and e.find("building_") < 0]
+    cmd_args = [dsm_file, dtm_file, working_dir, occlusion_mesh, "--crops"]
+    cmd_args.extend(images_to_use)
+    cmd_args.append("--buildings")
+    cmd_args.extend(orig_meshes)
+    script_call = ["texture_mapping.py"] + cmd_args
+    print(*script_call)
+    texture_mapping.main(cmd_args)
 
     #############################################
     # Buildings to DSM
@@ -422,7 +457,11 @@ def main(config_fpath):
         dtm_file,
         output_dsm]
     cmd_args.append('--input_obj_paths')
-    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
+    obj_list = glob.glob("{}/*.obj".format(working_dir))
+    # remove occlusion_mesh and results (building_<i>.obj)
+    obj_list = [e for e in obj_list
+                if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+    cmd_args.extend(obj_list)
     logging.info(cmd_args)
     buildings_to_dsm.main(cmd_args)
 
@@ -433,8 +472,9 @@ def main(config_fpath):
         output_cls,
         '--render_cls']
     cmd_args.append('--input_obj_paths')
-    cmd_args.extend(glob.glob("{}/*.obj".format(working_dir)))
-    logging.info(cmd_args)
+    cmd_args.extend(obj_list)
+    script_call = ["buildings_to_dsm.py"] + cmd_args
+    print(*script_call)
     buildings_to_dsm.main(cmd_args)
 
 

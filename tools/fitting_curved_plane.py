@@ -245,8 +245,10 @@ def main(args):
                     for j, tmp_idx in enumerate(fitted_indices[i]):
                         fitted_points[j, :] = cylinder_points[tmp_idx, :]
 
-                    # fitted_wire = utils.draw_poly_curve(
-                    # ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(2))
+                    fitted_wire = utils.draw_poly_curve(
+                        ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(2))
+                    ax.scatter(fitted_points[:, 0], fitted_points[:, 1], fitted_points[:, 2],
+                               zdir='z', s=1, c='C{}'.format(2), rasterized=True, alpha=0.5)
 
                     all_fitted_indices, ortho_x_max, ortho_x_min, error = two_D_fitting.check_2D_curve(ex, ey, ez,
                                                                                                        coefficients, centroid, building_points,

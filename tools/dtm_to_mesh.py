@@ -18,23 +18,21 @@ def main(args):
     parser = argparse.ArgumentParser(
         description='Transform a DTM into a mesh')
     parser.add_argument("dtm_file", help="DTM image (.tif)")
-    parser.add_argument("offset_file", help="Text file containing the offset used "
-                                            "in x, y and z (one value per line)")
     parser.add_argument("output_file", help="Output mesh file (.obj)")
+    parser.add_argument("--offset", action="store", nargs=3, type=float,
+                        help="Offset used to re-center the mesh")
     parser.add_argument("--downsample", action="store", type=int, default=40,
                         help="Downsampling factor for the DTM")
     args = parser.parse_args(args)
 
     dtm_file = args.dtm_file
-    offset_file = args.offset_file
+    mesh_offset = args.offset
     output_file = args.output_file
     reduction_factor = args.downsample
     print("Downsampling factor ", reduction_factor)
 
-    # read the mesh offset
-    with open(offset_file, "r") as offset_f:
-        lines = offset_f.readlines()
-    mesh_offset = np.array([float(lines[0]), float(lines[1]), float(lines[2])])
+    if not mesh_offset:
+        mesh_offset = [0, 0, 0]
 
     # read DTM image
     dtm = cv2.imread(dtm_file, cv2.IMREAD_LOAD_GDAL)

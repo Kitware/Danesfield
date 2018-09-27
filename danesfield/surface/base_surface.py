@@ -117,7 +117,11 @@ class Building:
                 self.bottomsurface[i].point_cor = np.flip(self.bottomsurface[i].point_cor, 0)
             temp_surf = Polygon(self.topsurface[i].point_cor[:, 0:2])
             # surface info: vertex num, edge num, area
-            self.surface_info.append([pn, pn, temp_surf.area])
+            try:
+                area = temp_surf.area
+            except:
+                area = 0
+            self.surface_info.append([pn, pn, area])
             self.vertex_num += 2*pn
             self.edge_num += 3*pn
             top_index = [str(j) for j in range(point_flag, point_flag + pn)]

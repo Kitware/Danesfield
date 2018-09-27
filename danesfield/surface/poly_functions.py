@@ -53,17 +53,20 @@ def check_relation(plane1, plane2):
     '''
     p1 = Polygon(plane1)
     p2 = Polygon(plane2)
-    if p1.intersects(p2):
-        if p1.contains(p2):
-            flag = 1
-        else:
-            if p1.area >= p2.area:
-                flag = 2
+    try:
+        if p1.intersects(p2):
+            if p1.contains(p2):
+                flag = 1
             else:
-                flag = 3
-    else:
-        flag = 4
-    return flag
+                if p1.area >= p2.area:
+                    flag = 2
+                else:
+                    flag = 3
+        else:
+            flag = 4
+        return flag
+    except:
+        return 4
 
 
 def get_height_from_dem(cor, dem):
@@ -95,8 +98,7 @@ def get_height_from_dem(cor, dem):
         try:
             value = data[yOffset][xOffset]
             base_height.append(value)
-        except Exception as e:
-            print(e)
+        except:
             dist_2 = np.sum((r - np.array([yOffset, xOffset])) ** 2, axis=1)
             index = np.argmin(dist_2)
             value = data[r[index, 0]][r[index, 1]]
@@ -124,20 +126,22 @@ def get_difference_plane(plane1, plane2):
     :param plane2:
     :return:
     '''
-    p1 = Polygon(plane1)
-    p2 = Polygon(plane2)
-    pd = p2.difference(p1)
-    pi = p2.intersection(p1)
-    flag = True
     try:
+        p1 = Polygon(plane1)
+        p2 = Polygon(plane2)
+        pd = p2.difference(p1)
+        pi = p2.intersection(p1)
+        flag = True
         p3 = np.array(pd.exterior.coords[:])
         p4 = np.array(pi.exterior.coords[:])
-    except Exception:
+        return [flag, p3, p4]
+
+    except:
         flag = False
         p3 = None
         p4 = None
 
-    return [flag, p3, p4]
+        return [flag, p3, p4]
 
 
 def fit_plane(point):
@@ -222,8 +226,6 @@ def fix_intersection(plane):
     :param plane: plane coordinates
     :return: None self-intersection plane coordinates
     '''
-
-    # If a polygon is a triangle or quad, return
     if plane.shape[0] <= 4:
         return plane
     temp_cor = plane
@@ -254,20 +256,25 @@ def fix_intersection(plane):
         return remove_close_point(plane)
     else:
         t_cor = poly_cor.buffer(0, join_style=2)
-        poly_cor = t_cor.buffer(0, join_style=2)
         try:
-            if poly_cor.geom_type == 'MultiPolygon':
-                area = [poly_cor[geo_index].area for geo_index in range(0, len(poly_cor))]
-                temp_cor = np.array(poly_cor[area.index(max(area))].exterior.coords[:])
+            if (poly_cor.area - t_cor.area) / poly_cor.area > 0.1:
+                return plane
             else:
-                temp_cor = np.array(poly_cor.exterior.coords[:])
+                try:
+                    if t_cor.geom_type == 'MultiPolygon':
+                        area = [t_cor[geo_index].area for geo_index in range(0, len(t_cor))]
+                        temp_cor = np.array(t_cor[area.index(max(area))].exterior.coords[:])
+                    else:
+                        temp_cor = np.array(t_cor.exterior.coords[:])
 
-            temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
-            if rotate_flag == 1:
-                temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
-            else:
-                temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
-            return remove_close_point(temp_cor)
+                    temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
+                    if rotate_flag == 1:
+                        temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
+                    else:
+                        temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
+                    return remove_close_point(temp_cor)
+                except:
+                    return plane
         except:
             return plane
 

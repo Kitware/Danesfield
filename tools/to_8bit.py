@@ -11,13 +11,14 @@ def main(args):
         description='Convert stretch the dynamic range of an image into 8 bits')
     parser.add_argument("source_image", help="Source image file name")
     parser.add_argument("destination_image", help="Destination image file name")
-    parser.add_argument('-p', "--range-percentile", default=0.1, type=float,
-                        help="The percent of largest and smallest intensities to "
+    parser.add_argument('-p', "--range-percentile", nargs=2, default=(0.1, 0.1), type=float,
+                        help="The percent of smallest and largest intensities to "
                              "ignore when computing range for intensity scaling")
     args = parser.parse_args(args)
 
-    if args.range_percentile < 0.0 or args.range_percentile >= 50.0:
-        raise RuntimeError("Error: range percentile must be between 0 and 50")
+    if (args.range_percentile[0] < 0.0 or args.range_percentile[0] >= 50.0 or
+            args.range_percentile[1] < 0.0 or args.range_percentile[1] >= 50.0):
+                raise RuntimeError("Error: range percentile must be between 0 and 50")
 
     # open the source image
     source_image = gdal.Open(args.source_image, gdal.GA_ReadOnly)
@@ -72,8 +73,8 @@ def main(args):
 
         if valid_data.size > 0:
             # robustly find a range for intensity scaling
-            min_p = args.range_percentile
-            max_p = 100.0 - min_p
+            min_p = args.range_percentile[0]
+            max_p = 100.0 - args.range_percentile[1]
             min_val = numpy.percentile(valid_data, min_p)
             max_val = numpy.percentile(valid_data, max_p)
             print("band {} detected range: [{}, {}]".format(idx, min_val, max_val))
