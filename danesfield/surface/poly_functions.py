@@ -2,7 +2,8 @@
 
 import re
 import numpy as np
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, LineString
+from shapely.ops import polygonize, unary_union
 
 
 def list_intersect(a, b):
@@ -53,6 +54,7 @@ def check_relation(plane1, plane2):
     '''
     p1 = Polygon(plane1)
     p2 = Polygon(plane2)
+
     try:
         if p1.intersects(p2):
             if p1.contains(p2):
@@ -69,7 +71,7 @@ def check_relation(plane1, plane2):
         return 4
 
 
-def get_height_from_dem(cor, dem):
+def get_height_from_dem(cor, dem_parameter):
     '''
     Get Z coordinate from DEM based on given XY coordinate.
     r1-r4 represent the image boundaries for coordinates outside.
@@ -77,19 +79,13 @@ def get_height_from_dem(cor, dem):
     :param dem: DEM object
     :return: Z coordinate
     '''
-    transform = dem.GetGeoTransform()
-    xOrigin = transform[0]
-    yOrigin = transform[3]
-    pixelWidth = transform[1]
-    pixelHeight = transform[5]
-    band = dem.GetRasterBand(1)
-    data = band.ReadAsArray()
+    xOrigin = dem_parameter[0]
+    yOrigin = dem_parameter[1]
+    pixelWidth = dem_parameter[2]
+    pixelHeight = dem_parameter[3]
+    data = dem_parameter[4]
+    r = dem_parameter[5]
     base_height = []
-    r1 = [[0, i] for i in range(data.shape[1])]
-    r2 = [[data.shape[0] - 1, i] for i in range(data.shape[1])]
-    r3 = [[i, 0] for i in range(data.shape[0])]
-    r4 = [[i, data.shape[1] - 1] for i in range(data.shape[0])]
-    r = np.r_[r1, r2, r3, r4]
     for i in range(cor.shape[0]):
         x = cor[i, 0]
         y = cor[i, 1]
@@ -135,12 +131,10 @@ def get_difference_plane(plane1, plane2):
         p3 = np.array(pd.exterior.coords[:])
         p4 = np.array(pi.exterior.coords[:])
         return [flag, p3, p4]
-
     except:
         flag = False
         p3 = None
         p4 = None
-
         return [flag, p3, p4]
 
 
@@ -227,14 +221,14 @@ def fix_intersection(plane):
     :return: None self-intersection plane coordinates
     '''
     if plane.shape[0] <= 4:
-        return plane
+        return plane, False
     temp_cor = plane
     p_n = fit_plane(temp_cor)
     p_n = np.array(p_n[0:3])
     s_n = np.array([0, 0, 1])
     [rx, ry, rz] = np.cross(p_n, s_n)
     ra = np.arccos(np.dot(p_n, s_n) / (np.linalg.norm(p_n) * np.linalg.norm(s_n)))
-    rotate_flag = 0
+    rotate_flag = False
     if abs(ra) > 0.001:
         norm = np.linalg.norm(np.cross(p_n, s_n))
         [rx, ry, rz] = [rx / norm, ry / norm, rz / norm]
@@ -248,33 +242,30 @@ def fix_intersection(plane):
         rm = np.array([r1, r2, r3])
         center = [np.mean(temp_cor[:, 0]), np.mean(temp_cor[:, 1]), np.mean(temp_cor[:, 2])]
         cor_2d = np.dot(rm, (temp_cor - center).transpose()).transpose()
-        rotate_flag = 1
+        rotate_flag = True
     else:
         cor_2d = temp_cor
     poly_cor = Polygon(cor_2d[:, 0:2])
     if poly_cor.is_valid:
-        return remove_close_point(plane)
+        return plane, False
     else:
-        t_cor = poly_cor.buffer(0, join_style=2)
         try:
-            if (poly_cor.area - t_cor.area) / poly_cor.area > 0.1:
-                return plane
-            else:
-                try:
-                    if t_cor.geom_type == 'MultiPolygon':
-                        area = [t_cor[geo_index].area for geo_index in range(0, len(t_cor))]
-                        temp_cor = np.array(t_cor[area.index(max(area))].exterior.coords[:])
-                    else:
-                        temp_cor = np.array(t_cor.exterior.coords[:])
+            ls = LineString(np.array(poly_cor.exterior.coords[:]))
+            lr = LineString(ls.coords[:] + ls.coords[0:1])
+            mls = unary_union(lr)
+            t_cor = polygonize(mls)
 
-                    temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
-                    if rotate_flag == 1:
-                        temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
-                    else:
-                        temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
-                    return remove_close_point(temp_cor)
-                except:
-                    return plane
+            fixed_polys = []
+            for polygon in t_cor:
+                temp_cor = np.array(polygon.exterior.coords[:])
+                temp_cor = np.c_[temp_cor, np.zeros(temp_cor.shape[0])]
+                if rotate_flag:
+                    temp_cor = np.dot(np.linalg.inv(rm), temp_cor.transpose()).transpose() + center
+                else:
+                    temp_cor[:, 2] = temp_cor[:, 2] + np.mean(plane[:, 2])
+
+                fixed_polys.append(temp_cor)
+            return fixed_polys, True
         except:
             return plane
 

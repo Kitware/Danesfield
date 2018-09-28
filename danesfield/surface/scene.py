@@ -109,8 +109,6 @@ class Model(object):
 
             return building_model
 
-
-
     def load_from_curved_ply(self, fp):
         scene_name = Path(fp).with_suffix('').name
         try:
@@ -175,6 +173,21 @@ class Model(object):
 
     def initialize(self, ply_path, dem_path, offset=True):
         self.dem = gdal.Open(dem_path)
+        transform = self.dem.GetGeoTransform()
+        xOrigin = transform[0]
+        yOrigin = transform[3]
+        pixelWidth = transform[1]
+        pixelHeight = transform[5]
+        band = self.dem.GetRasterBand(1)
+        data = band.ReadAsArray()
+        r1 = [[0, i] for i in range(data.shape[1])]
+        r2 = [[data.shape[0] - 1, i] for i in range(data.shape[1])]
+        r3 = [[i, 0] for i in range(data.shape[0])]
+        r4 = [[i, data.shape[1] - 1] for i in range(data.shape[0])]
+        r = np.r_[r1, r2, r3, r4]
+        dem_parameter = [xOrigin, yOrigin, pixelWidth, pixelHeight,
+                         data, r]
+
         self.ply_path = ply_path
         self.obj_path = ply_path + "_obj"
         self.surface_path = ply_path + "_surface"
@@ -198,11 +211,12 @@ class Model(object):
         for fp in file_name:
             process = ''.join(['Now loading the PLY: ' + fp + '\n'])
             sys.stdout.write(process)
-            if 'curve' in fp:
-                self.buildings.append(self.load_from_curved_ply(os.path.join(self.ply_path, fp)))
-            else:
-                self.buildings.append(self.load_from_ply(os.path.join(self.ply_path, fp)))
-            self.building_num += 1
+            if os.path.splitext(fp)[-1] == '.ply':
+                if 'curve' in fp:
+                    self.buildings.append(self.load_from_curved_ply(os.path.join(self.ply_path, fp)))
+                else:
+                    self.buildings.append(self.load_from_ply(os.path.join(self.ply_path, fp)))
+                self.building_num += 1
         sys.stdout.write('Loading PLY finished!         \n')
 
         for i in range(0, self.building_num):
@@ -215,7 +229,7 @@ class Model(object):
         for i in range(0, self.building_num):
             process = ''.join(['Now generating bottom surfaces: ' + str(i) + '\r'])
             sys.stdout.write(process)
-            self.buildings[i].get_bottomsurface(self.dem)
+            self.buildings[i].get_bottomsurface(dem_parameter)
             self.buildings[i].get_flatsurface()
             sys.stdout.flush()
         sys.stdout.write('Generating bottom surfaces finished!\n')

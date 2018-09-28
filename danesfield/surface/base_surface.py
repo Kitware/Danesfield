@@ -55,8 +55,14 @@ class Building:
         Add building roof one by one
         '''
         temp_cor = plane.point_cor
-        self.topsurface.append(Surface(fix_intersection(temp_cor)))
-        self.surface_num += 1
+        [fixed_polys, flag] = fix_intersection(temp_cor)
+        if flag:
+            for poly in fixed_polys:
+                self.topsurface.append(Surface(poly))
+                self.surface_num += 1
+        else:
+            self.topsurface.append(Surface(temp_cor))
+            self.surface_num += 1
 
     def split_surface(self):
         '''
@@ -66,25 +72,29 @@ class Building:
             for j in range(0, self.surface_num):
                 if i != j:
                     relationship_flag = check_relation(
-                        self.topsurface[i].point_cor, self.topsurface[j].point_cor)
+                        self.topsurface[i].point_cor[:, 0:2], self.topsurface[j].point_cor[:, 0:2])
                     if relationship_flag == 2:
                         try:
                             rst = get_difference_plane(
                                 self.topsurface[i].point_cor, self.topsurface[j].point_cor)
                             if rst[0]:
-                                self.topsurface[j].point_cor = fix_intersection(
-                                    fix_height(self.topsurface[j].point_cor, rst[1]))
+                                self.topsurface[j].point_cor = \
+                                    fix_height(self.topsurface[j].point_cor, rst[1])
+                                self.topsurface.append(Surface(fix_height(self.topsurface[j].point_cor,
+                                                                          rst[2])))
+                                self.surface_num += 1
                         except Exception as e:
                             print(e)
 
-    def get_bottomsurface(self, dem):
+    def get_bottomsurface(self, dem_parameter):
         '''
         Get bottom surface for each roof
         :param dem: DEM object
         '''
         self.bottomsurface = copy.deepcopy(self.topsurface)
         for i in range(0, self.surface_num):
-            base_height = get_height_from_dem(self.bottomsurface[i].point_cor, dem)
+            base_height = get_height_from_dem(self.bottomsurface[i].point_cor,
+                                              dem_parameter)
             self.bottomsurface[i].point_cor[:, 2] = base_height
         for i in range(0, self.surface_num):
             for j in range(0, self.surface_num):
@@ -103,19 +113,20 @@ class Building:
         '''
         objs = []
         point_flag = 1
-        for i in range(0, self.surface_num):
+
+        for i in range(self.surface_num):
             topstring = []
             bottomstring = []
             pn = self.topsurface[i].point_cor.shape[0]
 
             poly_check = self.topsurface[i].point_cor[:, 0:2]
             if not counterClockwiseCheck(poly_check):
-                self.topsurface[i].point_cor = np.flip(self.topsurface[i].point_cor, 0)
+                self.topsurface[i].point_cor = np.copy(np.flip(self.topsurface[i].point_cor, 0))
 
             poly_check = self.bottomsurface[i].point_cor[:, 0:2]
             if not counterClockwiseCheck(poly_check):
-                self.bottomsurface[i].point_cor = np.flip(self.bottomsurface[i].point_cor, 0)
-            temp_surf = Polygon(self.topsurface[i].point_cor[:, 0:2])
+                self.bottomsurface[i].point_cor = np.copy(np.flip(self.bottomsurface[i].point_cor, 0))
+            temp_surf = Polygon(self.topsurface[i].point_cor)
             # surface info: vertex num, edge num, area
             try:
                 area = temp_surf.area
@@ -129,7 +140,7 @@ class Building:
             bottom_index = [str(j) for j in range(point_flag + pn, point_flag + 2*pn)]
             bottom_string = 'f ' + ' '.join(bottom_index) + "\n"
             wallstring = []
-            for j in range(0, pn):
+            for j in range(pn):
                 if j == pn - 1:
                     wallstring.append('f ' + ' '.join([
                         top_index[j], bottom_index[j], bottom_index[0], top_index[0]
@@ -165,7 +176,7 @@ class Building:
         '''
         objs = []
         point_flag = 1
-        for i in range(0, self.surface_num):
+        for i in range(self.surface_num):
             topstring = []
             pn = self.topsurface[i].point_cor.shape[0]
             top_index = [str(j) for j in range(point_flag, point_flag + pn)]
