@@ -29,9 +29,13 @@ def main(args):
     # Read input OBJ header
     with open(args.input_mesh, "r") as in_f:
         lines = in_f.readlines()
+    if len(lines) > 0:
         i = 0
-        while lines[i][0] == "#":
+        while i < len(lines) and len(lines[i]) > 0 and lines[i][0] == "#":
             i += 1
+    else:
+        print("Warning: empty input file.")
+        sys.exit(0)
     header = lines[:i]
 
     # Triangle filter
