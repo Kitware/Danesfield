@@ -13,14 +13,6 @@ import scipy.ndimage.morphology as morphology
 
 from danesfield.gdal_utils import gdal_open, gdal_save
 from danesfield.rasterize import ELEVATED_ROADS_QUERY, rasterize_file_dilated_line
-from danesfield.ndvi import compute_ndvi
-
-
-def save_ndvi(ndvi, msi_file, filename):
-    """
-    Save an NDVI image using the same metadata as the given MSI file
-    """
-    gdal_save(ndvi, msi_file, filename, gdal.GDT_Float32)
 
 
 def save_ndsm(ndsm, dsm_file, filename):
@@ -55,14 +47,11 @@ def main(args):
                         help="Digital surface model (DSM) image file name")
     parser.add_argument("source_dtm",
                         help="Digital terrain model (DTM) image file name")
-    parser.add_argument("--msi",
-                        help="Optional MSI image from which to compute NDVI "
-                             "for vegetation removal")
+    parser.add_argument("--input-ndvi",
+                        help="Optional Normalized Difference Vegetation "
+                        "Index image file")
     parser.add_argument("--ndsm",
                         help="Write out the normalized DSM image")
-    parser.add_argument("--ndvi",
-                        help="Write out the Normalized Difference Vegetation "
-                             "Index image")
     parser.add_argument('--road-vector-shapefile-dir',
                         help='Path to road vector shapefile directory')
     parser.add_argument('--road-vector-shapefile-prefix', help='Prefix for road vector shapefile')
@@ -106,14 +95,13 @@ def main(args):
         ndsm[dsm == dsm_nodata_value] = dsm_nodata_value
         save_ndsm(ndsm, dsm_file, args.ndsm)
 
-    # if an MSI images was specified, use it to filter by NDVI
-    if args.msi:
-        msi_file = gdal_open(args.msi)
-        # Compute normalized difference vegetation index (NDVI)
-        ndvi = compute_ndvi(msi_file)
-        # if requested, write out the NDVI image
-        if args.ndvi:
-            save_ndvi(ndvi, msi_file, args.ndvi)
+    # if an NDVI image was specified, us it to filter
+    if args.input_ndvi:
+        # Load normalized difference vegetation index (NDVI) file
+        ndvi_file = gdal_open(args.input_ndvi)
+        ndvi_band = ndvi_file.GetRasterBand(1)
+        ndvi = ndvi_band.ReadAsArray()
+
         # remove building candidates with high vegetation likelihood
         mask[ndvi > 0.2] = False
         # reduce seeds to areas with high confidence non-vegetation
