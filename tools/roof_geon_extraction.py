@@ -206,21 +206,20 @@ def main(args):
     # a single output directory.  NOTE ** just dumping these into the
     # top level output directory for now
     all_obj_dir = "{}_obj".format(all_ply_dir)
-    road_re = re.compile("road_([0-9]+)\\.obj")
-    for f in Path(all_obj_dir).glob("road_*.obj"):
-        match = re.match(road_re, os.path.basename(str(f)))
-        if match:
-            out_fname = "Road_{}.obj".format(match[1])
-            shutil.copy(str(f), os.path.join(args.output_dir, out_fname))
-        else:
-            print("** Warning: couldn't match road OBJ filename '{}' with \
-expected regexp.  Skipping".format(str(f)))
 
-    # Copy the rest of the OBJ files
+    road_re = re.compile(r'^road_([0-9]+)\.obj$')
     for i, f in enumerate(sorted(Path(all_obj_dir).glob("*.obj"), key=str)):
         basename = os.path.basename(str(f))
-        # Prefix the filename with a number
-        shutil.copy(str(f), os.path.join(args.output_dir, "{}_{}".format(i, basename)))
+        match = re.match(road_re, basename)
+        # The renaming of road and non-road obj files here is to
+        # adhere to the naming conventions expected by the
+        # buildings_to_dsm script
+        if match:
+            out_fname = "Road_{}.obj".format(match.group(1))
+        else:
+            out_fname = "{}_{}".format(i, basename)
+
+        shutil.copy(str(f), os.path.join(args.output_dir, out_fname))
 
 
 if __name__ == '__main__':
