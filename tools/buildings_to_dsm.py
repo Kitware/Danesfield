@@ -140,7 +140,7 @@ def main(args):
             append = vtk.vtkAppendPolyData()
             for i, fileName in enumerate(files[category]):
                 offset = [0.0, 0.0, 0.0]
-                gdal_utils.read_offset(files[0][0], offset)
+                gdal_utils.read_offset(fileName, offset)
                 print("Offset: {}".format(offset))
                 transform = vtk.vtkTransform()
                 transform.Translate(offset[0], offset[1], offset[2])
