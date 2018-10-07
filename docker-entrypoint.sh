@@ -12,5 +12,9 @@ conda activate core3d
 Xvfb :1 -screen 0 1024x768x16 -nolisten tcp > xvfb.log &
 export DISPLAY=:1.0
 
+# Sleep for 10 seconds to help ensure that files to be mounted have
+# finished writing to disk
+sleep 10
+
 # Run specified command
 exec "$@"
