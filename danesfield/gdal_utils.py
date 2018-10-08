@@ -133,7 +133,7 @@ def read_offset(fileName, offset):
             else:
                 break
     if i == 0:
-        reCSString = "# coordinate_system: {.* \[[^,]*, [^,]*, ([^,]*), ([^,]*), ([^,]*), .*\], .*}\n"
+        reCSString = "# coordinate_system: {.* \[[^,]*, [^,]*, ([^,]*), ([^,]*), ([^,]*), .*\].*}\n"
         with open(fileName) as f:
             for i in range(8):
                 line = f.readline()
