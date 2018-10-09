@@ -100,6 +100,9 @@ def texture_mapping(dsm_file, dtm_file, crops, output_dir, orig_meshes, occlusio
             # for the next meshes, we re-use the generated depthmaps
             call_args += ["--occlusions", os.path.join(initial_output_dir, "depthmaps.txt")]
 
+        if mesh_name == "ground":
+            # we use a planar parameterization for the ground to avoid breaking triangles
+            call_args += ["--use-planar-parameterization"]
         subprocess_args = ["run_texture_mapping"] + call_args
         print(*subprocess_args)
         subprocess.call(subprocess_args)
