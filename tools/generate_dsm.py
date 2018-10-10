@@ -83,7 +83,8 @@ def main(args):
           "filename":"%s",
           "output_type": "max",
           "window_size": "20",
-          "bounds": "([%s, %s], [%s, %s])"
+          "bounds": "([%s, %s], [%s, %s])",
+          "gdalopts": "COMPRESS=DEFLATE"
         }
       ]
     }"""

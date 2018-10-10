@@ -55,7 +55,7 @@ def main(args):
         transform = dtm.GetGeoTransform()
         gcpProjection = dtm.GetGCPProjection()
         gcps = dtm.GetGCPs()
-        options = []
+        options = ["COMPRESS=DEFLATE"]
         # ensure that space will be reserved for geographic corner coordinates
         # (in DMS) to be set later
         if (dtmDriver.ShortName == "NITF" and not projection):
@@ -128,7 +128,7 @@ def main(args):
         files = [bldg_files,
                  road_files]
         files = [x for x in files if x]
-        print(road_files)        
+        print(road_files)
         if len(files) >= 2:
             print("Found {} buildings and {} roads".format(len(files[0]), len(files[1])))
         elif len(files) == 1:

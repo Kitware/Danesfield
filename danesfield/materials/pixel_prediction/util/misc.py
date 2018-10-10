@@ -83,7 +83,8 @@ def save_output(img, out_path):
                                 img.shape[1],
                                 img.shape[0],
                                 1,
-                                gdal.GDT_Byte)
+                                gdal.GDT_Byte,
+                                options=["COMPRESS=DEFLATE"])
 
     out_dataset.GetRasterBand(1).WriteArray(img)
     out_dataset = None
