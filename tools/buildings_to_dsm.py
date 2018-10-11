@@ -55,7 +55,7 @@ def main(args):
         transform = dtm.GetGeoTransform()
         gcpProjection = dtm.GetGCPProjection()
         gcps = dtm.GetGCPs()
-        options = []
+        options = ["COMPRESS=DEFLATE"]
         # ensure that space will be reserved for geographic corner coordinates
         # (in DMS) to be set later
         if (dtmDriver.ShortName == "NITF" and not projection):

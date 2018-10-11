@@ -109,7 +109,7 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
         transform = dsm.GetGeoTransform()
         gcpProjection = dsm.GetGCPProjection()
         gcps = dsm.GetGCPs()
-        options = []
+        options = ["COMPRESS=DEFLATE"]
         # ensure that space will be reserved for geographic corner coordinates
         # (in DMS) to be set later
         if (driver.ShortName == "NITF" and not projection):
