@@ -4,7 +4,6 @@ from danesfield import ortho
 
 import argparse
 import logging
-import time
 
 
 def main(args):
@@ -27,22 +26,9 @@ def main(args):
                              "orthorectified image")
     args = parser.parse_args(args)
 
-    attempts = 0
-    ret = None
-    while attempts < 5:
-        # Start with a sleep
-        time.sleep(10)
-        try:
-            ret = ortho.orthorectify(args.source_image, args.dsm, args.destination_image,
-                                     args.occlusion_thresh, args.denoise_radius,
-                                     args.raytheon_rpc, args.dtm)
-            # Break out if successful
-            break
-        except Exception as e:
-            logging.exception(e)
-            attempts += 1
-            if attempts < 5:
-                print('* Retrying in 10 seconds ..')
+    ret = ortho.orthorectify(args.source_image, args.dsm, args.destination_image,
+                             args.occlusion_thresh, args.denoise_radius,
+                             args.raytheon_rpc, args.dtm)
 
     if ret == ortho.ERROR:
         raise RuntimeError("Error: orthorectification failed")
