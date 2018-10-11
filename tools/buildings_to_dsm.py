@@ -128,22 +128,23 @@ def main(args):
         files = [bldg_files,
                  road_files]
         files = [x for x in files if x]
-        print(road_files)        
+        print(road_files)
         if len(files) >= 2:
             print("Found {} buildings and {} roads".format(len(files[0]), len(files[1])))
         elif len(files) == 1:
             print("Found {} buildings".format(len(files[0])))
         else:
             raise RuntimeError("No OBJ files found in {}".format(args.input_obj_paths))
-        offset = [0.0, 0.0, 0.0]
-        gdal_utils.read_offset(files[0][0], offset)
-        print("Offset: {}".format(offset))
-        transform = vtk.vtkTransform()
-        transform.Translate(offset[0], offset[1], offset[2])
         polyVtkList = []
         for category in range(len(files)):
             append = vtk.vtkAppendPolyData()
             for i, fileName in enumerate(files[category]):
+                offset = [0.0, 0.0, 0.0]
+                gdal_utils.read_offset(fileName, offset)
+                print("Offset: {}".format(offset))
+                transform = vtk.vtkTransform()
+                transform.Translate(offset[0], offset[1], offset[2])
+
                 objReader = vtk.vtkOBJReader()
                 objReader.SetFileName(fileName)
                 transformFilter = vtk.vtkTransformFilter()

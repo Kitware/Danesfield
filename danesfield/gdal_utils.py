@@ -106,9 +106,16 @@ def ogr_get_layer(vectorFile, geometryType):
 
 
 def read_offset(fileName, offset):
-    ''' Read an offset X,Y,Z written as comment lines in a file.
-        Offsets have to be in the first 3 lines of the file. A line that does
-        not match will stop matching.
+    ''' Read an offset X,Y,Z written as a comment in a file.
+        We have two cases:
+        1. Offsets have to be in the first 3 lines of the file. A line that does
+        not match will stop matching and the remaining offsets will be 0.
+        The format is:
+        #x offset: ...
+        #y offset: ...
+        #z offset: ...
+        2. The offset is the 8th line of the file. The line has the following format:
+        # coordinate_system: {"parameters": ["wgs84", "UTM zone 16N", 747594.6762214857, 4407371.835685772, 225.03827424185408, 0, 0, 0, 0, 0], "type": "EPSG"}
     '''
     offset[0] = 0.0
     offset[1] = 0.0
@@ -120,8 +127,18 @@ def read_offset(fileName, offset):
             reFloatList[1] = axes[i]
             reFloat = re.compile("".join(reFloatList))
             line = f.readline()
-            match = reFloat.search(line)
+            match = reFloat.match(line)
             if match:
                 offset[i] = float(match.group(1))
             else:
                 break
+    if i == 0:
+        reCSString = "# coordinate_system: {.* \[[^,]*, [^,]*, ([^,]*), ([^,]*), ([^,]*), .*\].*}\n"
+        with open(fileName) as f:
+            for i in range(8):
+                line = f.readline()
+            reCS = re.compile(reCSString)
+            match = reCS.match(line)
+            if match:
+                for i in range(3):
+                    offset[i] = float(match.group(1+i))
