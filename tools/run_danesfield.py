@@ -29,6 +29,7 @@ import kwsemantic_segment
 import building_segmentation
 import roof_geon_extraction
 import buildings_to_dsm
+import get_road_vector
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -127,7 +128,7 @@ def main(args):
                                      config['paths']['imagery_dir'])
 
     aoi_name = config['aoi']['name']
-    aoi_bounds = map(int, config['aoi']['bounds'].split(' '))
+    left, bottom, right, top = (config['aoi'][d] for d in ('left', 'bottom', 'right', 'top'))
 
     gsd = float(config['params'].get('gsd', 0.25))
 
@@ -201,8 +202,7 @@ def main(args):
     #############################################
 
     dsm_file = os.path.join(working_dir, aoi_name + '_P3D_DSM.tif')
-    cmd_args = [dsm_file, '-s', p3d_file, '--bounds']
-    cmd_args += list(map(str, aoi_bounds))
+    cmd_args = [dsm_file, '-s', p3d_file]
     cmd_args += ['--gsd', str(gsd)]
     logging.info("---- Running generate_dsm.py ----")
     logging.debug(cmd_args)
@@ -313,6 +313,21 @@ def main(args):
     compute_ndvi.main(cmd_args)
 
     #############################################
+    # Get OSM road vector data
+    #############################################
+    # Query OpenStreetMap for road vector data
+    logging.info('---- Fetching OSM road vector ----')
+    road_vector_output_fpath = os.path.join(working_dir, 'road_vector.geojson')
+    cmd_args = ['--left', left,
+                '--bottom', bottom,
+                '--right', right,
+                '--top', top,
+                '--output-dir', working_dir]
+    script_call = ["get_road_vector.py"] + cmd_args
+    print(*script_call)
+    get_road_vector.main(cmd_args)
+
+    #############################################
     # Segment by Height and Vegetation
     #############################################
     # Call segment_by_height.py using the DSM, DTM, and *one* of the
@@ -328,16 +343,12 @@ def main(args):
                 dtm_file,
                 threshold_output_mask_fpath,
                 '--input-ndvi', ndvi_output_fpath]
-    osm_roads_shapefiles_dir = config['paths'].get('osm_roads_shapefiles_dir')
-    osm_roads_shapefiles_prefix = config['paths'].get('osm_roads_shapefiles_prefix')
-    if osm_roads_shapefiles_dir and osm_roads_shapefiles_prefix:
-        cmd_args.extend(['--road-vector',
-                         os.path.join(osm_roads_shapefiles_dir,
-                                      '{}.shx'.format(osm_roads_shapefiles_prefix)),
-                         '--road-rasterized',
-                         os.path.join(working_dir, 'road_rasterized.tif'),
-                         '--road-rasterized-bridge',
-                         os.path.join(working_dir, 'road_rasterized_bridge.tif')])
+    cmd_args.extend(['--road-vector',
+                     road_vector_output_fpath,
+                     '--road-rasterized',
+                     os.path.join(working_dir, 'road_rasterized.tif'),
+                     '--road-rasterized-bridge',
+                     os.path.join(working_dir, 'road_rasterized_bridge.tif')])
     segment_by_height.main(cmd_args)
 
     #############################################
