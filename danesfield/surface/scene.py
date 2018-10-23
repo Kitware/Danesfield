@@ -63,7 +63,7 @@ class Model(object):
 
             for face_index in f:
                 face_cor = cor[face_index]
-                if self.x_offset == None:
+                if self.x_offset is None:
                     self.x_offset = min(face_cor[:, 0])
                     self.y_offset = min(face_cor[:, 1])
                     self.z_offset = min(face_cor[:, 2])
@@ -71,7 +71,6 @@ class Model(object):
                     self.x_offset = min(self.x_offset, min(face_cor[:, 0]))
                     self.y_offset = min(self.y_offset, min(face_cor[:, 1]))
                     self.z_offset = min(self.z_offset, min(face_cor[:, 2]))
-
 
     def load_from_ply(self, fp):
         scene_name = Path(fp).with_suffix('').name
@@ -213,7 +212,8 @@ class Model(object):
             sys.stdout.write(process)
             if os.path.splitext(fp)[-1] == '.ply':
                 if 'curve' in fp:
-                    self.buildings.append(self.load_from_curved_ply(os.path.join(self.ply_path, fp)))
+                    self.buildings.append(
+                        self.load_from_curved_ply(os.path.join(self.ply_path, fp)))
                 else:
                     self.buildings.append(self.load_from_ply(os.path.join(self.ply_path, fp)))
                 self.building_num += 1

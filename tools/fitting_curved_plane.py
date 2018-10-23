@@ -1,21 +1,17 @@
 #!/usr/bin/env python
 
-import numpy as np
-import pcl
 import sys
-
-import matplotlib as mpl
-mpl.use('Agg')
-
-#import plotly.plotly as py
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import axes3d, Axes3D
-from danesfield.geon_fitting.tensorflow import two_D_fitting
-from danesfield.geon_fitting.tensorflow import utils
 import pickle
 import copy
-
 import argparse
+
+from danesfield.geon_fitting.tensorflow import two_D_fitting
+from danesfield.geon_fitting.tensorflow import utils
+import numpy as np
+import pcl
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt  # noqa: E402
 
 
 def fit_cylinder(points, max_r=80, min_r=40):
@@ -232,8 +228,18 @@ def main(args):
                     cylinder_points[i][1] = current_points[indice][1]
                     cylinder_points[i][2] = current_points[indice][2]
 
-                centroid, ex, ey, ez, fitted_indices, coefficients, min_axis_z, max_axis_z, mean_diff \
-                    = two_D_fitting.fit_2D_curve(cylinder_coefficients[3:-1], cylinder_points, fit_type='poly2', dist_threshold=10)
+                (centroid,
+                 ex,
+                 ey,
+                 ez,
+                 fitted_indices,
+                 coefficients,
+                 min_axis_z,
+                 max_axis_z,
+                 mean_diff) = two_D_fitting.fit_2D_curve(cylinder_coefficients[3:-1],
+                                                         cylinder_points,
+                                                         fit_type='poly2',
+                                                         dist_threshold=10)
 
                 for i in range(len(fitted_indices)):
 
@@ -245,14 +251,31 @@ def main(args):
                     for j, tmp_idx in enumerate(fitted_indices[i]):
                         fitted_points[j, :] = cylinder_points[tmp_idx, :]
 
-                    fitted_wire = utils.draw_poly_curve(
-                        ax, centroid, ex, ey, fitted_points, coefficients, min_axis_z[i], max_axis_z[i], 'C{}'.format(2))
+                    # fitted_wire = utils.draw_poly_curve(
+                    #     ax,
+                    #     centroid,
+                    #     ex,
+                    #     ey,
+                    #     fitted_points,
+                    #     coefficients,
+                    #     min_axis_z[i],
+                    #     max_axis_z[i],
+                    #     'C{}'.format(2))
                     ax.scatter(fitted_points[:, 0], fitted_points[:, 1], fitted_points[:, 2],
                                zdir='z', s=1, c='C{}'.format(2), rasterized=True, alpha=0.5)
 
-                    all_fitted_indices, ortho_x_max, ortho_x_min, error = two_D_fitting.check_2D_curve(ex, ey, ez,
-                                                                                                       coefficients, centroid, building_points,
-                                                                                                       min_axis_z[i], max_axis_z[i], fit_type='poly2')
+                    (all_fitted_indices,
+                     ortho_x_max,
+                     ortho_x_min,
+                     error) = two_D_fitting.check_2D_curve(ex,
+                                                           ey,
+                                                           ez,
+                                                           coefficients,
+                                                           centroid,
+                                                           building_points,
+                                                           min_axis_z[i],
+                                                           max_axis_z[i],
+                                                           fit_type='poly2')
                     fitted_index[all_fitted_indices] = True
 
                     # ortho_x = np.matmul(fitted_points - centroid, ex)
@@ -301,7 +324,11 @@ def main(args):
 
                 if sphere_coefficients[-1] > 0:
                     draw_sphere(
-                        ax, sphere_coefficients[0:3], sphere_coefficients[-1], min_lst[0], max_lst[0])
+                        ax,
+                        sphere_coefficients[0:3],
+                        sphere_coefficients[-1],
+                        min_lst[0],
+                        max_lst[0])
 
                 sphere_points = np.zeros(
                     (len(sphere_indices), 3), dtype=np.float32)
@@ -314,7 +341,10 @@ def main(args):
                            zdir='z', s=1, c='C{}'.format(3), rasterized=True, alpha=0.5)
 
                 geon_model.append({'name': 'sphere', 'model': [sphere_coefficients[0:3],
-                                                               sphere_coefficients[-1], min_lst[0], max_lst[0], len(sphere_indices)]})
+                                                               sphere_coefficients[-1],
+                                                               min_lst[0],
+                                                               max_lst[0],
+                                                               len(sphere_indices)]})
 
                 all_fitted_indices, error = check_sphere(
                     building_points, sphere_coefficients[0:3], sphere_coefficients[-1])
@@ -331,7 +361,7 @@ def main(args):
                     current_points[i][1] = current_cloud[i][1]
                     current_points[i][2] = current_cloud[i][2]
 
-        remaining_index_list = indices[fitted_index == False]
+        remaining_index_list = indices[fitted_index == False]  # noqa: E712
 
         if len(all_remaining_index) == 0:
             all_remaining_index = copy.copy(remaining_index_list)
@@ -349,13 +379,13 @@ def main(args):
 
     show_cloud = pcl.PointCloud()
     show_cloud.from_array(remaining_point_list)
-    
+
     vg = show_cloud.make_voxel_grid_filter()
     vg.set_leaf_size(2, 2, 2)
     show_cloud = vg.filter()
     show_points = np.zeros((show_cloud.size, 3), dtype=np.float32)
     for i in range(show_cloud.size):
-        show_points[i,:] = show_cloud[i]
+        show_points[i, :] = show_cloud[i]
 
     ax.scatter(show_points[:, 0], show_points[:, 1], show_points[:, 2],
                zdir='z', s=1, c='C{}'.format(9), alpha=0.01)

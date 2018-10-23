@@ -452,7 +452,7 @@ def main(args):
     images_to_use = glob.glob(os.path.join(working_dir, "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(working_dir, "*.obj"))
     orig_meshes = [e for e in orig_meshes
-                   if e.find(occlusion_mesh) < 0  and e.find("building_") < 0]
+                   if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
     cmd_args = [dsm_file, dtm_file, working_dir, occlusion_mesh, "--crops"]
     cmd_args.extend(images_to_use)
     cmd_args.append("--buildings")

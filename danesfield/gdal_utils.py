@@ -115,7 +115,7 @@ def read_offset(fileName, offset):
         #y offset: ...
         #z offset: ...
         2. The offset is the 8th line of the file. The line has the following format:
-        # coordinate_system: {"parameters": ["wgs84", "UTM zone 16N", 747594.6762214857, 4407371.835685772, 225.03827424185408, 0, 0, 0, 0, 0], "type": "EPSG"}
+        # coordinate_system: {"parameters": ["wgs84", "UTM zone 16N", 747594.6762214857, 4407371.835685772, 225.03827424185408, 0, 0, 0, 0, 0], "type": "EPSG"}  # noqa: E501
     '''
     offset[0] = 0.0
     offset[1] = 0.0
