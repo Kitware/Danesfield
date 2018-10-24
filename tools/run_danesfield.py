@@ -29,6 +29,7 @@ import kwsemantic_segment
 import building_segmentation
 import roof_geon_extraction
 import buildings_to_dsm
+import run_metrics
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -452,7 +453,7 @@ def main(args):
     images_to_use = glob.glob(os.path.join(working_dir, "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(working_dir, "*.obj"))
     orig_meshes = [e for e in orig_meshes
-                   if e.find(occlusion_mesh) < 0  and e.find("building_") < 0]
+                   if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
     cmd_args = [dsm_file, dtm_file, working_dir, occlusion_mesh, "--crops"]
     cmd_args.extend(images_to_use)
     cmd_args.append("--buildings")
@@ -491,6 +492,27 @@ def main(args):
     script_call = ["buildings_to_dsm.py"] + cmd_args
     print(*script_call)
     buildings_to_dsm.main(cmd_args)
+
+    #############################################
+    # Run metrics
+    #############################################
+    logging.info('---- Running scoring code ----')
+
+    # Expected file path for material classification output MTL file
+    output_mtl = os.path.join(working_dir, '{}_MTL.tif'.format(aoi_name))
+
+    run_metrics_output_dir = os.path.join(working_dir, "metrics")
+    cmd_args = [
+        '--output-dir', run_metrics_output_dir,
+        '--ref-dir', config['metrics']['ref_data_dir'],
+        '--ref-prefix', config['metrics']['ref_data_prefix'],
+        '--dsm', output_dsm,
+        '--cls', output_cls,
+        '--mtl', output_mtl,
+        '--dtm', dtm_file]
+    script_call = ["run_metrics.py"] + cmd_args
+    print(*script_call)
+    run_metrics.main(cmd_args)
 
 
 if __name__ == '__main__':
