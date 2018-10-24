@@ -484,7 +484,7 @@ def main(args):
     logging.info('---- Running scoring code ----')
 
     # Expected file path for material classification output MTL file
-    output_mtl = os.path.join(working_dir, '{}_MTL'.format(aoi_name))
+    output_mtl = os.path.join(working_dir, '{}_MTL.tif'.format(aoi_name))
 
     run_metrics_output_dir = os.path.join(working_dir, "metrics")
     cmd_args = [
