@@ -67,7 +67,7 @@ def check_relation(plane1, plane2):
         else:
             flag = 4
         return flag
-    except:
+    except:  # noqa: E722
         return 4
 
 
@@ -94,7 +94,7 @@ def get_height_from_dem(cor, dem_parameter):
         try:
             value = data[yOffset][xOffset]
             base_height.append(value)
-        except:
+        except:  # noqa: E722
             dist_2 = np.sum((r - np.array([yOffset, xOffset])) ** 2, axis=1)
             index = np.argmin(dist_2)
             value = data[r[index, 0]][r[index, 1]]
@@ -131,7 +131,7 @@ def get_difference_plane(plane1, plane2):
         p3 = np.array(pd.exterior.coords[:])
         p4 = np.array(pi.exterior.coords[:])
         return [flag, p3, p4]
-    except:
+    except:  # noqa: E722
         flag = False
         p3 = None
         p4 = None
@@ -266,7 +266,7 @@ def fix_intersection(plane):
 
                 fixed_polys.append(temp_cor)
             return fixed_polys, True
-        except:
+        except:  # noqa: E722
             return plane
 
 

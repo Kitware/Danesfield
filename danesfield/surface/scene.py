@@ -53,7 +53,7 @@ class Model(object):
                 self.y_offset = min(self.y_offset, min(cor[:, 1]))
                 self.z_offset = min(self.z_offset, min(cor[:, 2]))
 
-        except:
+        except:  # noqa: E722
             cor, f = ply_parser(fp)
 
             for i in range(0, len(f)):
@@ -91,7 +91,7 @@ class Model(object):
                 building_model.add_topsurface(Surface(face_cor))
 
             return building_model
-        except:
+        except:  # noqa: E722
             cor, f = ply_parser(fp)
 
             for i in range(0, len(f)):
@@ -124,7 +124,7 @@ class Model(object):
             face_name = plydata['face'].data.dtype.names[0]
             fi = np.array([face_index for face_index
                            in plydata['face'].data[face_name]])
-        except:
+        except:  # noqa: E722
             cor, f = ply_parser(fp)
 
             for i in range(0, len(f)):

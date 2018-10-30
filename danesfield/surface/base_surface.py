@@ -132,7 +132,7 @@ class Building:
             # surface info: vertex num, edge num, area
             try:
                 area = temp_surf.area
-            except:
+            except:  # noqa: E722
                 area = 0
             self.surface_info.append([pn, pn, area])
             self.vertex_num += 2*pn
