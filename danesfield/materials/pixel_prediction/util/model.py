@@ -3,7 +3,6 @@ import numpy as np
 import gdal
 from scipy.ndimage import zoom
 import os
-import matplotlib.pyplot as plt
 
 from ..util import misc
 from ..architecture import ResNet as RN

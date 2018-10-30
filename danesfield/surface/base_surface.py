@@ -80,8 +80,9 @@ class Building:
                             if rst[0]:
                                 self.topsurface[j].point_cor = \
                                     fix_height(self.topsurface[j].point_cor, rst[1])
-                                self.topsurface.append(Surface(fix_height(self.topsurface[j].point_cor,
-                                                                          rst[2])))
+                                self.topsurface.append(
+                                    Surface(fix_height(self.topsurface[j].point_cor,
+                                                       rst[2])))
                                 self.surface_num += 1
                         except Exception as e:
                             print(e)
@@ -125,12 +126,13 @@ class Building:
 
             poly_check = self.bottomsurface[i].point_cor[:, 0:2]
             if not counterClockwiseCheck(poly_check):
-                self.bottomsurface[i].point_cor = np.copy(np.flip(self.bottomsurface[i].point_cor, 0))
+                self.bottomsurface[i].point_cor = \
+                    np.copy(np.flip(self.bottomsurface[i].point_cor, 0))
             temp_surf = Polygon(self.topsurface[i].point_cor)
             # surface info: vertex num, edge num, area
             try:
                 area = temp_surf.area
-            except:
+            except:  # noqa: E722
                 area = 0
             self.surface_info.append([pn, pn, area])
             self.vertex_num += 2*pn
