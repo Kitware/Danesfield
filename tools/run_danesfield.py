@@ -12,21 +12,16 @@ import glob
 import logging
 import os
 import re
-import subprocess
 import sys
 
 # import other tools
-import gdal
 import generate_dsm
 import fit_dtm
 import material_classifier
-import msi_to_rgb
 import orthorectify
 import compute_ndvi
 import segment_by_height
 import texture_mapping
-import kwsemantic_segment
-import building_segmentation
 import roof_geon_extraction
 import buildings_to_dsm
 import get_road_vector
@@ -174,8 +169,6 @@ def main(args):
     for prefix in prefixes:
         collection_id_to_files[prefix] = {
             'pan': {},
-            'pansharpened_fpath': '',
-            'rgb_fpath': '',
             'msi': {},
             'swir': {},
             'angle': -1,
@@ -223,23 +216,10 @@ def main(args):
     # Orthorectify images
     #############################################
 
-    # For each source image (PAN and MSI) call orthorectify.py
+    # For each MSI source image call orthorectify.py
     # needs to use the DSM, DTM from above and Raytheon RPC file,
     # which is a by-product of P3D.
     for collection_id, files in collection_id_to_files.items():
-        # Orthorectify the pan images
-        pan_ntf_fpath = files['pan']['image']
-        pan_fname = os.path.splitext(os.path.split(pan_ntf_fpath)[1])[0]
-        pan_ortho_img_fpath = os.path.join(working_dir, '{}_ortho.tif'.format(pan_fname))
-        cmd_args = [pan_ntf_fpath, dsm_file, pan_ortho_img_fpath, '--dtm', dtm_file]
-
-        pan_rpc_fpath = files['pan'].get('rpc', None)
-        if pan_rpc_fpath:
-            cmd_args.extend(['--raytheon-rpc', pan_rpc_fpath])
-
-        orthorectify.main(cmd_args)
-        files['pan']['ortho_img_fpath'] = pan_ortho_img_fpath
-
         # Orthorectify the msi images
         msi_ntf_fpath = files['msi']['image']
         msi_fname = os.path.splitext(os.path.split(msi_ntf_fpath)[1])[0]
@@ -257,57 +237,16 @@ def main(args):
     # on which to run this and the following steps
 
     #############################################
-    # Pansharpen images
-    #############################################
-    # Call gdal_pansharpen.py (from GDAL, not Danesfield) like this:
-    #    gdal_pansharpen.py PAN_image MSI_image output_image
-    # on each of the pairs of matching PAN and MSI orthorectified
-    # images from the step above
-    logging.info('---- Pansharpening {} image pairs ----'.format(
-                 len(collection_id_to_files.keys())))
-    lowest_angle = float('inf')
-    most_nadir_collection_id = ''
-    for collection_id, files in collection_id_to_files.items():
-        ortho_pan_fpath = files['pan']['ortho_img_fpath']
-        ortho_msi_fpath = files['msi']['ortho_img_fpath']
-        logging.info('\t Running on pair ({}, {})'.format(ortho_pan_fpath, ortho_msi_fpath))
-        pansharpened_output_image = os.path.join(working_dir,
-                                                 '{}_ortho_pansharpened.tif'.format(collection_id))
-        cmd_args = ['gdal_pansharpen.py', ortho_pan_fpath, ortho_msi_fpath,
-                    pansharpened_output_image]
-        subprocess.run(cmd_args)
-        files['pansharpened_fpath'] = pansharpened_output_image
-        angle = float(gdal.Open(files['pan']['image'],
-                                gdal.GA_ReadOnly).GetMetadata()['NITF_CSEXRA_OBLIQUITY_ANGLE'])
-        if angle < lowest_angle:
-            lowest_angle = angle
-            most_nadir_collection_id = collection_id
-
-    #############################################
-    # Convert to 8-bit RGB
-    #############################################
-    # call msi_to_rgb.py on each of the previous Pansharpened images
-    # with the '-b' flag to make byte images
-    logging.info('---- Convert pansharpened MSI images to RGB ----')
-    for collection_id, files in collection_id_to_files.items():
-        rgb_image_fpath = os.path.join(working_dir, '{}_rgb_byte_image.tif'.format(collection_id))
-        msi_image_fpath = files['pansharpened_fpath']
-
-        cmd_args = [msi_image_fpath, rgb_image_fpath, '-b']
-        msi_to_rgb.main(cmd_args)
-        files['rgb_fpath'] = rgb_image_fpath
-
-    #############################################
     # Compute NDVI
     #############################################
     # Compute the NDVI from the orthorectified / pansharpened images
     # for use during segmentation
     logging.info('---- Compute NDVI ----')
     ndvi_output_fpath = os.path.join(working_dir, 'ndvi.tif')
-    cmd_args = [files['pansharpened_fpath'] for
+    cmd_args = [files['msi']['ortho_img_fpath'] for
                 files in
                 collection_id_to_files.values() if
-                'pansharpened_fpath' in files]
+                'msi' in files and 'ortho_img_fpath' in files['msi']]
     cmd_args.append(ndvi_output_fpath)
     script_call = ["compute_ndvi.py"] + cmd_args
     print(*script_call)
@@ -346,52 +285,6 @@ def main(args):
                      '--road-rasterized-bridge',
                      os.path.join(working_dir, 'road_rasterized_bridge.tif')])
     segment_by_height.main(cmd_args)
-
-    #############################################
-    # UNet Semantic Segmentation
-    #############################################
-    # Call kwsemantic_segment.py using the DSM, DTM, and the most
-    # nadir rgb and pansharpened images as selected / processed above.
-    # Two output files will be generated by kwsemantic_segment.py, one
-    # with the suffix _prob.tif, the other with the suffix _mask.tif
-    logging.info('---- Running UNet Semantic Segmentation ----')
-    semantic_output_prefix = 'semantic'
-    # Use the most nadir image for rgb and pan
-    most_nadir_rgb_fpath = collection_id_to_files[most_nadir_collection_id]['rgb_fpath']
-    most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
-    cmd_args = [config['semantic']['config_fpath'],
-                config['semantic']['model_fpath'],
-                most_nadir_rgb_fpath,
-                dsm_file,
-                dtm_file,
-                most_nadir_pan_fpath,
-                working_dir,
-                semantic_output_prefix]
-    kwsemantic_segment.main(cmd_args)
-    # Paths to output files generated by kwsemantic_segment.py
-    # semantic_prob_fpath = "{}_prob.tif".format(semantic_output_prefix)
-    # semantic_mask_fpath = "{}/{}_semantic_CLS.tif".format(working_dir, semantic_output_prefix)
-
-    #############################################
-    # Columbia Building Segmentation
-    #############################################
-    # Run building_segmentation.py
-    logging.info('---- Running building segmentation ----')
-
-    most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
-    most_nadir_rgb_fpath = collection_id_to_files[most_nadir_collection_id]['rgb_fpath']
-    cmd_args = ["--rgb_image", most_nadir_rgb_fpath,
-                "--msi_image", most_nadir_pan_fpath,
-                "--dsm", dsm_file,
-                "--dtm", dtm_file,
-                "--model_path", config['building']['model_fpath_prefix'],
-                "--save_dir", working_dir,
-                "--output_tif"]
-    building_segmentation.main(cmd_args)
-    # Output files
-    # bldg_segmentation_predict = "{}/predict.png".format(working_dir)
-    # If the "--output_tif" argument is provided:
-    # bldg_segmentation_CLS_Float = "{}/CU_CLS_Float.tif".format(working_dir)
 
     #############################################
     # Material Segmentation
