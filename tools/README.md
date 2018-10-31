@@ -295,6 +295,32 @@ python get_road_vector.py \
        --output-dir <path_to_output_directory>
 ```
 
+## Buildings to DSM
+
+Renders a DSM or CLS from a DTM and polygons representing buildings.
+
+### Input
+
+- DTM file (tif)
+- Building polygons (vtp or list of obj paths)
+
+### Output
+
+- DSM or CLS file (tif)
+
+### Tools
+
+- `buildings_to_dsm.py`
+
+### Usage
+
+```bash
+python buildings_to_dsm.py \
+       <path_to_dtm> \
+       <path_to_output_file> \
+       --input_obj_paths <list_of_obj_paths>
+```
+
 ## Third-party tools
 
 ### Core3D JSON data representation and parser
