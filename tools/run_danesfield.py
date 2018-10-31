@@ -331,14 +331,9 @@ def main(args):
     #############################################
     # Segment by Height and Vegetation
     #############################################
-    # Call segment_by_height.py using the DSM, DTM, and *one* of the
-    # pansharpened images above.  We've been manually picking the most
-    # nadir one.  We could do that here or generalize the code to average
-    # or otherwise combine the NDVI map from multiple images.
-    # the output here has the suffix _threshold_CLS.tif.
+    # Call segment_by_height.py using the DSM, DTM, and NDVI.  the
+    # output here has the suffix _threshold_CLS.tif.
     logging.info('---- Segmenting by Height and Vegetation ----')
-    # Choose the most NADIR image
-    most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
     threshold_output_mask_fpath = os.path.join(working_dir, 'threshold_CLS.tif')
     cmd_args = [dsm_file,
                 dtm_file,
@@ -361,8 +356,9 @@ def main(args):
     # with the suffix _prob.tif, the other with the suffix _mask.tif
     logging.info('---- Running UNet Semantic Segmentation ----')
     semantic_output_prefix = 'semantic'
-    # Use the most nadir image for rgb
+    # Use the most nadir image for rgb and pan
     most_nadir_rgb_fpath = collection_id_to_files[most_nadir_collection_id]['rgb_fpath']
+    most_nadir_pan_fpath = collection_id_to_files[most_nadir_collection_id]['pansharpened_fpath']
     cmd_args = [config['semantic']['config_fpath'],
                 config['semantic']['model_fpath'],
                 most_nadir_rgb_fpath,
