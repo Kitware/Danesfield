@@ -266,6 +266,35 @@ python roof_geon_extraction.py \
     --output_dir=<path_to_output_directory>
 ```
 
+## Get road vector
+
+Fetches road vector data from OpenStreetMap for an AOI, and converts to GeoJSON.
+
+### Input
+
+- Latitude / Longitude bounds
+- Output directory
+
+### Output
+
+- Road vector data (GeoJSON)
+- Original OSM data (osm)
+
+### Tools
+
+- `get_road_vector.py`
+
+### Usage
+
+```bash
+python get_road_vector.py \
+       --left <left_bound> \
+       --bottom <bottom_bound> \
+       --right <right_bound> \
+       --top <top_bound> \
+       --output-dir <path_to_output_directory>
+```
+
 ## Third-party tools
 
 ### Core3D JSON data representation and parser
