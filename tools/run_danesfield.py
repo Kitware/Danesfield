@@ -124,7 +124,6 @@ def main(args):
                                      config['paths']['imagery_dir'])
 
     aoi_name = config['aoi']['name']
-    left, bottom, right, top = (config['aoi'][d] for d in ('left', 'bottom', 'right', 'top'))
 
     gsd = float(config['params'].get('gsd', 0.25))
 
@@ -264,10 +263,7 @@ def main(args):
     # Query OpenStreetMap for road vector data
     logging.info('---- Fetching OSM road vector ----')
     road_vector_output_fpath = os.path.join(working_dir, 'road_vector.geojson')
-    cmd_args = ['--left', left,
-                '--bottom', bottom,
-                '--right', right,
-                '--top', top,
+    cmd_args = ['--bounding-img', dsm_file,
                 '--output-dir', working_dir]
     script_call = ["get_road_vector.py"] + cmd_args
     print(*script_call)
