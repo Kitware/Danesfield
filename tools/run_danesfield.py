@@ -198,6 +198,12 @@ def main(args):
     dsm_file = os.path.join(working_dir, aoi_name + '_P3D_DSM.tif')
     cmd_args = [dsm_file, '-s', p3d_file]
     cmd_args += ['--gsd', str(gsd)]
+
+    bounds = config['aoi'].get('bounds')
+    if bounds:
+        cmd_args += ['--bounds']
+        cmd_args += bounds.split(' ')
+
     logging.info("---- Running generate_dsm.py ----")
     logging.debug(cmd_args)
     generate_dsm.main(cmd_args)
