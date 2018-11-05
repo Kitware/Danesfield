@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from danesfield import gdal_utils
+
 import sys
 import os
 import argparse
@@ -7,6 +9,8 @@ import requests
 import subprocess
 import json
 import re
+import pyproj
+import logging
 
 
 def main(args):
@@ -15,23 +19,24 @@ def main(args):
     parser.add_argument(
         '--left',
         type=str,
-        required=True,
         help='Longitude of left / westernmost side of bounding box')
     parser.add_argument(
         '--bottom',
         type=str,
-        required=True,
         help='Latitude of bottom / southernmost side of bounding box')
     parser.add_argument(
         '--right',
         type=str,
-        required=True,
         help='Longitude of right / easternmost side of bounding box')
     parser.add_argument(
         '--top',
         type=str,
-        required=True,
         help='Latitude of top / northernmost side of bounding box')
+    parser.add_argument(
+        '--bounding-img',
+        type=str,
+        help='Get region of interest from image file instead of \
+        explicitly setting the bounds')
     parser.add_argument(
         '--api-endpoint',
         type=str,
@@ -47,10 +52,33 @@ def main(args):
 
     args = parser.parse_args(args)
 
-    request_params = {"bbox": ",".join([args.left,
-                                        args.bottom,
-                                        args.right,
-                                        args.top])}
+    if args.bounding_img is not None:
+        if os.path.isfile(args.bounding_img):
+            img = gdal_utils.gdal_open(args.bounding_img)
+            outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
+            left, bottom, right, top = gdal_utils.gdal_bounding_box(img, outProj)
+        else:
+            logging.error("Couldn't find bounding_img file: [{}].  Aborting!".
+                          format(args.bounding_img))
+            exit(1)
+    elif all((args.left,
+              args.bottom,
+              args.right,
+              args.top)):
+        left, bottom, right, top = (args.left,
+                                    args.bottom,
+                                    args.right,
+                                    args.top)
+    else:
+        logging.error("Must specify either '--bounding-img' or all of "
+                      "'--left', '--bottom', '--right', '--top'.  Aborting!")
+        exit(1)
+
+    request_params = {"bbox": ",".join(map(str, [left,
+                                                 bottom,
+                                                 right,
+                                                 top]))}
+
     response = requests.get(args.api_endpoint, request_params)
 
     output_osm_filepath = os.path.join(args.output_dir, "{}.osm".format(args.output_prefix))
