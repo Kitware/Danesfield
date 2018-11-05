@@ -101,12 +101,6 @@ def collate_input_paths(paths):
     return out_collection
 
 
-# Note: here are the AOI boundaries for the current AOIs
-# D1: 747285 747908 4407065 4407640
-# D2: 749352 750082 4407021 4407863
-# D3: 477268 478256 3637333 3638307
-# D4: 435532 436917 3354107 3355520
-
 # Get path to tool relative to this (run_danesfield.py)
 def relative_tool_path(rel_path):
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), rel_path)
@@ -218,7 +212,9 @@ def main(args):
     #############################################
     # Run P3D point cloud generation
     #############################################
-    # TODO implement running P3D from Docker
+    # This script assumes we already have a pointcloud generated from
+    # Raytheon's P3D.  See the README for information regarding P3D.
+
     p3d_file = config['paths']['p3d_fpath']
 
     #############################################
@@ -287,6 +283,7 @@ def main(args):
     # For each MSI source image call orthorectify.py
     # needs to use the DSM, DTM from above and Raytheon RPC file,
     # which is a by-product of P3D.
+
     orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
     for collection_id, files in collection_id_to_files.items():
         # Orthorectify the msi images
@@ -314,6 +311,7 @@ def main(args):
     #############################################
     # Compute the NDVI from the orthorectified / pansharpened images
     # for use during segmentation
+
     ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
     ndvi_output_fpath = os.path.join(ndvi_outdir, 'ndvi.tif')
     cmd_args = py_cmd(relative_tool_path('compute_ndvi.py'))
@@ -331,6 +329,7 @@ def main(args):
     # Get OSM road vector data
     #############################################
     # Query OpenStreetMap for road vector data
+
     get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
     road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
     cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
@@ -346,6 +345,7 @@ def main(args):
     #############################################
     # Call segment_by_height.py using the DSM, DTM, and NDVI.  the
     # output here has the suffix _threshold_CLS.tif.
+
     seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
     threshold_output_mask_fpath = os.path.join(seg_by_height_outdir, 'threshold_CLS.tif')
     cmd_args = py_cmd(relative_tool_path('segment_by_height.py'))
