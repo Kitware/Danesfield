@@ -14,6 +14,7 @@ import re
 import subprocess
 from pathlib import Path
 import sys
+import itertools
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -59,32 +60,45 @@ def ensure_complete_modality(modality_dict, require_rpc=False):
     return all(key in modality_dict for key in keys)
 
 
-def classify_fpaths(prefix, fpaths, id_to_files, file_type):
+def collate_input_paths(paths):
     """
-    Classify the modality of the paths in ``fpaths`` and store that information in
-    ``id_to_files_dict``.
+    Collate a list of input file paths into a dictionary.  Considers
+    the files identifier, modality, and extension.
 
-    :param prefix: The prefix to use when validating and classifying the paths in ``fpaths``.
-    :type prefix: str
-
-    :param fpaths: The filepaths to classify.
-    :type fpaths: [str]
-
-    :param id_to_files: Mapping of the prefix ID to it's associated files.
-    :type id_to_files: dict
-
-    :param file_type: The type of file to look for. One of `image`, `info`, or `rpc`. This is the
-    key used when updating ``id_to_files_dict``.
-    :type file_type: str
+    :param paths: List of input files paths to collate
+    :type paths: enumerable
     """
-    for fpath in fpaths:
-        if prefix in fpath:
-            if '-P1BS-' in fpath:
-                id_to_files[prefix]['pan'][file_type] = fpath
-            elif '-M1BS-' in fpath:
-                id_to_files[prefix]['msi'][file_type] = fpath
-            elif '-A1BS-' in fpath:
-                id_to_files[prefix]['swir'][file_type] = fpath
+    input_re = re.compile(r'(?P<gra>GRA_)?.*'
+                          '(?P<prefix>[0-9]{2}[A-Z]{3}[0-9]{8})\-'
+                          '(?P<modality>P1BS|M1BS|A1BS)\-'
+                          '(?P<trail>[0-9]{12}_[0-9]{2}_P[0-9]{3}).*'
+                          '(?P<ext>\..+)$')
+
+    modality_map = {'P1BS': 'pan',
+                    'M1BS': 'msi',
+                    'A1BS': 'swir'}
+
+    out_collection = {}
+    for path in paths:
+        # Match on upper-case path
+        match = input_re.match(os.path.basename(path).upper())
+        if match:
+            key = '%s-%s' % (match.group('prefix'), match.group('trail'))
+            modality = modality_map[match.group('modality')]
+            if key not in out_collection:
+                out_collection[key] = {modality: {}}
+            elif modality not in out_collection[key]:
+                out_collection[key][modality] = {}
+
+            if match.group('gra') is not None and \
+               match.group('ext').endswith('.RPC'):
+                out_collection[key][modality]['rpc'] = path
+            elif match.group('ext').endswith('.NTF'):
+                out_collection[key][modality]['image'] = path
+            elif match.group('ext').endswith('.TAR'):
+                out_collection[key][modality]['info'] = path
+
+    return out_collection
 
 
 # Note: here are the AOI boundaries for the current AOIs
@@ -208,61 +222,30 @@ def main(args):
     p3d_file = config['paths']['p3d_fpath']
 
     #############################################
-    # Find all NTF and corresponding info tar
-    # files
+    # Find all NTF and corresponding rpc and info
+    # tar files
     #############################################
-    ntf_fpaths = []
-    info_fpaths = []
-    for root, dirs, files in os.walk(config['paths']['imagery_dir']):
-        ntf_fpaths.extend([os.path.join(root, file)
-                           for file in files if file.lower().endswith('.ntf')])
-        info_fpaths.extend([os.path.join(root, file)
-                            for file in files if file.lower().endswith('.tar')])
 
-    # We look for the rpc files in a different dir
-    rpc_fpaths = []
-    for root, dirs, files in os.walk(config['paths'].get('rpc_dir')):
-        rpc_fpaths.extend([os.path.join(root, file)
-                           for file in files
-                           if file.lower().endswith('.rpc') and
-                           file.lower().startswith('gra_')])
+    input_paths = []
+    for root, dirs, files in itertools.chain(os.walk(config['paths']['imagery_dir']),
+                                             os.walk(config['paths']['rpc_dir'])):
+        input_paths.extend([os.path.join(root, f) for f in files])
 
-    # We start with prefixes as a set so that we're only adding the unique ones.
-    prefixes = set()
-    prefix_regex = re.compile('[0-9]{2}[A-Z]{3}[0-9]{8}-')
-    for ntf_fpath in ntf_fpaths:
-        prefix = prefix_regex.search(ntf_fpath)
-        if prefix:
-            prefixes.add(prefix.group(0).rstrip('-'))
-    prefixes = list(prefixes)
+    collection_id_to_files = collate_input_paths(input_paths)
 
-    # Group the modalities with the collection data prefix
-    collection_id_to_files = {}
+    # Prune the collection
     incomplete_ids = []
-    for prefix in prefixes:
-        collection_id_to_files[prefix] = {
-            'pan': {},
-            'msi': {},
-            'swir': {},
-            'angle': -1,
-        }
-
-        classify_fpaths(prefix, ntf_fpaths, collection_id_to_files, 'image')
-        classify_fpaths(prefix, rpc_fpaths, collection_id_to_files, 'rpc')
-        classify_fpaths(prefix, info_fpaths, collection_id_to_files, 'info')
-
-        # If we didn't pick up all of the modalities, then delete the entry from the dictionary.
-        # For now, we aren't running the check on SWIR.
-        complete = (ensure_complete_modality(collection_id_to_files[prefix]['pan'],
-                                             require_rpc=True)
-                    and ensure_complete_modality(collection_id_to_files[prefix]['msi'],
-                                                 require_rpc=True))
-
-        if not complete:
+    for prefix, files in collection_id_to_files.items():
+        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=True) and \
+           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=True):
+            pass
+        else:
             logging.warning("Don't have complete modality for collection ID: '{}', skipping!"
                             .format(prefix))
-            del collection_id_to_files[prefix]
             incomplete_ids.append(prefix)
+
+    for idx in incomplete_ids:
+        del collection_id_to_files[idx]
 
     #############################################
     # Render DSM from P3D point cloud
