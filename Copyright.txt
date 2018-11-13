@@ -1,0 +1,27 @@
+Danesfield
+Copyright 2017-2018 Kitware, Inc. and Contributors
+All rights reserved.
+
+This software is distributed under the Apache License, Version 2.0.
+See accompanying file LICENSE or apache.org/licenses/LICENSE-2.0 for
+details.
+
+------------------------------------------------------------------------------
+
+The following individuals and institutions are among the Contributors:
+
+* Columbia University
+* Kitware, Inc
+* Kitware, SAS
+* Purdue University
+* Rutgers University
+
+See version control history for details of individual contributions.
+
+------------------------------------------------------------------------------
+
+Danesfield was developed with the following sponsorship:
+
+ * Intelligence Advanced Research Projects Activity as a part of the
+   Creation of Operationally Realistic 3D Environment (CORE3D)
+   program.

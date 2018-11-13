@@ -1,3 +1,9 @@
+###############################################################################
+# Copyright Kitware Inc. and Contributors
+# Distributed under the Apache License, 2.0 (apache.org/licenses/LICENSE-2.0)
+# See accompanying Copyright.txt and LICENSE files for details
+###############################################################################
+
 """
 inspired by torchvision
 but in torchvision we need PIL and don't have dual operations
