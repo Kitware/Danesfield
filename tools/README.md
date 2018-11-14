@@ -1,5 +1,26 @@
 # Danesfield Tools
 
+This directory contains several command line tools for executing the Danesfield algorithms.  The `run_danesfield.py` tool runs each component of the Danesfield system end-to-end.  Each of the following subsections covers a single tool.
+
+## Run Danesfield
+
+This script runs each of the Danesfield system components in an integrated end-to-end pipeline.  The inputs / outputs of the script are controlled by a single configuration file.  A template configuration file (`input.ini`) can be found in this repositories root directory.
+
+### Tools
+
+- `run_danesfield.py`
+
+### Prerequisites
+
+A completed configuration file.  The configuration file requires paths to source materials, paths to model files, and parameters for some algorithms.
+
+### Usage
+
+```bash
+python run_danesfield.py \
+       <input_configuration_file>
+```
+
 ## Segmentation by Height
 
 ### Tools
