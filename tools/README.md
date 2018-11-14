@@ -1,5 +1,26 @@
 # Danesfield Tools
 
+This directory contains several command line tools for executing the Danesfield algorithms.  The `run_danesfield.py` tool runs each component of the Danesfield system end-to-end.  Each of the following subsections covers a single tool.
+
+## Run Danesfield
+
+This script runs each of the Danesfield system components in an integrated end-to-end pipeline.  The inputs / outputs of the script are controlled by a single configuration file.  A template configuration file (`input.ini`) can be found in this repositories root directory.
+
+### Tools
+
+- `run_danesfield.py`
+
+### Prerequisites
+
+A completed configuration file.  The configuration file requires paths to source materials, paths to model files, and parameters for some algorithms.
+
+### Usage
+
+```bash
+python run_danesfield.py \
+       <input_configuration_file>
+```
+
 ## Segmentation by Height
 
 ### Tools
@@ -264,6 +285,61 @@ python roof_geon_extraction.py \
     --model_prefix=<prefix_for_model_files> \
     --model_dir=<directory_containing_model_files> \
     --output_dir=<path_to_output_directory>
+```
+
+## Get road vector
+
+Fetches road vector data from OpenStreetMap for an AOI, and converts to GeoJSON.
+
+### Input
+
+- Latitude / Longitude bounds
+- Output directory
+
+### Output
+
+- Road vector data (GeoJSON)
+- Original OSM data (osm)
+
+### Tools
+
+- `get_road_vector.py`
+
+### Usage
+
+```bash
+python get_road_vector.py \
+       --left <left_bound> \
+       --bottom <bottom_bound> \
+       --right <right_bound> \
+       --top <top_bound> \
+       --output-dir <path_to_output_directory>
+```
+
+## Buildings to DSM
+
+Renders a DSM or CLS from a DTM and polygons representing buildings.
+
+### Input
+
+- DTM file (tif)
+- Building polygons (vtp or list of obj paths)
+
+### Output
+
+- DSM or CLS file (tif)
+
+### Tools
+
+- `buildings_to_dsm.py`
+
+### Usage
+
+```bash
+python buildings_to_dsm.py \
+       <path_to_dtm> \
+       <path_to_output_file> \
+       --input_obj_paths <list_of_obj_paths>
 ```
 
 ## Third-party tools
