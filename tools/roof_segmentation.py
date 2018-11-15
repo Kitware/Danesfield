@@ -18,13 +18,13 @@ from tqdm import tqdm
 
 from danesfield.geon_fitting.tensorflow import roof_type_segmentation
 
-import matplotlib as mpl
-# Force 'Agg' backend
-mpl.use('Agg')
-import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import pcl
 import scipy.spatial
+import matplotlib as mpl
+# Force 'Agg' backend
+mpl.use('Agg')
+import matplotlib.pyplot as plt  # noqa: E402
 
 
 def read_txt_pc(filename):
