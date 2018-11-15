@@ -11,5 +11,4 @@ exclude =
     tools/primitiveMeshGen.py,
     # Temporarily ignoring; TODO: make compliant
     danesfield/geon_fitting,
-    tools/roof_segmentation.py,
 max-line-length: 100
