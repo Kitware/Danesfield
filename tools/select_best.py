@@ -29,6 +29,10 @@ def main(args):
         '--dsm', required=True,
         help='File path to DSM')
     parser.add_argument(
+        '--output-filepath',
+        type=str,
+        help='Results will be written to the provided filepath')
+    parser.add_argument(
         'image_files', nargs='+')
 
     args = parser.parse_args(args)
@@ -60,7 +64,16 @@ def main(args):
 
     sortIndex = numpy.lexsort((angles, cloudCover, areas))
 
-    return numpy.asarray(args.image_files)[sortIndex]
+    bestList = numpy.asarray(args.image_files)[sortIndex]
+
+    print("\n".join(bestList))
+
+    if args.output_filepath:
+        with open(args.output_filepath, 'w') as f:
+            f.write("\n".join(bestList))
+            f.write("\n")
+
+    return bestList
 
 
 if __name__ == '__main__':
@@ -68,7 +81,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=loglevel)
 
     try:
-        print("\n".join(main(sys.argv[1:])))
+        main(sys.argv[1:])
     except Exception as e:
         logging.exception(e)
         sys.exit(1)
