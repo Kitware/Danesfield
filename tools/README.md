@@ -2,6 +2,8 @@
 
 This directory contains several command line tools for executing the Danesfield algorithms.  The `run_danesfield.py` tool runs each component of the Danesfield system end-to-end.  Each of the following subsections covers a single tool.
 
+Note that several of the tools require model files not included in this repository.  These model files may not be publicly available at the time of writing.  Please contact Kitware directory to request access to the models.
+
 ## Run Danesfield
 
 This script runs each of the Danesfield system components in an integrated end-to-end pipeline.  The inputs / outputs of the script are controlled by a single configuration file.  A template configuration file (`input.ini`) can be found in this repositories root directory.
@@ -39,7 +41,7 @@ python segment_by_height.py \
        --msi <msi_image_path>
 ```
 
-Can optionally pass in OpenStreetMap road data as a shapefile to include roads in the output mask.  Note that a "shapfile" is comprised of a `.shx`, `.shp`, `.prj`, and `.dbf` file, all of which should share the same basename.
+Can optionally pass in OpenStreetMap road data as a geojson file to include roads in the output mask.
 
 ```bash
 python segment_by_height.py \
@@ -47,7 +49,7 @@ python segment_by_height.py \
        <dtm_image_path> \
        <output_mask_path> \
        --msi <msi_image_path> \
-       --road-vector <shapefile_basename>.shx \
+       --road-vector <road_vector_geojson_path> \
        --road-rasterized <output_road_raster> \
        --road-rasterized-bridge <output_road_bridge_raster>
 ```
@@ -340,6 +342,97 @@ python buildings_to_dsm.py \
        <path_to_dtm> \
        <path_to_output_file> \
        --input_obj_paths <list_of_obj_paths>
+```
+
+## Run Metrics
+
+Wrapper script around JHU/APL's Core3D scoring software [found here](https://github.com/pubgeo/core3d-metrics).  Given a directory of ground truth files with a common prefix, score our output files.
+
+### Input
+
+- DSM file (tif)
+- DTM file (tif)
+- CLS file (tif)
+- MTL file (tif)
+
+### Output
+
+- Output scores (json)
+
+### Tools
+
+- `run_metrics.py`
+
+### Usage
+
+```bash
+python run_metrics.py \
+       --output-dir <output_directory_path> \
+       --ref-dir <path_to_reference_files> \
+       --ref-prefix <reference_files_prefix> \
+       --dsm <dsm_file_to_score> \
+       --cls <cls_file_to_score> \
+       --mtl <mtl_file_to_score> \
+       --dtm <dtm_file_to_score>
+```
+
+## Orthorectify
+
+Orthorectify a source image using a DSM, DTM, and RPC.
+
+### Input
+
+- Source image (tif)
+- DSM file (tif)
+- DTM file (tif)
+- RPC file (txt)
+
+### Output
+
+- Orthorectified image (tif)
+
+### Tools
+
+- `orthorectify.py`
+
+### Usage
+
+```bash
+python orthorectify.py \
+       <source_image_path> \
+       <DSM_path> \
+       <output_image_path> \
+       --dtm <DTM_path> \
+       --raytheon-rpc <RPC_path>
+```
+
+## Texture Mapping
+
+Textures building models using pre-processed source imagery.
+
+### Input
+
+- Cropped and pansharped source imagery (tif)
+- Model files (obj)
+- DSM file (tif)
+- DTM file (tif)
+
+### Output
+
+- Textures (png)
+- Textured models (obj)
+- Textured ground (obj)
+
+### Usage
+
+```bash
+python texture_mapping.py \
+       <DSM_path> \
+       <DTM_path> \
+       <output_directory_path> \
+       <occlusion_mesh_path> \
+       --crops <list_of_cropped_and_pansharpened_image_paths> \
+       --buildings <list_of_model_paths_to_texture>
 ```
 
 ## Third-party tools
