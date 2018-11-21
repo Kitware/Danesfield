@@ -2,6 +2,8 @@
 
 This directory contains several command line tools for executing the Danesfield algorithms.  The `run_danesfield.py` tool runs each component of the Danesfield system end-to-end.  Each of the following subsections covers a single tool.
 
+Note that several of the tools require model files not included in this repository.  These model files may not be publicly available at the time of writing.  Please contact Kitware directory to request access to the models.
+
 ## Run Danesfield
 
 This script runs each of the Danesfield system components in an integrated end-to-end pipeline.  The inputs / outputs of the script are controlled by a single configuration file.  A template configuration file (`input.ini`) can be found in this repositories root directory.
