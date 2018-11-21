@@ -41,7 +41,7 @@ python segment_by_height.py \
        --msi <msi_image_path>
 ```
 
-Can optionally pass in OpenStreetMap road data as a shapefile to include roads in the output mask.  Note that a "shapfile" is comprised of a `.shx`, `.shp`, `.prj`, and `.dbf` file, all of which should share the same basename.
+Can optionally pass in OpenStreetMap road data as a geojson file to include roads in the output mask.
 
 ```bash
 python segment_by_height.py \
@@ -49,7 +49,7 @@ python segment_by_height.py \
        <dtm_image_path> \
        <output_mask_path> \
        --msi <msi_image_path> \
-       --road-vector <shapefile_basename>.shx \
+       --road-vector <road_vector_geojson_path> \
        --road-rasterized <output_road_raster> \
        --road-rasterized-bridge <output_road_bridge_raster>
 ```
