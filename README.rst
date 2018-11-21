@@ -41,6 +41,16 @@ Conda.  Conda provides a consistent development environment with a known
 configuration of dependencies versions.  Follow the directions in
 `<deployment/conda/README.rst>`_ to setup this environment.
 
+Docker image
+------------
+
+This repository has also been built into a Docker image, which
+includes the required conda environment.  The image was built using
+the Dockerfile included in this repository.  As some of the Danesfield
+algorithms require a GPU, you'll need to have `NVIDIA Docker
+<https://github.com/NVIDIA/nvidia-docker>`_ installed, and use the
+``nvidia-docker`` command when running the image.
+
 Project Layout
 ==============
 
