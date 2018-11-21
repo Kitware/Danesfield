@@ -344,6 +344,97 @@ python buildings_to_dsm.py \
        --input_obj_paths <list_of_obj_paths>
 ```
 
+## Run Metrics
+
+Wrapper script around JHU/APL's Core3D scoring software [found here](https://github.com/pubgeo/core3d-metrics).  Given a directory of ground truth files with a common prefix, score our output files.
+
+### Input
+
+- DSM file (tif)
+- DTM file (tif)
+- CLS file (tif)
+- MTL file (tif)
+
+### Output
+
+- Output scores (json)
+
+### Tools
+
+- `run_metrics.py`
+
+### Usage
+
+```bash
+python run_metrics.py \
+       --output-dir <output_directory_path> \
+       --ref-dir <path_to_reference_files> \
+       --ref-prefix <reference_files_prefix> \
+       --dsm <dsm_file_to_score> \
+       --cls <cls_file_to_score> \
+       --mtl <mtl_file_to_score> \
+       --dtm <dtm_file_to_score>
+```
+
+## Orthorectify
+
+Orthorectify a source image using a DSM, DTM, and RPC.
+
+### Input
+
+- Source image (tif)
+- DSM file (tif)
+- DTM file (tif)
+- RPC file (txt)
+
+### Output
+
+- Orthorectified image (tif)
+
+### Tools
+
+- `orthorectify.py`
+
+### Usage
+
+```bash
+python orthorectify.py \
+       <source_image_path> \
+       <DSM_path> \
+       <output_image_path> \
+       --dtm <DTM_path> \
+       --raytheon-rpc <RPC_path>
+```
+
+## Texture Mapping
+
+Textures building models using pre-processed source imagery.
+
+### Input
+
+- Cropped and pansharped source imagery (tif)
+- Model files (obj)
+- DSM file (tif)
+- DTM file (tif)
+
+### Output
+
+- Textures (png)
+- Textured models (obj)
+- Textured ground (obj)
+
+### Usage
+
+```bash
+python texture_mapping.py \
+       <DSM_path> \
+       <DTM_path> \
+       <output_directory_path> \
+       <occlusion_mesh_path> \
+       --crops <list_of_cropped_and_pansharpened_image_paths> \
+       --buildings <list_of_model_paths_to_texture>
+```
+
 ## Third-party tools
 
 ### Core3D JSON data representation and parser
