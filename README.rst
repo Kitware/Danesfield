@@ -6,6 +6,10 @@ This repository addresses the algorithmic challenges of the IARPA CORE3D
 program.  The goal of this software is to reconstruct semantically meaningful
 3D models of buildings and other man-made structures from satellite imagery.
 
+.. image:: danesfield_system_graphic.png
+    :align: center
+    :alt: The Danesfield system performs 3D reconstruction from satellite imagery
+
 This repository contains the algorithms to solve the CORE3D problem, but the
 user interface and cloud-based processing infrastructure are provided
 in a separate project called Resonant Geo.  The algorithms in this repository
