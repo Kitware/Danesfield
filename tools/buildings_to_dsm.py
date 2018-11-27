@@ -339,15 +339,8 @@ def main(args):
         valuePass.ReleaseGraphicsResources(renWin)
 
         print("Writing the DSM ...")
-        elevationFlat = numpy_support.vtk_to_numpy(elevationFlatVtk)
-        # VTK X,Y corresponds to numpy cols,rows. VTK stores arrays
-        # in Fortran order.
-        elevationTranspose = numpy.reshape(
-            elevationFlat, [dtm.RasterXSize, dtm.RasterYSize], "F")
-        # changes from cols, rows to rows,cols.
-        elevation = numpy.transpose(elevationTranspose)
-        # numpy rows increase as you go down, Y for VTK images increases as you go up
-        elevation = numpy.flip(elevation, 0)
+        elevation = gdal_utils.vtk_to_numpy_order(elevationFlatVtk,
+                                                  [dtm.RasterXSize, dtm.RasterYSize])
         if args.buildings_only:
             dsmElevation = elevation
         else:
