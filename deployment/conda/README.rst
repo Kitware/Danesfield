@@ -36,7 +36,7 @@ environment.
    cd danesfield
    conda env create -f deployment/conda/conda_env.yml
    source activate core3d-dev
-   conda install -c kitware-geospatial core3d-tf_ops
+   conda install -c kitware-danesfield core3d-tf_ops
    conda install -c conda-forge opencv
    pip install -e .
 

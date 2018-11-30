@@ -4,7 +4,7 @@
 #   $ conda env create -f conda_env.yml
 # then:
 # source activate core3d-dev
-# conda install -c kitware-geospatial core3d-tf_ops
+# conda install -c kitware-danesfield core3d-tf_ops
 # conda install -c conda-forge opencv
 #
 # For macs (that dont have nvidia GPUS) you don't execute the last step.
@@ -12,7 +12,7 @@
 name: core3d-dev
 
 channels:
-- kitware-geospatial
+- kitware-danesfield
 - pytorch
 - conda-forge
 - defaults
