@@ -4,18 +4,18 @@
 #   $ conda env create -f conda_env.yml
 # then:
 # source activate core3d-dev
-# conda install -c kitware-danesfield core3d-tf_ops
-# conda install -c conda-forge opencv
+# conda install -c kitware-danesfield -c kitware-danesfield-df core3d-tf_ops
+# conda install -c kitware-danesfield-cf opencv
 #
-# For macs (that dont have nvidia GPUS) you don't execute the last step.
+# For macs (that dont have nvidia GPUS) you don't execute the last two steps.
 
 name: core3d-dev
 
 channels:
 - kitware-danesfield
-- pytorch
-- conda-forge
-- defaults
+- kitware-danesfield-pt
+- kitware-danesfield-cf
+- kitware-danesfield-df
 
 dependencies:
 - pubgeo-core3d-metrics

@@ -36,8 +36,8 @@ environment.
    cd danesfield
    conda env create -f deployment/conda/conda_env.yml
    source activate core3d-dev
-   conda install -c kitware-danesfield core3d-tf_ops
-   conda install -c conda-forge opencv
+   conda install -c kitware-danesfield -c kitware-danesfield-df core3d-tf_ops
+   conda install -c kitware-danesfield-cf opencv
    pip install -e .
 
 To deactivate the core3d-dev environment, run:
