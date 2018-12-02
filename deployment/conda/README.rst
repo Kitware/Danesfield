@@ -26,7 +26,9 @@ Create Core3D Conda Environment
 
 Due to some conflicting package dependencies between conda channels,
 two packages must be installed manually after setting up the initial
-environment.
+environment. Note that the kitware-danesfield-pt,
+kitware-danesfield-cf and kitware-danesfield-df repos store private
+copies of packages from pytorch, conda-forge and defaults.
 
 .. code-block:: bash
 

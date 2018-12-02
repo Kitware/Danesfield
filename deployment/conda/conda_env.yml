@@ -7,6 +7,10 @@
 # conda install -c kitware-danesfield -c kitware-danesfield-df core3d-tf_ops
 # conda install -c kitware-danesfield-cf opencv
 #
+# The two extra steps are required because we use binary packages from
+# different repos: conda-forge and defaults.
+# The kitware-danesfield-pt, kitware-danesfield-cf and kitware-danesfield-df repos store
+# private copies of packages from pytorch, conda-forge and defaults.
 # For macs (that dont have nvidia GPUS) you don't execute the last two steps.
 
 name: core3d-dev
