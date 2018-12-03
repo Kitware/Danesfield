@@ -70,7 +70,7 @@ RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.ym
 # Install core3d-tf_ops package from kitware-danesfield / defaults
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
       conda activate core3d && \
-      conda install -c kitware-danesfield -y core3d-tf_ops && \
+      conda install -c kitware-danesfield -c kitware-danesfield-df -y core3d-tf_ops && \
       conda clean -tipsy"]
 
 # Install opencv package from conda-forge
