@@ -96,5 +96,5 @@ if __name__ == '__main__':
                 'conf/*',
             ]
         },
-        url='https://gitlab.kitware.com/core3d/danesfield',
+        url='https://github.com/Kitware/Danesfield',
     )

@@ -32,7 +32,7 @@ environment.
 
    mkdir CORE3D_DIR (pick a name of your choice)
    cd CORE3D_DIR
-   git clone https://gitlab.kitware.com/core3d/danesfield.git
+   git clone https://github.com/Kitware/Danesfield.git
    cd danesfield
    conda env create -f deployment/conda/conda_env.yml
    source activate core3d-dev

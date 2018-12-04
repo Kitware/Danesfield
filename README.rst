@@ -25,7 +25,7 @@ Clone this repository with its submodules by running:
 
 .. code-block::
 
-    git clone --recursive git@gitlab.kitware.com:core3d/danesfield.git
+    git clone --recursive git@github.com:Kitware/Danesfield.git
 
 To fetch the latest version of this repository and its submodules, run:
 
