@@ -24,9 +24,9 @@ https://conda.io/miniconda.html
 Create Core3D Conda Environment
 ===============================
 
-Due to some conflicting package dependencies between conda channels,
-two packages must be installed manually after setting up the initial
-environment.
+Note that the kitware-danesfield-pt, kitware-danesfield-cf and
+kitware-danesfield-df repos store private copies of packages from
+pytorch, conda-forge and defaults.
 
 .. code-block:: bash
 
@@ -36,8 +36,6 @@ environment.
    cd danesfield
    conda env create -f deployment/conda/conda_env.yml
    source activate core3d-dev
-   conda install -c kitware-geospatial core3d-tf_ops
-   conda install -c conda-forge opencv
    pip install -e .
 
 To deactivate the core3d-dev environment, run:

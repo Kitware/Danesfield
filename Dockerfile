@@ -67,10 +67,10 @@ COPY ./deployment/conda/conda_env.yml \
 RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.yml -n core3d && \
     ${CONDA_EXECUTABLE} clean -tipsy
 
-# Install core3d-tf_ops package from kitware-geospatial / defaults
+# Install core3d-tf_ops package from kitware-danesfield / defaults
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
       conda activate core3d && \
-      conda install -c kitware-geospatial -y core3d-tf_ops && \
+      conda install -c kitware-danesfield -c kitware-danesfield-df -y core3d-tf_ops && \
       conda clean -tipsy"]
 
 # Install opencv package from conda-forge
