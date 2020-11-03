@@ -2,9 +2,7 @@
 
 It takes rgb dsm dtm and msi image as input and output a building mask. 
 
-The model file is in data.kitware
-
-[https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b3be0568d777f2e62259362](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b3be0568d777f2e62259362)
+The model file is on [Kitware Data](https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1b65f50a41e3d192de73a)
 
 
 Test:

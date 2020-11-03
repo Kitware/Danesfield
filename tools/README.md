@@ -63,7 +63,7 @@ python segment_by_height.py \
 ### Prerequisites
 
 Download the files in [this folder](
-https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b3be0568d777f2e62259362).
+https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1b65f50a41e3d192de73a).
 When running the script, specify the path to this folder using the `--model_dir` argument
 and the common prefix of the model files using the `--model_prefix` argument, i.e. "Dayton_best".
 
@@ -90,7 +90,7 @@ python building_segmentation.py \
 ### Prerequisites
 
 Download the pretrained model
-[here](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b4dfb0d8d777f2e6225b8da).
+[here](https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1c4d950a41e3d192e0c8e).
 A default configuration file is included in this repository at
 `danesfield/segmentation/semantic/test_denseunet_1x1080_retrain.json`.
 
@@ -133,7 +133,7 @@ Material classification from Rutgers University.
 ### Prerequisites
 
 Download [RN18_All.pth.tar](
-https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5ab3b3a18d777f068578ecb0).
+https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1ba3f50a41e3d192df3eb).
 When running the script, specify the path to this file using the `--model-path` argument.
 
 ### Usage
@@ -164,7 +164,7 @@ PointNet Geon Extraction provided by Columbia University.
 
 ### Prerequisites
 
-Download the files in [this folder](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24).
+Download the files in [this folder](https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1b6c850a41e3d192de93b).
 When running the script, specify the path to this folder using the `--model_dir` argument
 and the common prefix of the model files using the `--model_prefix` argument, i.e. "dayton_geon".
 
@@ -273,7 +273,7 @@ code in the right sequence.
 
 ### Prerequisites
 
-Download the files in [this folder](https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24).
+Download the files in [this folder](https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1b6c850a41e3d192de93b).
 When running the script, specify the path to this folder using the `--model_dir` argument
 and the common prefix of the model files using the `--model_prefix` argument, i.e. "dayton_geon".
 

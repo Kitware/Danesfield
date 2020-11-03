@@ -4,7 +4,7 @@ It first takes building point cloud as input and output label file contains the 
 
 The model and test files are in data.kitware
 
-https://data.kitware.com/#collection/59c1963d8d777f7d33e9d4eb/folder/5b68a3fe8d777f06857c1f24
+https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1b6c850a41e3d192de93b
 
 Compile:
 
