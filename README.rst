@@ -49,11 +49,15 @@ Docker image
 ------------
 
 This repository has also been built into a Docker image, which
-includes the required conda environment.  The image was built using
-the Dockerfile included in this repository.  As some of the Danesfield
-algorithms require a GPU, you'll need to have `NVIDIA Docker
-<https://github.com/NVIDIA/nvidia-docker>`_ installed, and use the
-``nvidia-docker`` command when running the image.
+includes the required conda environment.  The image is available from
+Docker Hub at `<https://hub.docker.com/r/kitware/danesfield>`_ and can
+be pulled down by running ``docker pull kitware/danesfield``.  The
+image was built using the Dockerfile included in this repository.
+
+As some of the Danesfield algorithms require a GPU, you'll need to
+have `NVIDIA Docker <https://github.com/NVIDIA/nvidia-docker>`_
+installed, and use the ``nvidia-docker`` command when running the
+image.
 
 Project Layout
 ==============
