@@ -17,7 +17,32 @@ import vtk
 from vtk.numpy_interface import dataset_adapter as dsa
 from vtk.util import numpy_support
 from danesfield import gdal_utils
+import glob
 
+def activate_virtual_framebuffer():
+    '''
+    Activates a virtual (headless) framebuffer for rendering 3D
+    scenes via VTK.
+
+    Most critically, this function is useful when this code is being run
+    in a Dockerized notebook, or over a server without X forwarding.
+
+    * Requires the following packages:
+      * `sudo apt-get install libgl1-mesa-dev xvfb`
+    '''
+
+    import subprocess
+    import vtk
+
+    vtk.OFFSCREEN = True
+    os.environ['DISPLAY']=':99.0'
+
+    commands = ['Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &',
+                'sleep 3',
+                'exec "$@"']
+
+    for command in commands:
+        subprocess.call(command,shell=True)
 
 def main(args):
     parser = argparse.ArgumentParser(
@@ -43,6 +68,8 @@ def main(args):
     parser.add_argument("--debug", action="store_true",
                         help="Save intermediate results")
     args = parser.parse_args(args)
+
+    activate_virtual_framebuffer()
 
     # open the DTM
     dtm = gdal.Open(args.input_dtm, gdal.GA_ReadOnly)
@@ -128,7 +155,6 @@ def main(args):
         bldg_re = re.compile(".*/?[0-9][^/]*\\.obj")
         bldg_files = [f for f in args.input_obj_paths
                       if bldg_re.match(f)]
-        print(bldg_files)
         road_re = re.compile(".*/?Road[^/]*\\.obj")
         road_files = [f for f in args.input_obj_paths
                       if road_re.match(f)]
@@ -181,6 +207,7 @@ def main(args):
     ren = vtk.vtkRenderer()
     renWin = vtk.vtkRenderWindow()
     renWin.OffScreenRenderingOn()
+    renWin.SetOffScreenRendering(1)
     renWin.SetSize(dtm.RasterXSize, dtm.RasterYSize)
     renWin.SetMultiSamples(0)
     renWin.AddRenderer(ren)
@@ -277,56 +304,61 @@ def main(args):
     else:
         print("Render into a floating point buffer ...")
 
-        ren.ResetCamera()
-        camera = ren.GetActiveCamera()
-        camera.ParallelProjectionOn()
-        camera.SetParallelScale((dtmBounds[3] - dtmBounds[2])/2)
-        distance = camera.GetDistance()
-        focalPoint = [(dtmBounds[0] + dtmBounds[1]) * 0.5,
-                      (dtmBounds[3] + dtmBounds[2]) * 0.5,
-                      (buildingsScalarRange[0] + buildingsScalarRange[1]) * 0.5]
-        position = [focalPoint[0], focalPoint[1], focalPoint[2] + distance]
-        camera.SetFocalPoint(focalPoint)
-        camera.SetPosition(position)
+        try:
 
-        valuePass = vtk.vtkValuePass()
-        valuePass.SetRenderingMode(vtk.vtkValuePass.FLOATING_POINT)
-        # use the default scalar for point data
-        valuePass.SetInputComponentToProcess(0)
-        valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_POINT_FIELD_DATA,
-                                         arrayName)
-        passes = vtk.vtkRenderPassCollection()
-        passes.AddItem(valuePass)
-        sequence = vtk.vtkSequencePass()
-        sequence.SetPasses(passes)
-        cameraPass = vtk.vtkCameraPass()
-        cameraPass.SetDelegatePass(sequence)
-        ren.SetPass(cameraPass)
-        # We have to render the points first, otherwise we get a segfault.
-        renWin.Render()
-        valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, arrayName)
-        renWin.Render()
-        elevationFlatVtk = valuePass.GetFloatImageDataArray(ren)
-        valuePass.ReleaseGraphicsResources(renWin)
+            ren.ResetCamera()
+            camera = ren.GetActiveCamera()
+            camera.ParallelProjectionOn()
+            camera.SetParallelScale((dtmBounds[3] - dtmBounds[2])/2)
+            distance = camera.GetDistance()
+            focalPoint = [(dtmBounds[0] + dtmBounds[1]) * 0.5,
+                          (dtmBounds[3] + dtmBounds[2]) * 0.5,
+                          (buildingsScalarRange[0] + buildingsScalarRange[1]) * 0.5]
+            position = [focalPoint[0], focalPoint[1], focalPoint[2] + distance]
+            camera.SetFocalPoint(focalPoint)
+            camera.SetPosition(position)
 
-        print("Writing the DSM ...")
-        elevationFlat = numpy_support.vtk_to_numpy(elevationFlatVtk)
-        # VTK X,Y corresponds to numpy cols,rows. VTK stores arrays
-        # in Fortran order.
-        elevationTranspose = numpy.reshape(
-            elevationFlat, [dtm.RasterXSize, dtm.RasterYSize], "F")
-        # changes from cols, rows to rows,cols.
-        elevation = numpy.transpose(elevationTranspose)
-        # numpy rows increase as you go down, Y for VTK images increases as you go up
-        elevation = numpy.flip(elevation, 0)
-        if args.buildings_only:
-            dsmElevation = elevation
-        else:
-            # elevation has nans in places other than buildings
-            dsmElevation = numpy.fmax(dtmRaster, elevation)
-        dsm.GetRasterBand(1).WriteArray(dsmElevation)
-        if nodata:
-            dsm.GetRasterBand(1).SetNoDataValue(nodata)
+            valuePass = vtk.vtkValuePass()
+            valuePass.SetRenderingMode(vtk.vtkValuePass.FLOATING_POINT)
+            # use the default scalar for point data
+            valuePass.SetInputComponentToProcess(0)
+            valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_POINT_FIELD_DATA,
+                                             arrayName)
+            passes = vtk.vtkRenderPassCollection()
+            passes.AddItem(valuePass)
+            sequence = vtk.vtkSequencePass()
+            sequence.SetPasses(passes)
+            cameraPass = vtk.vtkCameraPass()
+            cameraPass.SetDelegatePass(sequence)
+            ren.SetPass(cameraPass)
+            # We have to render the points first, otherwise we get a segfault.
+            renWin.Render()
+            valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_CELL_FIELD_DATA, arrayName)
+            renWin.Render()
+            elevationFlatVtk = valuePass.GetFloatImageDataArray(ren)
+            valuePass.ReleaseGraphicsResources(renWin)
+
+            print("Writing the DSM ...")
+            elevationFlat = numpy_support.vtk_to_numpy(elevationFlatVtk)
+            # VTK X,Y corresponds to numpy cols,rows. VTK stores arrays
+            # in Fortran order.
+            elevationTranspose = numpy.reshape(
+                elevationFlat, [dtm.RasterXSize, dtm.RasterYSize], "F")
+            # changes from cols, rows to rows,cols.
+            elevation = numpy.transpose(elevationTranspose)
+            # numpy rows increase as you go down, Y for VTK images increases as you go up
+            elevation = numpy.flip(elevation, 0)
+            if args.buildings_only:
+                dsmElevation = elevation
+            else:
+                # elevation has nans in places other than buildings
+                dsmElevation = numpy.fmax(dtmRaster, elevation)
+            dsm.GetRasterBand(1).WriteArray(dsmElevation)
+            if nodata:
+                dsm.GetRasterBand(1).SetNoDataValue(nodata)
+
+        except:
+            pass
 
 
 if __name__ == '__main__':
