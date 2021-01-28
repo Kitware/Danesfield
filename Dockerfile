@@ -3,31 +3,11 @@
 # Optional requirements:
 #   nvidia-docker2 (https://github.com/NVIDIA/nvidia-docker)
 #
-# Build:
-#   docker build -t core3d/danesfield .
+# To run with CUDA support, ensure that nvidia-docker2 is installed on the host
 #
-# Run:
-#   docker run \
-#     -i -t --rm \
-#     -v /path/to/data:/mnt/data \
-#     core3d/danesfield \
-#     <command>
-# where <command> is like:
-#   danesfield/tools/generate-dsm.py ...
-#
-# To run with CUDA support, ensure that nvidia-docker2 is installed on the host,
-# then add the following argument to the command line:
-#
-#   --runtime=nvidia
-#
-# Example:
-#   docker run \
-#     -i -t --rm \
-#     --runtime=nvidia \
-#     core3d/danesfield \
-#     danesfield/tools/material_classifier.py --cuda ...
 
-FROM nvidia/cuda:9.0-runtime-ubuntu16.04
+
+FROM nvidia/cuda:9.0-devel-ubuntu16.04
 LABEL maintainer="Max Smolens <max.smolens@kitware.com>"
 
 # Install prerequisites
@@ -82,6 +62,17 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
 # Install Danesfield package into CORE3D Conda environment
 COPY . ./danesfield
 RUN rm -rf ./danesfield/deployment
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends software-properties-common
+RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update
+RUN apt-get install -y --no-install-recommends \
+    gdal-bin \
+    libgdal-dev
+
+RUN export CPLUS_INCLUDE_PATH=/usr/include/gdal
+RUN export C_INCLUDE_PATH=/usr/include/gdal
+
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
       conda activate core3d && \
       pip install --upgrade pip && \
