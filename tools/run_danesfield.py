@@ -230,8 +230,9 @@ def main(args):
     #############################################
 
     input_paths = []
-    for root, dirs, files in itertools.chain(os.walk(config['paths']['imagery_dir']),
-                                             os.walk(config['paths']['rpc_dir'])):
+    for root, dirs, files in itertools.chain(os.walk(config['paths']['imagery_dir'])
+                                             #os.walk(config['paths']['rpc_dir'])
+                                             ):
         input_paths.extend([os.path.join(root, f) for f in files])
 
     collection_id_to_files = collate_input_paths(input_paths)
@@ -239,8 +240,8 @@ def main(args):
     # Prune the collection
     incomplete_ids = []
     for prefix, files in collection_id_to_files.items():
-        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=True) and \
-           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=True):
+        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=False) and \
+           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=False):
             pass
         else:
             logging.warning("Don't have complete modality for collection ID: '{}', skipping!"
@@ -449,8 +450,10 @@ def main(args):
     images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
                                            "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
+
     orig_meshes = [e for e in orig_meshes
-                   if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+                   if e.find(occlusion_mesh) < 0]
+
     cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
     cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, "--crops"]
     cmd_args.extend(images_to_use)
@@ -464,6 +467,7 @@ def main(args):
     #############################################
     # Buildings to DSM
     #############################################
+    roof_geon_extraction_outdir = os.path.join(working_dir, 'roof-geon-extraction')
 
     buildings_to_dsm_outdir = os.path.join(working_dir, 'buildings-to-dsm')
     # Generate the output DSM
@@ -474,8 +478,8 @@ def main(args):
     cmd_args.append('--input_obj_paths')
     obj_list = glob.glob("{}/*.obj".format(roof_geon_extraction_outdir))
     # remove occlusion_mesh and results (building_<i>.obj)
-    obj_list = [e for e in obj_list
-                if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+    #obj_list = [e for e in obj_list
+    #            if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
     cmd_args.extend(obj_list)
 
     run_step(buildings_to_dsm_outdir,
@@ -495,10 +499,10 @@ def main(args):
              'buildings-to-dsm_CLS',
              cmd_args)
 
+    """
     #############################################
     # Run metrics
     #############################################
-
     run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
 
     # Expected file path for material classification output MTL file
@@ -517,6 +521,7 @@ def main(args):
     run_step(run_metrics_outdir,
              'run-metrics',
              cmd_args)
+    """
 
 
 if __name__ == '__main__':
