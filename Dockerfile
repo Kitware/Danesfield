@@ -5,6 +5,29 @@
 #
 # To run with CUDA support, ensure that nvidia-docker2 is installed on the host
 #
+# Build:
+#   docker build -t core3d/danesfield .
+#
+# Run:
+#   docker run \
+#     -i -t --rm \
+#     -v /path/to/data:/mnt/data \
+#     core3d/danesfield \
+#     <command>
+# where <command> is like:
+#   danesfield/tools/generate-dsm.py ...
+#
+# To run with CUDA support, ensure that nvidia-docker2 is installed on the host,
+# then add the following argument to the command line:
+#
+#   --runtime=nvidia
+#
+# Example:
+#   docker run \
+#     -i -t --rm \
+#     --runtime=nvidia \
+#     core3d/danesfield \
+#     danesfield/tools/material_classifier.py --cuda ...
 
 
 FROM nvidia/cuda:9.0-devel-ubuntu16.04
