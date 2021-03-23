@@ -22,6 +22,7 @@ import subprocess
 from pathlib import Path
 import sys
 import itertools
+import json
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -200,6 +201,7 @@ def main(args):
         description="Run the Danesfield processing pipeline on an AOI from start to finish.")
     parser.add_argument("ini_file",
                         help="ini file")
+    parser.add_argument("--vissat", help="run Vissat stereo pipeline", action="store_true")
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -223,6 +225,25 @@ def main(args):
     # Raytheon's P3D.  See the README for information regarding P3D.
 
     p3d_file = config['paths']['p3d_fpath']
+
+    #############################################
+    # Run VisSat pipeline
+    #############################################
+    if args.vissat:
+        aoi_config = config['paths'].get('aoi_config')
+        if aoi_config == None:
+            print("Path to aoi_config file must be provided when using VisSat")
+            exit(1)
+        with open(aoi_config) as f:
+            data = json.load(f)
+
+        vissat_workdir = data['work_dir']
+        cmd_args = ["python3", "/VisSatSatelliteStereo/stereo_pipeline.py", "--config_file", aoi_config]
+        run_step(vissat_workdir, "VisSat", cmd_args)
+        cmd_args = ["python3", "/ply2txt.py", os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.ply'), os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt')]
+        run_step(vissat_workdir, "ply2txt", cmd_args)
+        cmd_args = ["/LAStools/bin/txt2las", "-i", os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt'), "-parse", "xyz", "-o", p3d_file, "-utm", "17R", "-target_utm", "17R"]
+        run_step(vissat_workdir, "txt2las", cmd_args)
 
     #############################################
     # Find all NTF and corresponding rpc and info
