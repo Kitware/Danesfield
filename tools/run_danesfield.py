@@ -202,6 +202,7 @@ def main(args):
     parser.add_argument("ini_file",
                         help="ini file")
     parser.add_argument("--vissat", help="run Vissat stereo pipeline", action="store_true")
+    parser.add_argument("--run_metrics", help="run metrics", action="store_true")
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -232,7 +233,7 @@ def main(args):
     if args.vissat:
         aoi_config = config['paths'].get('aoi_config')
         if aoi_config == None:
-            print("Path to aoi_config file must be provided when using VisSat")
+            print("Error: Path to aoi_config file must be provided when using VisSat")
             exit(1)
         with open(aoi_config) as f:
             data = json.load(f)
@@ -251,9 +252,12 @@ def main(args):
     #############################################
 
     input_paths = []
-    for root, dirs, files in itertools.chain(os.walk(config['paths']['imagery_dir'])
-                                             #os.walk(config['paths']['rpc_dir'])
-                                             ):
+    use_rpcs = (config['paths'].get('rpc_dir')!=None)
+    if use_rpcs:
+        iterable = itertools.chain(os.walk(config['paths']['imagery_dir']), os.walk(config['paths']['rpc_dir']))
+    else:
+        iterable = os.walk(config['paths']['imagery_dir'])
+    for root, dirs, files in iterable:
         input_paths.extend([os.path.join(root, f) for f in files])
 
     collection_id_to_files = collate_input_paths(input_paths)
@@ -261,8 +265,8 @@ def main(args):
     # Prune the collection
     incomplete_ids = []
     for prefix, files in collection_id_to_files.items():
-        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=False) and \
-           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=False):
+        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=use_rpcs) and \
+           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=use_rpcs):
             pass
         else:
             logging.warning("Don't have complete modality for collection ID: '{}', skipping!"
@@ -520,29 +524,30 @@ def main(args):
              'buildings-to-dsm_CLS',
              cmd_args)
 
-    """
+    
     #############################################
     # Run metrics
     #############################################
-    run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
+    if(args.run_metrics):
+        run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
 
-    # Expected file path for material classification output MTL file
-    output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
+        # Expected file path for material classification output MTL file
+        output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
 
-    cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
-    cmd_args += [
-        '--output-dir', run_metrics_outdir,
-        '--ref-dir', config['metrics']['ref_data_dir'],
-        '--ref-prefix', config['metrics']['ref_data_prefix'],
-        '--dsm', output_dsm,
-        '--cls', output_cls,
-        '--mtl', output_mtl,
-        '--dtm', dtm_file]
+        cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
+        cmd_args += [
+            '--output-dir', run_metrics_outdir,
+            '--ref-dir', config['metrics']['ref_data_dir'],
+            '--ref-prefix', config['metrics']['ref_data_prefix'],
+            '--dsm', output_dsm,
+            '--cls', output_cls,
+            '--mtl', output_mtl,
+            '--dtm', dtm_file]
 
-    run_step(run_metrics_outdir,
-             'run-metrics',
-             cmd_args)
-    """
+        run_step(run_metrics_outdir,
+                'run-metrics',
+                cmd_args)
+    
 
 
 if __name__ == '__main__':
