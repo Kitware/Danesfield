@@ -29,13 +29,16 @@
 
 FROM nvidia/cuda:10.0-devel-ubuntu18.04
 
-LABEL maintainer="Max Smolens <max.smolens@kitware.com>"
+LABEL maintainer="Kitware Inc. <kitware@kitware.com>"
 
 COPY patches /patches
 
 # Install prerequisites
-RUN apt-get update && apt-get install -y software-properties-common && apt-get update && \
-  add-apt-repository -y ppa:ubuntu-toolchain-r/test && add-apt-repository -y ppa:ubuntugis/ppa && apt-get update && \
+RUN apt-get update && \
+  apt-get install -y software-properties-common && \
+  add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+  add-apt-repository -y ppa:ubuntugis/ppa && \
+  apt-get update && \
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   sudo \
   make \
@@ -45,21 +48,10 @@ RUN apt-get update && apt-get install -y software-properties-common && apt-get u
   curl \
   libgl1-mesa-glx \
   libglu1-mesa \
-  libxt6 && \
+  libxt6 \
+  xvfb && \
   apt-get clean -y && \
   rm -rf /var/lib/apt/lists/*
-
-RUN git clone --recursive https://github.com/Kai-46/ColmapForVisSat.git && \
-  cd ColmapForVisSat && \
-  git checkout 696399e && \
-  git apply ../patches/colmap_deps.patch
-
-RUN git clone https://github.com/Kai-46/VisSatSatelliteStereo.git && \
-  cd VisSatSatelliteStereo && \
-  git checkout e5ca3a0 && \
-  git apply ../patches/vissat.patch
-
-ENV CONDA_EXECUTABLE /opt/conda/bin/conda
 
 # Download and install miniconda3
 # Based on https://github.com/ContinuumIO/docker-images/blob/fd4cd9b/miniconda3/Dockerfile
@@ -68,7 +60,7 @@ ENV CONDA_EXECUTABLE /opt/conda/bin/conda
 #
 #     IsADirectoryError(21, 'Is a directory')
 #
-
+ENV CONDA_EXECUTABLE /opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
@@ -98,17 +90,28 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda install -c conda-forge -y opencv && \
   conda clean -tipsy"]
 
-RUN chmod +x pipeline.sh && \
+# Install ColmapForVisSat from Github
+RUN git clone --recursive https://github.com/Kai-46/ColmapForVisSat.git && \
+  cd ColmapForVisSat && \
+  git checkout 9d96671 && \
+  git apply ../patches/colmap_deps.patch && \
   chmod +x /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \
-  chmod +x /ColmapForVisSat/ubuntu1804_install_colmap.sh && apt-get update && \
+  chmod +x /ColmapForVisSat/ubuntu1804_install_colmap.sh && \
+  apt-get update && \
   /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \ 
   cd /ColmapForVisSat && \
   ./ubuntu1804_install_colmap.sh
 
-RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+# Install VisSat package from Github
+RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteStereo.git && \
+  cd VisSatSatelliteStereo && \
+  git checkout e5ca3a0 && \
+  git apply ../patches/vissat.patch && \
+  source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -r /VisSatSatelliteStereo/requirements.txt"]
 
+# Install LAStools package from Github
 RUN git clone https://github.com/LAStools/LAStools.git && \
   cd LAStools && \
   make
@@ -119,8 +122,6 @@ RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
-
-COPY ply2txt.py ply2txt.py
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]

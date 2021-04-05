@@ -1,5 +1,5 @@
 diff --git a/ubuntu1804_install_dependencies.sh b/ubuntu1804_install_dependencies.sh
-index 65968e2..bcb0313 100755
+index 44ed98a..56dec82 100755
 --- a/ubuntu1804_install_dependencies.sh
 +++ b/ubuntu1804_install_dependencies.sh
 @@ -1,6 +1,6 @@
@@ -10,7 +10,7 @@ index 65968e2..bcb0313 100755
      git \
      cmake \
      build-essential \
-@@ -18,17 +18,21 @@ sudo apt-get install \
+@@ -18,11 +18,12 @@ sudo apt-get install \
      libglew-dev \
      qtbase5-dev \
      libqt5opengl5-dev \
@@ -19,21 +19,10 @@ index 65968e2..bcb0313 100755
 +    libcgal-qt5-dev
  
 -sudo apt-get install nvidia-driver-390 nvidia-utils-390 nvidia-cuda-toolkit
-+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-driver-390 nvidia-utils-390 nvidia-cuda-toolkit
-+#sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-driver-460 nvidia-utils-460 nvidia-cuda-toolkit
++sudo DEBIAN_FRONTEND=noninteractive apt-get install nvidia-driver-390 nvidia-utils-390 nvidia-cuda-toolkit -y
  
 -sudo apt-get install libatlas-base-dev libsuitesparse-dev
-+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libatlas-base-dev libsuitesparse-dev
++sudo DEBIAN_FRONTEND=noninteractive apt-get install libatlas-base-dev libsuitesparse-dev -y
  git clone https://ceres-solver.googlesource.com/ceres-solver
  cd ceres-solver
--git checkout $(git describe --tags) # Checkout the latest release
-+#git checkout $(git describe --tags) # Checkout the latest release
-+git checkout 1.14.0
- mkdir build
- cd build
--cmake .. -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF
-+#cmake .. -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF
-+cmake -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF ..
- make -j8
- sudo make install
- cd ../..
+ # git checkout $(git describe --tags) # Checkout the latest release
