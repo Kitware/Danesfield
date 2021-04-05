@@ -239,11 +239,15 @@ def main(args):
             data = json.load(f)
 
         vissat_workdir = data['work_dir']
+        utm = config['aoi'].get('utm')
+        if utm == None:
+            print("Error: UTM zone must be provided when using VisSat")
+            exit(1)
         cmd_args = ["python3", "/VisSatSatelliteStereo/stereo_pipeline.py", "--config_file", aoi_config]
         run_step(vissat_workdir, "VisSat", cmd_args)
         cmd_args = ["python3", "/ply2txt.py", os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.ply'), os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt')]
         run_step(vissat_workdir, "ply2txt", cmd_args)
-        cmd_args = ["/LAStools/bin/txt2las", "-i", os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt'), "-parse", "xyz", "-o", p3d_file, "-utm", "17R", "-target_utm", "17R"]
+        cmd_args = ["/LAStools/bin/txt2las", "-i", os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt'), "-parse", "xyz", "-o", p3d_file, "-utm", utm, "-target_utm", utm]
         run_step(vissat_workdir, "txt2las", cmd_args)
 
     #############################################
