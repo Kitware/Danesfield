@@ -245,9 +245,16 @@ def main(args):
             exit(1)
         cmd_args = ["python3", "/VisSatSatelliteStereo/stereo_pipeline.py", "--config_file", aoi_config]
         run_step(vissat_workdir, "VisSat", cmd_args)
-        cmd_args = ["python3", "/ply2txt.py", os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.ply'), os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt')]
+        cmd_args = ["python3", "/ply2txt.py", os.path.join(vissat_workdir, 
+                    'mvs_results/aggregate_3d/aggregate_3d.ply'), 
+                    os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt')]
+
         run_step(vissat_workdir, "ply2txt", cmd_args)
-        cmd_args = ["/LAStools/bin/txt2las", "-i", os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt'), "-parse", "xyz", "-o", p3d_file, "-utm", utm, "-target_utm", utm]
+        cmd_args = ["/LAStools/bin/txt2las", "-i", os.path.join(vissat_workdir,
+                    'mvs_results/aggregate_3d/aggregate_3d.txt'), 
+                    "-parse", "xyz", "-o", p3d_file, "-utm", utm, 
+                    "-target_utm", utm]
+                    
         run_step(vissat_workdir, "txt2las", cmd_args)
 
     #############################################
@@ -258,7 +265,8 @@ def main(args):
     input_paths = []
     use_rpcs = (config['paths'].get('rpc_dir')!=None)
     if use_rpcs:
-        iterable = itertools.chain(os.walk(config['paths']['imagery_dir']), os.walk(config['paths']['rpc_dir']))
+        iterable = itertools.chain(os.walk(config['paths']['imagery_dir']), 
+                                   os.walk(config['paths']['rpc_dir']))
     else:
         iterable = os.walk(config['paths']['imagery_dir'])
     for root, dirs, files in iterable:
