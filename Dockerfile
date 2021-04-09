@@ -25,13 +25,11 @@
 #     -i -t --rm \
 #     --runtime=nvidia \
 #     core3d/danesfield \
-#     danesfield/tools/material_classifier.py --cuda ...    
+#     danesfield/tools/material_classifier.py --cuda ...
 
 FROM nvidia/cuda:10.0-devel-ubuntu18.04
 
 LABEL maintainer="Kitware Inc. <kitware@kitware.com>"
-
-COPY patches /patches
 
 # Install prerequisites
 RUN apt-get update && \
@@ -90,6 +88,9 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda install -c conda-forge -y opencv && \
   conda clean -tipsy"]
 
+# Copy patches for Colmap and VisSat
+COPY patches /patches
+
 # Install ColmapForVisSat from Github
 RUN git clone --recursive https://github.com/Kai-46/ColmapForVisSat.git && \
   cd ColmapForVisSat && \
@@ -122,6 +123,8 @@ RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
+
+COPY ply2txt.py ply2txt.py
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
