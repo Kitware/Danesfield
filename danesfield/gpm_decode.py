@@ -17,8 +17,11 @@ def get_unsigned_short(pos, data):
 def get_string(pos, data):
   return data[pos:pos + 32].decode('ascii').rstrip('\x00'), pos + 32
 
+def get_int(pos, data):
+  return int.from_bytes(data[pos:pos + 4], 'little'), pos + 4
+
 def get_double(pos, data):
-  return struct.unpack('d', data[pos:pos + 8]), pos + 8
+  return struct.unpack('d', data[pos:pos + 8])[0], pos + 8
 
 def get_double_vec(pos, data):
   retVal = np.zeros(3)
@@ -29,6 +32,9 @@ def get_double_vec(pos, data):
     retPos += 8
 
   return retVal, retPos
+
+def get_float(pos, data):
+  return struct.unpack('f', data[pos:pos + 4])[0], pos + 4
 
 def get_float_vec(pos, data):
   retVal = np.zeros(3)
@@ -116,5 +122,63 @@ def load_GPM_GndSpace_Direct(data):
   retDict['AP'] = anchorPoints
   retDict['AP_DELTA'] = anchorDeltas
   retDict['AP_COVAR'] = anchorCovar
+
+  return retDict
+
+def load_GPM_Unmodeled_Error_Data(data):
+  # Decode base64 encoded data
+  ppe_bytes = base64.b64decode(data)
+
+  retDict = {}
+
+  currPos = 0
+
+  retDict['NUM_UE_RECORDS'], currPos = get_unsigned_short(currPos, ppe_bytes)
+
+  ue_records = []
+
+  for i in range(retDict['NUM_UE_RECORDS']):
+    ue_dict = {}
+    ue_dict['TRAJECTORY_ID'], currPos = get_int(currPos, ppe_bytes)
+    ue_dict['UNIQUE_ID'], currPos = get_string(currPos, ppe_bytes)
+    ue_dict['CORR_ROT_THETA_X'], currPos = get_double(currPos, ppe_bytes)
+    ue_dict['CORR_ROT_THETA_Y'], currPos = get_double(currPos, ppe_bytes)
+    ue_dict['CORR_ROT_THETA_Z'], currPos = get_double(currPos, ppe_bytes)
+    ue_dict['PARAM_A_U'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_ALPHA_U'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_BETA_U'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_TAU_U'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_A_V'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_ALPHA_V'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_BETA_V'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_TAU_V'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_A_W'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_ALPHA_W'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_BETA_W'], currPos = get_float(currPos, ppe_bytes)
+    ue_dict['PARAM_TAU_W'], currPos = get_float(currPos, ppe_bytes)
+
+    ue_dict['NUM_UE_POSTS'], currpos = get_unsigned_short(currPos, ppe_bytes)
+
+    posts = []
+    for it in range(ue_dict['NUM_UE_POSTS']):
+      post_dict = {}
+      post_dict['UE_COV_POST_X'], currPos = get_double(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_Y'], currPos = get_double(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_Z'], currPos = get_double(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_VARX'], currPos = get_float(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_VARY'], currPos = get_float(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_VARZ'], currPos = get_float(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_VARXY'], currPos = get_float(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_VARXZ'], currPos = get_float(currPos, ppe_bytes)
+      post_dict['UE_COV_POST_VARYZ'], currPos = get_float(currPos, ppe_bytes)
+
+      posts.append(post_dict)
+
+    if posts:
+      ue_dict['UE_COV_POST'] = post_dict
+
+    ue_records.append(ue_dict)
+
+  retDict['UE_RECORD'] = ue_records
 
   return retDict

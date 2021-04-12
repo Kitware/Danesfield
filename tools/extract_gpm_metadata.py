@@ -12,6 +12,8 @@ import logging
 import os
 import pdal
 
+from danesfield import gpm_decode
+
 bpf_json = u"""
 [
   "%s"
@@ -53,7 +55,21 @@ def main(args):
     }
 
     print(gpm_metadata.keys())
-    print(gpm_metadata['354553N1204611W202003201432F10md'])
+
+    if 'GPM_GndSpace_Direct' in gpm_metadata:
+      GPM_GndSpace_Direct = gpm_decode.load_GPM_GndSpace_Direct(
+        gpm_metadata['GPM_GndSpace_Direct'])
+      print(GPM_GndSpace_Direct.keys())
+
+    if 'Per_Point_Lookup_Error_Data' in gpm_metadata:
+      Per_Point_Lookup_Error_Data = gpm_decode.load_Per_Point_Lookup_Error_Data(
+        gpm_metadata['Per_Point_Lookup_Error_Data'])
+      print(Per_Point_Lookup_Error_Data.keys())
+
+    if 'GPM_Unmodeled_Error_Data' in gpm_metadata:
+      GPM_Unmodeled_Error_Data = gpm_decode.load_GPM_Unmodeled_Error_Data(
+        gpm_metadata['GPM_Unmodeled_Error_Data'])
+      print(GPM_Unmodeled_Error_Data)
 
 
 if __name__ == '__main__':
