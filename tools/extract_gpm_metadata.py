@@ -56,20 +56,25 @@ def main(args):
 
     print(gpm_metadata.keys())
 
+    if 'GPM_Master' in gpm_metadata:
+      GPM_Master = gpm_decode.load_GPM_Master(
+        gpm_metadata['GPM_Master'])
+      # print(GPM_Master)
+
     if 'GPM_GndSpace_Direct' in gpm_metadata:
       GPM_GndSpace_Direct = gpm_decode.load_GPM_GndSpace_Direct(
         gpm_metadata['GPM_GndSpace_Direct'])
-      print(GPM_GndSpace_Direct.keys())
+      # print(GPM_GndSpace_Direct)
 
     if 'Per_Point_Lookup_Error_Data' in gpm_metadata:
       Per_Point_Lookup_Error_Data = gpm_decode.load_Per_Point_Lookup_Error_Data(
         gpm_metadata['Per_Point_Lookup_Error_Data'])
-      print(Per_Point_Lookup_Error_Data.keys())
+      # print(Per_Point_Lookup_Error_Data)
 
     if 'GPM_Unmodeled_Error_Data' in gpm_metadata:
       GPM_Unmodeled_Error_Data = gpm_decode.load_GPM_Unmodeled_Error_Data(
         gpm_metadata['GPM_Unmodeled_Error_Data'])
-      print(GPM_Unmodeled_Error_Data)
+      # print(GPM_Unmodeled_Error_Data)
 
 
 if __name__ == '__main__':

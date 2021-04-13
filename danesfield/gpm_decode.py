@@ -11,11 +11,14 @@ import base64
 import numpy as np
 import struct
 
-def get_unsigned_short(pos, data):
+def get_string(pos, data, length=32):
+  return data[pos:pos + length].decode('ascii').rstrip('\x00'), pos + length
+
+def get_uint16(pos, data):
   return int.from_bytes(data[pos:pos + 2], 'little'), pos + 2
 
-def get_string(pos, data):
-  return data[pos:pos + 32].decode('ascii').rstrip('\x00'), pos + 32
+def get_uint32(pos, data):
+  return int.from_bytes(data[pos:pos + 4], 'little'), pos + 4
 
 def get_int(pos, data):
   return int.from_bytes(data[pos:pos + 4], 'little'), pos + 4
@@ -67,6 +70,98 @@ def get_cov_matrix(pos, data, dim=3):
 
   return retVal, retPos
 
+def load_GPM_Master(data):
+  ppe_bytes = base64.b64decode(data)
+
+  retDict = {}
+
+  currPos = 0
+
+  retDict['GPM_Version'], currPos = get_string(currPos, ppe_bytes, 10)
+  retDict['GPM_Implementation'], currPos = get_string(currPos, ppe_bytes, 20)
+  retDict['MCS_ID'], currPos = get_uint16(currPos, ppe_bytes)
+  retDict['MCS_ORIGIN_X'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_ORIGIN_Y'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_ORIGIN_Z'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_XUXM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_XUYM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_XUZM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_YUXM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_YUYM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_YUZM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_ZUXM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_ZUYM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_ZUZM'], currPos = get_double(currPos, ppe_bytes)
+  retDict['MCS_HEMI'], currPos = get_string(currPos, ppe_bytes, 1)
+  retDict['MCS_ZONE'], currPos = get_uint16(currPos, ppe_bytes)
+
+  retDict['DATASET_ID'], currPos = get_string(currPos, ppe_bytes)
+  retDict['REFERENCE_DATE_TIME'], currPos = get_string(currPos, ppe_bytes, 18)
+  retDict['EX_ORIGIN_X'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_ORIGIN_Y'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_ORIGIN_Z'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_XMUXE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_XMUYE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_XMUZE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_YMUXE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_YMUYE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_YMUZE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_ZMUXE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_ZMUYE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_ZMUZE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_DELTAXE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_DELTAYE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['EX_DELTAZE'], currPos = get_double(currPos, ppe_bytes)
+  retDict['NUM_COLLECTIONS'], currPos = get_uint32(currPos, ppe_bytes)
+
+  collections = []
+  for i in range(retDict['NUM_COLLECTIONS']):
+    collect_dict = {}
+    collect_dict['COLLECTION_ID'], currPos = get_string(currPos, ppe_bytes)
+    collect_dict['PLATFORM_ID'], currPos = get_string(currPos, ppe_bytes)
+    collect_dict['NUM_SENSORS'], currPos = get_uint32(currPos, ppe_bytes)
+
+    sensors = []
+    for j in range(collect_dict['NUM_SENSORS']):
+      sensor_dict = {}
+      sensor_dict['SENSOR_ID'], currPos = get_string(currPos, ppe_bytes)
+      sensor_dict['SENSOR_TYPE'], currPos = get_string(currPos, ppe_bytes)
+      sensor_dict['SENSOR_TYPE'], currPos = get_string(currPos, ppe_bytes)
+      sensor_dict['NUM_COLLECTION_UNITS'], currPos = get_uint32(currPos, ppe_bytes)
+
+      collect_units = []
+      for k in range(sensor_dict['NUM_COLLECTION_UNITS']):
+        unit_dict = {}
+        unit_dict['REFERENCE_DATE_TIME'], currPos = get_string(currPos, ppe_bytes, 18)
+        unit_dict['COLLECTION_UNIT_ID'], currPos = get_string(currPos, ppe_bytes, 128)
+        unit_dict['POINT_SOURCE_ID'], currPos = get_int(currPos, ppe_bytes)
+        unit_dict['EX_ORIGIN_X'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_ORIGIN_Y'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_ORIGIN_Z'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_XMUXE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_XMUYE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_XMUZE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_YMUXE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_YMUYE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_YMUZE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_ZMUXE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_ZMUYE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_ZMUZE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_DELTAXE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_DELTAYE'], currPos = get_double(currPos, ppe_bytes)
+        unit_dict['EX_DELTAZE'], currPos = get_double(currPos, ppe_bytes)
+        collect_units.append(unit_dict)
+
+      sensor_dict['COLLECTION_UNIT_RECORD'] = collect_units
+      sensors.append(sensor_dict)
+
+    collect_dict['SENSOR_RECORD'] = sensors
+    collections.append(collect_dict)
+
+  retDict['COLLECTION_RECORD'] = collections
+
+  return retDict
+
 def load_Per_Point_Lookup_Error_Data(data):
   # Decode base64 encoded data
   ppe_bytes = base64.b64decode(data)
@@ -74,7 +169,7 @@ def load_Per_Point_Lookup_Error_Data(data):
   retDict = {}
 
   currPos = 0
-  retDict['NUM_PPE_COV_RECORDS'], currPos = get_unsigned_short(currPos, ppe_bytes)
+  retDict['NUM_PPE_COV_RECORDS'], currPos = get_uint16(currPos, ppe_bytes)
   retDict['PPE_FIELD_NAME'], currPos = get_string(currPos, ppe_bytes)
 
   ppe = []
@@ -99,9 +194,9 @@ def load_GPM_GndSpace_Direct(data):
   # Skip for now
   currPos += 1 # 3DC_PARAM_INDEX_FLAGS
 
-  retDict['NUM_AP_RECORDS'], currPos = get_unsigned_short(currPos, ppe_bytes)
-  retDict['INTERPOLATION_MODE'], currPos = get_unsigned_short(currPos, ppe_bytes)
-  retDict['INTERP_NUM_POSTS'], currPos = get_unsigned_short(currPos, ppe_bytes)
+  retDict['NUM_AP_RECORDS'], currPos = get_uint16(currPos, ppe_bytes)
+  retDict['INTERPOLATION_MODE'], currPos = get_uint16(currPos, ppe_bytes)
+  retDict['INTERP_NUM_POSTS'], currPos = get_uint16(currPos, ppe_bytes)
   retDict['DAMPENING_PARAM'], currPos = get_double(currPos, ppe_bytes)
 
   anchorPoints = []
@@ -133,10 +228,9 @@ def load_GPM_Unmodeled_Error_Data(data):
 
   currPos = 0
 
-  retDict['NUM_UE_RECORDS'], currPos = get_unsigned_short(currPos, ppe_bytes)
+  retDict['NUM_UE_RECORDS'], currPos = get_uint16(currPos, ppe_bytes)
 
   ue_records = []
-
   for i in range(retDict['NUM_UE_RECORDS']):
     ue_dict = {}
     ue_dict['TRAJECTORY_ID'], currPos = get_int(currPos, ppe_bytes)
@@ -156,8 +250,7 @@ def load_GPM_Unmodeled_Error_Data(data):
     ue_dict['PARAM_ALPHA_W'], currPos = get_float(currPos, ppe_bytes)
     ue_dict['PARAM_BETA_W'], currPos = get_float(currPos, ppe_bytes)
     ue_dict['PARAM_TAU_W'], currPos = get_float(currPos, ppe_bytes)
-
-    ue_dict['NUM_UE_POSTS'], currpos = get_unsigned_short(currPos, ppe_bytes)
+    ue_dict['NUM_UE_POSTS'], currPos = get_uint16(currPos, ppe_bytes)
 
     posts = []
     for it in range(ue_dict['NUM_UE_POSTS']):
