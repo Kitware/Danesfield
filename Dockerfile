@@ -124,8 +124,6 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
 
-COPY ply2txt.py ply2txt.py
-
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
 
