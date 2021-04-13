@@ -1,0 +1,96 @@
+diff --git a/colmap_mvs_commands.py b/colmap_mvs_commands.py
+index 5ac9e78..410b8fd 100644
+--- a/colmap_mvs_commands.py
++++ b/colmap_mvs_commands.py
+@@ -33,7 +33,7 @@
+ from lib.run_cmd import run_cmd
+ 
+ 
+-gpu_index = '-1'
++gpu_index = '0,1,2,3'
+ 
+ 
+ def run_photometric_mvs(mvs_dir, window_radius, depth_range=None):
+@@ -45,7 +45,8 @@ def run_photometric_mvs(mvs_dir, window_radius, depth_range=None):
+                     --PatchMatchStereo.gpu_index={} \
+                     --PatchMatchStereo.num_samples 15 \
+                     --PatchMatchStereo.num_iterations 12 \
+-                    --PatchMatchStereo.overwrite 1'.format(mvs_dir,
++                    --PatchMatchStereo.overwrite 1 \
++                    --PatchMatchStereo.max_image_size 5000'.format(mvs_dir,
+                                                            window_radius, gpu_index)
+     if depth_range is not None:
+         depth_min, depth_max = depth_range
+@@ -72,7 +73,8 @@ def run_consistency_check(mvs_dir, window_radius, depth_range=None):
+                     --PatchMatchStereo.filter_min_num_consistent 2 \
+                     --PatchMatchStereo.gpu_index={} \
+                     --PatchMatchStereo.num_samples 15 \
+-                    --PatchMatchStereo.num_iterations 1'.format(mvs_dir,
++                    --PatchMatchStereo.num_iterations 1 \
++                    --PatchMatchStereo.max_image_size 5000'.format(mvs_dir,
+                                                                 window_radius, gpu_index)
+     if depth_range is not None:
+         depth_min, depth_max = depth_range
+
+
+diff --git a/colmap_sfm_commands.py b/colmap_sfm_commands.py
+index 9cd6ca1..cc153f5 100644
+--- a/colmap_sfm_commands.py
++++ b/colmap_sfm_commands.py
+@@ -34,7 +34,7 @@ import os
+ from lib.run_cmd import run_cmd
+ from colmap_sfm_utils import create_init_files
+ 
+-gpu_index = '-1'
++gpu_index = '0,1,2,3'
+ 
+ 
+ def run_sift_matching(img_dir, db_file, camera_model):
+
+
+diff --git a/image_crop.py b/image_crop.py
+index df134c6..19dfe9d 100644
+--- a/image_crop.py
++++ b/image_crop.py
+@@ -116,7 +116,8 @@ def image_crop_worker(ntf_file, xml_file, n, total_cnt, utm_bbx_file, out_dir, r
+         ntf_height = meta_dict['height']
+         intersect, _, overlap = check_bbx((0, 0, ntf_width, ntf_height),
+                                           (ul_col, ul_row, width, height))
+-        overlap_thres = 0.8
++        #overlap_thres = 0.8
++        overlap_thres = 0.2
+         if overlap < overlap_thres:
+             logging.warning('discarding this image due to small coverage of target area, overlap: {}, ntf: {}'
+                             .format(overlap, ntf_file))
+
+
+diff --git a/aggregate_3d.py b/aggregate_3d.py
+index 43ea944..9b55dc0 100644
+--- a/aggregate_3d.py
++++ b/aggregate_3d.py
+@@ -45,7 +45,7 @@ def fuse(colmap_dir):
+     cmd = 'colmap stereo_fusion --workspace_path {colmap_dir}/mvs \
+                          --output_path {colmap_dir}/mvs/fused.ply \
+                          --input_type geometric \
+-                         --StereoFusion.min_num_pixels 4\
++                         --StereoFusion.min_num_pixels 2\
+                          --StereoFusion.max_reproj_error 2\
+                          --StereoFusion.max_depth_error 1.0\
+                          --StereoFusion.max_normal_error 10'.format(colmap_dir=colmap_dir)
+
+
+diff --git a/requirements.txt b/requirements.txt
+index b9d0383..1919646 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,4 +1,5 @@
+ #GDAL==2.2.2
++llvmlite==0.32.1
+ lxml==4.3.0
+ matplotlib==3.0.0
+ numba==0.41.0
+ pymap3d==1.7.15
+ python-dateutil==2.8.0
+ open3d-python==0.6.0.0
+ numpy-groupies==0.9.9
+ pyproj==2.4.0

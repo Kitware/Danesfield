@@ -27,21 +27,29 @@
 #     core3d/danesfield \
 #     danesfield/tools/material_classifier.py --cuda ...
 
-FROM nvidia/cuda:9.0-runtime-ubuntu16.04
-LABEL maintainer="Max Smolens <max.smolens@kitware.com>"
+FROM nvidia/cuda:10.0-devel-ubuntu18.04
+
+LABEL maintainer="Kitware Inc. <kitware@kitware.com>"
 
 # Install prerequisites
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bzip2 \
-    ca-certificates \
-    curl \
-    libgl1-mesa-glx \
-    libglu1-mesa \
-    libxt6 \
-    xvfb \
-    sudo && \
-    apt-get clean -y && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+  apt-get install -y software-properties-common && \
+  add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+  add-apt-repository -y ppa:ubuntugis/ppa && \
+  apt-get update && \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  sudo \
+  make \
+  git \
+  bzip2 \
+  ca-certificates \
+  curl \
+  libgl1-mesa-glx \
+  libglu1-mesa \
+  libxt6 \
+  xvfb && \
+  apt-get clean -y && \
+  rm -rf /var/lib/apt/lists/*
 
 # Download and install miniconda3
 # Based on https://github.com/ContinuumIO/docker-images/blob/fd4cd9b/miniconda3/Dockerfile
@@ -69,23 +77,52 @@ RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.ym
 
 # Install core3d-tf_ops package from kitware-danesfield / defaults
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-      conda activate core3d && \
-      conda install -c kitware-danesfield -c kitware-danesfield-df -y core3d-tf_ops && \
-      conda clean -tipsy"]
+  conda activate core3d && \
+  pip install pip==20.0.1 && \
+  conda install -c kitware-danesfield -c kitware-danesfield-df -y core3d-tf_ops && \
+  conda clean -tipsy"]
 
 # Install opencv package from conda-forge
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-      conda activate core3d && \
-      conda install -c conda-forge -y opencv && \
-      conda clean -tipsy"]
+  conda activate core3d && \
+  conda install -c conda-forge -y opencv && \
+  conda clean -tipsy"]
+
+# Copy patches for Colmap and VisSat
+COPY patches /patches
+
+# Install ColmapForVisSat from Github
+RUN git clone --recursive https://github.com/Kai-46/ColmapForVisSat.git && \
+  cd ColmapForVisSat && \
+  git checkout 9d96671 && \
+  git apply ../patches/colmap_deps.patch && \
+  chmod +x /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \
+  chmod +x /ColmapForVisSat/ubuntu1804_install_colmap.sh && \
+  apt-get update && \
+  /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \ 
+  cd /ColmapForVisSat && \
+  ./ubuntu1804_install_colmap.sh
+
+# Install VisSat package from Github
+RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteStereo.git && \
+  cd VisSatSatelliteStereo && \
+  git checkout e5ca3a0 && \
+  git apply ../patches/vissat.patch && \
+  source /opt/conda/etc/profile.d/conda.sh && \
+  conda activate core3d && \
+  pip install -r /VisSatSatelliteStereo/requirements.txt"]
+
+# Install LAStools package from Github
+RUN git clone https://github.com/LAStools/LAStools.git && \
+  cd LAStools && \
+  make
 
 # Install Danesfield package into CORE3D Conda environment
 COPY . ./danesfield
 RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-      conda activate core3d && \
-      pip install --upgrade pip && \
-      pip install -e ./danesfield"]
+  conda activate core3d && \
+  pip install -e ./danesfield"]
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
