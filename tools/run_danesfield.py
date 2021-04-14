@@ -243,19 +243,13 @@ def main(args):
         if utm == None:
             print("Error: UTM zone must be provided when using VisSat")
             exit(1)
-        cmd_args = ["python3", "/VisSatSatelliteStereo/stereo_pipeline.py", "--config_file", aoi_config]
-        run_step(vissat_workdir, "VisSat", cmd_args)
-        cmd_args = ["python3", "/ply2txt.py", os.path.join(vissat_workdir, 
-                    'mvs_results/aggregate_3d/aggregate_3d.ply'), 
-                    os.path.join(vissat_workdir, 'mvs_results/aggregate_3d/aggregate_3d.txt')]
 
-        run_step(vissat_workdir, "ply2txt", cmd_args)
-        cmd_args = ["/LAStools/bin/txt2las", "-i", os.path.join(vissat_workdir,
-                    'mvs_results/aggregate_3d/aggregate_3d.txt'), 
-                    "-parse", "xyz", "-o", p3d_file, "-utm", utm, 
-                    "-target_utm", utm]
-                    
-        run_step(vissat_workdir, "txt2las", cmd_args)
+        cmd_args = py_cmd(relative_tool_path('generate_point_cloud.py'))
+        cmd_args += ["--config_file", aoi_config, 
+                     "--work_dir", vissat_workdir, 
+                     "--point_cloud", p3d_file, 
+                     "--utm", utm]
+        run_step(vissat_workdir, "VisSat", cmd_args)
 
     #############################################
     # Find all NTF and corresponding rpc and info
