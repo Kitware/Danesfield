@@ -31,10 +31,10 @@ def main(args):
     subprocess.run(["python3", "/VisSatSatelliteStereo/stereo_pipeline.py", 
                     "--config_file", args.config_file], check=True)
     
-    convert(os.path.join(args.work_dir, 
+    convert([os.path.join(args.work_dir, 
             'mvs_results/aggregate_3d/aggregate_3d.ply'), 
             os.path.join(args.work_dir, 
-            'mvs_results/aggregate_3d/aggregate_3d.txt'))
+            'mvs_results/aggregate_3d/aggregate_3d.txt')])
 
     subprocess.run(["/LAStools/bin/txt2las", 
     				"-i", os.path.join(args.work_dir,

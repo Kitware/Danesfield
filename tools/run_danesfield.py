@@ -122,7 +122,7 @@ def py_cmd(tool_path):
 
 def run_step(working_dir, step_name, command, abort_on_error=True):
     """
-    Runs a command if it has not already been run succcessfully.  Log
+ 66   Runs a command if it has not already been run succcessfully.  Log
     and exit status files are written to `working_dir`.  This script
     will exit(1) if the command's exit status is anything but 0, and
     if `abort_on_error` is True.
@@ -239,11 +239,7 @@ def main(args):
             data = json.load(f)
 
         vissat_workdir = data['work_dir']
-        utm = config['aoi'].get('utm')
-        if utm == None:
-            print("Error: UTM zone must be provided when using VisSat")
-            exit(1)
-
+        utm = str(data['bounding_box']['zone_number']) + data['bounding_box']['hemisphere']
         cmd_args = py_cmd(relative_tool_path('generate_point_cloud.py'))
         cmd_args += ["--config_file", aoi_config, 
                      "--work_dir", vissat_workdir, 
