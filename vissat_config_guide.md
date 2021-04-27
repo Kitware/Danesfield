@@ -34,8 +34,8 @@ The configuration file for VisSatSatelliteStereo requires all of the information
 First, it requires paths to the work directory and the directory that contains panchromatic satellite images of the area of interest. Next, the area of interest needs to be defined. This includes the 
 UTM zone and hemisphere that the AOI is located within. It also includes the width and height of the AOI (in meters), and the coordinates (in UTM) of the upper left corner of the AOI. "Easting" 
 corresponds to the area's longitude, and "Northing" to the latitude. The last piece of information needed by VisSat is the minimum and maximum altitudes in the area of interest. The altitudes do not 
-need to be exact; in fact, it's better to provide a slightly greater altitude range to ensure that all no data is accidentally excluded.
+need to be exact; in fact, it's better to provide a slightly greater altitude range to ensure that no data is accidentally excluded.
 
 To generate a point cloud to be used by the rest of the Danesfield pipeline, the steps to run should remain the same as in the example.
 
-For more information about VisSatSatelliteStereo, see its [Github page](https://github.com/Kai-46/VisSatSatelliteStereo)
+For more information about VisSatSatelliteStereo, see its [Github page](https://github.com/Kai-46/VisSatSatelliteStereo).
