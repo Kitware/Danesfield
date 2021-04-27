@@ -122,7 +122,7 @@ def py_cmd(tool_path):
 
 def run_step(working_dir, step_name, command, abort_on_error=True):
     """
- 66   Runs a command if it has not already been run succcessfully.  Log
+    Runs a command if it has not already been run succcessfully.  Log
     and exit status files are written to `working_dir`.  This script
     will exit(1) if the command's exit status is anything but 0, and
     if `abort_on_error` is True.
@@ -478,8 +478,7 @@ def main(args):
                                            "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
 
-    orig_meshes = [e for e in orig_meshes
-                   if e.find(occlusion_mesh) < 0]
+    orig_meshes = [e for e in orig_meshes if e.find(occlusion_mesh) < 0]
 
     cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
     cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, "--crops"]
@@ -504,9 +503,8 @@ def main(args):
                  output_dsm]
     cmd_args.append('--input_obj_paths')
     obj_list = glob.glob("{}/*.obj".format(roof_geon_extraction_outdir))
-    # remove occlusion_mesh and results (building_<i>.obj)
-    #obj_list = [e for e in obj_list
-    #            if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+    # remove occlusion_mesh
+    obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
     cmd_args.extend(obj_list)
 
     run_step(buildings_to_dsm_outdir,

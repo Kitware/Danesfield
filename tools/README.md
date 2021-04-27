@@ -23,6 +23,26 @@ python run_danesfield.py \
        <input_configuration_file>
 ```
 
+## Generate Point Cloud
+
+### Tools
+
+- `generate_point_cloud.py`
+
+### Prerequisites
+
+A completed configuration file. 
+
+### Usage
+
+```bash
+python generate_point_cloud.py \
+       --config_file <aoi_config_path> \
+       --work_dir <work_directory_path> \
+       --point_cloud <output_point_cloud_path> \
+       --utm <utm_zone>
+```
+
 ## Segmentation by Height
 
 ### Tools
