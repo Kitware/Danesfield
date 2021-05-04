@@ -168,7 +168,7 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
         if not os.path.isdir(working_dir):
             os.mkdir(working_dir)
 
-        logging.info("---- Running step: {} ----".format(step_name))
+        logging.info('---- Running step: {} ----'.format(step_name))
         logging.debug(command)
         # Run the step; newline buffered text
         proc = subprocess.Popen(command,
@@ -196,31 +196,25 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
 
 
 def main(args):
-    parser = argparse.ArgumentParser(
-        description="Run the Danesfield processing pipeline on an AOI from start to finish.")
-    parser.add_argument("ini_file",
-                        help="ini file")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('cfg', help='path/to/configuration.ini file')
     args = parser.parse_args(args)
 
-    # Read configuration file
+### read configuration ini file
     config = configparser.ConfigParser()
-    config.read(args.ini_file)
+    config.read(args.cfg)
 
-    # This either parses the working directory from the configuration file and passes it to
-    # create the working directory or passes None and so some default working directory is
-    # created (based on the time of creation)
-    working_dir = create_working_dir(config['paths'].get('work_dir'),
-                                     config['paths']['imagery_dir'])
-
+### EITHER parse a working directory from the configuration file and pass it to create the working directory
+    # OR pass None and so some default working directory is created based on the time of creation
+    working_dir = create_working_dir(config['paths'].get('work_dir'), config['paths']['imagery_dir'])
     aoi_name = config['aoi']['name']
-
     gsd = float(config['params'].get('gsd', 0.25))
 
     #############################################
     # Run P3D point cloud generation
     #############################################
     # This script assumes we already have a pointcloud generated from
-    # Raytheon's P3D.  See the README for information regarding P3D.
+    # Raytheon's P3D. See the README for information regarding P3D.
 
     p3d_file = config['paths']['p3d_fpath']
 
@@ -243,7 +237,7 @@ def main(args):
            'pan' in files and ensure_complete_modality(files['pan'], require_rpc=True):
             pass
         else:
-            logging.warning("Don't have complete modality for collection ID: '{}', skipping!"
+            logging.warning("incomplete modality for collection ID: '{}', skipping!"
                             .format(prefix))
             incomplete_ids.append(prefix)
 
@@ -431,11 +425,11 @@ def main(args):
     crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
     for collection_id, files in collection_id_to_files.items():
         cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
-        cmd_args += [dsm_file, crop_and_pansharpen_outdir, "--pan", files['pan']['image']]
+        cmd_args += [dsm_file, crop_and_pansharpen_outdir, '--pan', files['pan']['image']]
         rpc_fpath = files['pan'].get('rpc', None)
         if (rpc_fpath):
             cmd_args.append(rpc_fpath)
-        cmd_args.extend(["--msi", files['msi']['image']])
+        cmd_args.extend(['--msi', files['msi']['image']])
         rpc_fpath = files['msi'].get('rpc', None)
         if (rpc_fpath):
             cmd_args.append(rpc_fpath)
@@ -445,16 +439,16 @@ def main(args):
                  cmd_args)
 
     texture_mapping_outdir = os.path.join(working_dir, 'texture-mapping')
-    occlusion_mesh = "xxxx.obj"
+    occlusion_mesh = 'xxxx.obj'
     images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
-                                           "*_crop_pansharpened_processed.tif"))
-    orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
+                                           '*_crop_pansharpened_processed.tif'))
+    orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
     orig_meshes = [e for e in orig_meshes
-                   if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+                   if e.find(occlusion_mesh) < 0 and e.find('building_') < 0]
     cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
-    cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, "--crops"]
+    cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, '--crops']
     cmd_args.extend(images_to_use)
-    cmd_args.append("--buildings")
+    cmd_args.append('--buildings')
     cmd_args.extend(orig_meshes)
 
     run_step(texture_mapping_outdir,
@@ -467,15 +461,15 @@ def main(args):
 
     buildings_to_dsm_outdir = os.path.join(working_dir, 'buildings-to-dsm')
     # Generate the output DSM
-    output_dsm = os.path.join(buildings_to_dsm_outdir, "buildings_to_dsm_DSM.tif")
+    output_dsm = os.path.join(buildings_to_dsm_outdir, 'buildings_to_dsm_DSM.tif')
     cmd_args = py_cmd(relative_tool_path('buildings_to_dsm.py'))
     cmd_args += [dtm_file,
                  output_dsm]
     cmd_args.append('--input_obj_paths')
-    obj_list = glob.glob("{}/*.obj".format(roof_geon_extraction_outdir))
+    obj_list = glob.glob('{}/*.obj'.format(roof_geon_extraction_outdir))
     # remove occlusion_mesh and results (building_<i>.obj)
     obj_list = [e for e in obj_list
-                if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+                if e.find(occlusion_mesh) < 0 and e.find('building_') < 0]
     cmd_args.extend(obj_list)
 
     run_step(buildings_to_dsm_outdir,
@@ -483,7 +477,7 @@ def main(args):
              cmd_args)
 
     # Generate the output CLS
-    output_cls = os.path.join(buildings_to_dsm_outdir, "buildings_to_dsm_CLS.tif")
+    output_cls = os.path.join(buildings_to_dsm_outdir, 'buildings_to_dsm_CLS.tif')
     cmd_args = py_cmd(relative_tool_path('buildings_to_dsm.py'))
     cmd_args += [dtm_file,
                  output_cls,
