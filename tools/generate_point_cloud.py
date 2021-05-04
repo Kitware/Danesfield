@@ -11,7 +11,6 @@ import sys
 import argparse
 import subprocess
 from ply2txt import convert
-#from VisSatSatelliteStereo.stereo_pipeline import StereoPipeline
 
 def main(args):
     parser = argparse.ArgumentParser(
@@ -26,8 +25,6 @@ def main(args):
                         help='UTM zone that AOI is located in', required=True)
     args = parser.parse_args(args)
 
-    #pipeline = StereoPipeline(args.config_file)
-    #pipeline.run()
     subprocess.run(["python3", "/VisSatSatelliteStereo/stereo_pipeline.py", 
                     "--config_file", args.config_file], check=True)
     
@@ -37,7 +34,7 @@ def main(args):
             'mvs_results/aggregate_3d/aggregate_3d.txt')])
 
     subprocess.run(["/LAStools/bin/txt2las", 
-    				"-i", os.path.join(args.work_dir,
+                    "-i", os.path.join(args.work_dir,
                     'mvs_results/aggregate_3d/aggregate_3d.txt'), 
                     "-parse", "xyz", 
                     "-o", args.point_cloud, 
