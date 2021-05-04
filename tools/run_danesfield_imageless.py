@@ -189,7 +189,7 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
         Path('{}.{}'.format(step_returncode_fpath_prefix, proc.returncode)).touch()
 
         if abort_on_error and proc.returncode != 0:
-            logging.error('---- Error on step: {}.  Aborting! ----'.format(step_name))
+            logging.error('---- Error on step: {}. Aborting! ----'.format(step_name))
             exit(1)
 
         return proc.returncode
