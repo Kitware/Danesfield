@@ -31,7 +31,7 @@ python run_danesfield.py \
 
 ### Prerequisites
 
-A completed configuration file. 
+A completed [configuration file](example_vissat_config.json). See the [VisSat configuration guide](vissat_config_guide.md) for help on creating this file.
 
 ### Usage
 
