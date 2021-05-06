@@ -206,7 +206,7 @@ def main(args):
 
 ### EITHER parse a working directory from the configuration file and pass it to create the working directory
     # OR pass None and so some default working directory is created based on the time of creation
-    working_dir = create_working_dir(config['paths'].get('work_dir'), config['paths']['imagery_dir'])
+    working_dir = create_working_dir(config['paths'].get('work_dir')) #, config['paths']['imagery_dir'])
     aoi_name = config['aoi']['name']
     gsd = float(config['params'].get('gsd', 0.25))
 
