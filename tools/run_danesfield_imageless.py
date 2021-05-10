@@ -314,38 +314,37 @@ def main(args):
     # Get OSM road vector data
     #############################################
     # Query OpenStreetMap for road vector data
-
-    get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
-    road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
-    cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
-    cmd_args += ['--bounding-img', dsm_file,
-                 '--output-dir', get_road_vector_outdir]
-    run_step(get_road_vector_outdir,
-             'get-road-vector',
-             cmd_args)
+# TODO: uncomment
+#     get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
+#     road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
+#     cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
+#     cmd_args += ['--bounding-img', dsm_file,
+#                  '--output-dir', get_road_vector_outdir]
+#     run_step(get_road_vector_outdir,
+#              'get-road-vector',
+#              cmd_args)
 
     #############################################
     # Segment by Height and Vegetation
     #############################################
     # Call segment_by_height.py using the DSM, DTM, and NDVI.  the
     # output here has the suffix _threshold_CLS.tif.
-
-    seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
-    threshold_output_mask_fpath = os.path.join(seg_by_height_outdir, 'threshold_CLS.tif')
-    cmd_args = py_cmd(relative_tool_path('segment_by_height.py'))
-    cmd_args += [dsm_file,
-                 dtm_file,
-                 threshold_output_mask_fpath,
-    #            '--input-ndvi', ndvi_output_fpath, # TODO: uncomment when NDVI is produced without images
-                 '--road-vector', road_vector_output_fpath,
-                 '--road-rasterized',
-                 os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
-                 '--road-rasterized-bridge',
-                 os.path.join(seg_by_height_outdir, 'road_rasterized_bridge.tif')]
-
-    run_step(seg_by_height_outdir,
-             'segment-by-height',
-             cmd_args)
+# TODO: uncomment
+#     seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
+#     threshold_output_mask_fpath = os.path.join(seg_by_height_outdir, 'threshold_CLS.tif')
+#     cmd_args = py_cmd(relative_tool_path('segment_by_height.py'))
+#     cmd_args += [dsm_file,
+#                  dtm_file,
+#                  threshold_output_mask_fpath,
+#     #            '--input-ndvi', ndvi_output_fpath, # TODO: uncomment when NDVI is produced without images
+#                  '--road-vector', road_vector_output_fpath,
+#                  '--road-rasterized',
+#                  os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
+#                  '--road-rasterized-bridge',
+#                  os.path.join(seg_by_height_outdir, 'road_rasterized_bridge.tif')]
+#     run_step(seg_by_height_outdir,
+#              'segment-by-height',
+#              cmd_args)
 
     #############################################
     # Material Segmentation # TODO: remove/replace
@@ -382,60 +381,57 @@ def main(args):
     # for roof segmentation and geon extraction / reconstruction
     # Output files are named building_<N>.obj and building_<N>.json,
     # where <N> is a 0-based integer index.
-
     roof_geon_extraction_outdir = os.path.join(working_dir, 'roof-geon-extraction')
-    cmd_args = py_cmd(relative_tool_path('roof_geon_extraction.py'))
-    cmd_args += [
-        '--las', p3d_file,
-        # Note that we're currently using the CLS file from the
-        # segment by height script
-        '--cls', threshold_output_mask_fpath,
-        '--dtm', dtm_file,
-        '--model_dir', config['roof']['model_dir'],
-        '--model_prefix', config['roof']['model_prefix'],
-        '--output_dir', roof_geon_extraction_outdir
-    ]
-
-    run_step(roof_geon_extraction_outdir,
-             'roof-geon-extraction',
-             cmd_args)
+# TODO: uncomment
+#     cmd_args = py_cmd(relative_tool_path('roof_geon_extraction.py'))
+#     cmd_args += [
+#         '--las', p3d_file,
+#         # Note that we're currently using the CLS file from the
+#         # segment by height script
+#         '--cls', threshold_output_mask_fpath,
+#         '--dtm', dtm_file,
+#         '--model_dir', config['roof']['model_dir'],
+#         '--model_prefix', config['roof']['model_prefix'],
+#         '--output_dir', roof_geon_extraction_outdir
+#     ]
+#     run_step(roof_geon_extraction_outdir,
+#              'roof-geon-extraction',
+#              cmd_args)
 
     #############################################
-    # Texture Mapping
+    # Texture Mapping # TODO: remove/replace
     #############################################
-
-    crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
-    for collection_id, files in collection_id_to_files.items():
-        cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
-        cmd_args += [dsm_file, crop_and_pansharpen_outdir, '--pan', files['pan']['image']]
-        rpc_fpath = files['pan'].get('rpc', None)
-        if (rpc_fpath):
-            cmd_args.append(rpc_fpath)
-        cmd_args.extend(['--msi', files['msi']['image']])
-        rpc_fpath = files['msi'].get('rpc', None)
-        if (rpc_fpath):
-            cmd_args.append(rpc_fpath)
-
-        run_step(crop_and_pansharpen_outdir,
-                 'crop-and-pansharpen-{}'.format(collection_id),
-                 cmd_args)
-
-    texture_mapping_outdir = os.path.join(working_dir, 'texture-mapping')
+    #
+    # crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
+    # for collection_id, files in collection_id_to_files.items():
+    #     cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
+    #     cmd_args += [dsm_file, crop_and_pansharpen_outdir, '--pan', files['pan']['image']]
+    #     rpc_fpath = files['pan'].get('rpc', None)
+    #     if (rpc_fpath):
+    #         cmd_args.append(rpc_fpath)
+    #     cmd_args.extend(['--msi', files['msi']['image']])
+    #     rpc_fpath = files['msi'].get('rpc', None)
+    #     if (rpc_fpath):
+    #         cmd_args.append(rpc_fpath)
+    #     run_step(crop_and_pansharpen_outdir,
+    #              'crop-and-pansharpen-{}'.format(collection_id),
+    #              cmd_args)
+    #
+    # texture_mapping_outdir = os.path.join(working_dir, 'texture-mapping')
     occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
-    images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
-                                           '*_crop_pansharpened_processed.tif'))
-    orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
-    orig_meshes = [e for e in orig_meshes
-                   if e.find(occlusion_mesh) < 0 and e.find('building_') < 0]
-    cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
-    cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, '--crops']
-    cmd_args.extend(images_to_use)
-    cmd_args.append('--buildings')
-    cmd_args.extend(orig_meshes)
-
-    run_step(texture_mapping_outdir,
-             'texture-mapping',
-             cmd_args)
+    # images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
+    #                                        '*_crop_pansharpened_processed.tif'))
+    # orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
+    # orig_meshes = [e for e in orig_meshes
+    #                if e.find(occlusion_mesh) < 0 and e.find('building_') < 0]
+    # cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
+    # cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, '--crops']
+    # cmd_args.extend(images_to_use)
+    # cmd_args.append('--buildings')
+    # cmd_args.extend(orig_meshes)
+    # run_step(texture_mapping_outdir,
+    #          'texture-mapping',
+    #          cmd_args)
 
     #############################################
     # Buildings to DSM
@@ -478,7 +474,7 @@ def main(args):
     run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
 
     # Expected file path for material classification output MTL file
-    output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
+    # output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
 
     cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
     cmd_args += [
@@ -487,7 +483,7 @@ def main(args):
         '--ref-prefix', config['metrics']['ref_data_prefix'],
         '--dsm', output_dsm,
         '--cls', output_cls,
-        '--mtl', output_mtl,
+    #    '--mtl', output_mtl,
         '--dtm', dtm_file]
 
     run_step(run_metrics_outdir,
