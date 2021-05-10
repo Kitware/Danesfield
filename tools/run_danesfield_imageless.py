@@ -248,10 +248,9 @@ def main(args):
     if bounds:
         cmd_args += ['--bounds']
         cmd_args += bounds.split(' ')
-    # TODO: uncomment
-    # run_step(generate_dsm_outdir,
-    #          'generate-dsm',
-    #          cmd_args)
+    run_step(generate_dsm_outdir,
+             'generate-dsm',
+             cmd_args)
 
     # #############################################
     # # Fit DTM to the DSM
@@ -261,10 +260,9 @@ def main(args):
     dtm_file = os.path.join(fit_dtm_outdir, aoi_name + '_DTM.tif')
     cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
     cmd_args += [dsm_file, dtm_file]
-    # TODO: uncomment
-    # run_step(fit_dtm_outdir,
-    #          'fit-dtm',
-    #          cmd_args)
+    run_step(fit_dtm_outdir,
+             'fit-dtm',
+             cmd_args)
 
     #############################################
     # Orthorectify images # TODO: remove
@@ -314,37 +312,35 @@ def main(args):
     # Get OSM road vector data
     #############################################
     # Query OpenStreetMap for road vector data
-# TODO: uncomment
-#     get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
-#     road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
-#     cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
-#     cmd_args += ['--bounding-img', dsm_file,
-#                  '--output-dir', get_road_vector_outdir]
-#     run_step(get_road_vector_outdir,
-#              'get-road-vector',
-#              cmd_args)
+    get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
+    road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
+    cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
+    cmd_args += ['--bounding-img', dsm_file,
+                 '--output-dir', get_road_vector_outdir]
+    run_step(get_road_vector_outdir,
+             'get-road-vector',
+             cmd_args)
 
     #############################################
     # Segment by Height and Vegetation
     #############################################
     # Call segment_by_height.py using the DSM, DTM, and NDVI.  the
     # output here has the suffix _threshold_CLS.tif.
-# TODO: uncomment
-#     seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
-#     threshold_output_mask_fpath = os.path.join(seg_by_height_outdir, 'threshold_CLS.tif')
-#     cmd_args = py_cmd(relative_tool_path('segment_by_height.py'))
-#     cmd_args += [dsm_file,
-#                  dtm_file,
-#                  threshold_output_mask_fpath,
-#     #            '--input-ndvi', ndvi_output_fpath, # TODO: uncomment when NDVI is produced without images
-#                  '--road-vector', road_vector_output_fpath,
-#                  '--road-rasterized',
-#                  os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
-#                  '--road-rasterized-bridge',
-#                  os.path.join(seg_by_height_outdir, 'road_rasterized_bridge.tif')]
-#     run_step(seg_by_height_outdir,
-#              'segment-by-height',
-#              cmd_args)
+    seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
+    threshold_output_mask_fpath = os.path.join(seg_by_height_outdir, 'threshold_CLS.tif')
+    cmd_args = py_cmd(relative_tool_path('segment_by_height.py'))
+    cmd_args += [dsm_file,
+                 dtm_file,
+                 threshold_output_mask_fpath,
+    #            '--input-ndvi', ndvi_output_fpath, # TODO: uncomment when NDVI is produced without images
+                 '--road-vector', road_vector_output_fpath,
+                 '--road-rasterized',
+                 os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
+                 '--road-rasterized-bridge',
+                 os.path.join(seg_by_height_outdir, 'road_rasterized_bridge.tif')]
+    run_step(seg_by_height_outdir,
+             'segment-by-height',
+             cmd_args)
 
     #############################################
     # Material Segmentation # TODO: remove/replace
@@ -382,21 +378,20 @@ def main(args):
     # Output files are named building_<N>.obj and building_<N>.json,
     # where <N> is a 0-based integer index.
     roof_geon_extraction_outdir = os.path.join(working_dir, 'roof-geon-extraction')
-# TODO: uncomment
-#     cmd_args = py_cmd(relative_tool_path('roof_geon_extraction.py'))
-#     cmd_args += [
-#         '--las', p3d_file,
-#         # Note that we're currently using the CLS file from the
-#         # segment by height script
-#         '--cls', threshold_output_mask_fpath,
-#         '--dtm', dtm_file,
-#         '--model_dir', config['roof']['model_dir'],
-#         '--model_prefix', config['roof']['model_prefix'],
-#         '--output_dir', roof_geon_extraction_outdir
-#     ]
-#     run_step(roof_geon_extraction_outdir,
-#              'roof-geon-extraction',
-#              cmd_args)
+    cmd_args = py_cmd(relative_tool_path('roof_geon_extraction.py'))
+    cmd_args += [
+        '--las', p3d_file,
+        # Note that we're currently using the CLS file from the
+        # segment by height script
+        '--cls', threshold_output_mask_fpath,
+        '--dtm', dtm_file,
+        '--model_dir', config['roof']['model_dir'],
+        '--model_prefix', config['roof']['model_prefix'],
+        '--output_dir', roof_geon_extraction_outdir
+    ]
+    run_step(roof_geon_extraction_outdir,
+             'roof-geon-extraction',
+             cmd_args)
 
     #############################################
     # Texture Mapping # TODO: remove/replace
