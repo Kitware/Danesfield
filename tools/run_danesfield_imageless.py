@@ -198,7 +198,7 @@ def main(args):
 
 ### EITHER parse a working directory from the configuration file and pass it to create the working directory
     # OR pass None and so some default working directory is created based on the time of creation
-    working_dir = create_working_dir(config['paths'].get('work_dir')) #, config['paths']['imagery_dir'])
+    working_dir = create_working_dir(config['paths'].get('work_dir'))
     aoi_name = config['aoi']['name']
     gsd = float(config['params'].get('gsd', 0.25))
 
@@ -265,50 +265,6 @@ def main(args):
              cmd_args)
 
     #############################################
-    # Orthorectify images # TODO: remove
-    #############################################
-    # For each MSI source image call orthorectify.py
-    # needs to use the DSM, DTM from above and Raytheon RPC file,
-    # which is a by-product of P3D.
-    #
-    # orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
-    # for collection_id, files in collection_id_to_files.items():
-    #     # Orthorectify the msi images
-    #     msi_ntf_fpath = files['msi']['image']
-    #     msi_fname = os.path.splitext(os.path.split(msi_ntf_fpath)[1])[0]
-    #     msi_ortho_img_fpath = os.path.join(orthorectify_outdir, '{}_ortho.tif'.format(msi_fname))
-    #     cmd_args = py_cmd(relative_tool_path('orthorectify.py'))
-    #     cmd_args += [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
-    #     msi_rpc_fpath = files['msi'].get('rpc', None)
-    #     if msi_rpc_fpath:
-    #         cmd_args.extend(['--raytheon-rpc', msi_rpc_fpath])
-    #     run_step(orthorectify_outdir,
-    #              'orthorectify-{}'.format(msi_fname),
-    #              cmd_args)
-    #     files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
-    #
-    # Note: we may eventually select a subset of input images
-    # on which to run this and the following steps
-
-    #############################################
-    # Compute NDVI # TODO: remove/replace
-    #############################################
-    # Compute the NDVI from the orthorectified / pansharpened images
-    # for use during segmentation
-    #
-    # ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
-    # ndvi_output_fpath = os.path.join(ndvi_outdir, 'ndvi.tif')
-    # cmd_args = py_cmd(relative_tool_path('compute_ndvi.py'))
-    # cmd_args += [files['msi']['ortho_img_fpath'] for
-    #              files in
-    #              collection_id_to_files.values() if
-    #              'msi' in files and 'ortho_img_fpath' in files['msi']]
-    # cmd_args.append(ndvi_output_fpath)
-    # run_step(ndvi_outdir,
-    #          'compute-ndvi',
-    #          cmd_args)
-
-    #############################################
     # Get OSM road vector data
     #############################################
     # Query OpenStreetMap for road vector data
@@ -324,15 +280,14 @@ def main(args):
     #############################################
     # Segment by Height and Vegetation
     #############################################
-    # Call segment_by_height.py using the DSM, DTM, and NDVI.  the
-    # output here has the suffix _threshold_CLS.tif.
+    # Call segment_by_height.py using the DSM, DTM, and NDVI.
+    # The output here has the suffix _threshold_CLS.tif.
     seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
     threshold_output_mask_fpath = os.path.join(seg_by_height_outdir, 'threshold_CLS.tif')
     cmd_args = py_cmd(relative_tool_path('segment_by_height.py'))
     cmd_args += [dsm_file,
                  dtm_file,
                  threshold_output_mask_fpath,
-    #            '--input-ndvi', ndvi_output_fpath, # TODO: uncomment when NDVI is produced without images
                  '--road-vector', road_vector_output_fpath,
                  '--road-rasterized',
                  os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
@@ -341,34 +296,6 @@ def main(args):
     run_step(seg_by_height_outdir,
              'segment-by-height',
              cmd_args)
-
-    #############################################
-    # Material Segmentation # TODO: remove/replace
-    #############################################
-    #
-    # material_classifier_outdir = os.path.join(working_dir, 'material-classification')
-    # cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
-    # cmd_args += ['--image_paths']
-    # # We build these up separately because they have to be 1-to-1 on the command line and
-    # # dictionaries are unordered
-    # img_paths = []
-    # info_paths = []
-    # for collection_id, files in collection_id_to_files.items():
-    #     img_paths.append(files['msi']['ortho_img_fpath'])
-    #     info_paths.append(files['msi']['info'])
-    # cmd_args.extend(img_paths)
-    # cmd_args.append('--info_paths')
-    # cmd_args.extend(info_paths)
-    # cmd_args.extend(['--output_dir', material_classifier_outdir,
-    #                  '--model_path', config['material']['model_fpath'],
-    #                  '--outfile_prefix', aoi_name])
-    # if config.has_option('material', 'batch_size'):
-    #     cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
-    # if config['material'].getboolean('cuda'):
-    #         cmd_args.append('--cuda')
-    # run_step(material_classifier_outdir,
-    #          'material-classification',
-    #          cmd_args)
 
     #############################################
     # Roof Geon Extraction & PointNet Geon Extraction
@@ -393,40 +320,7 @@ def main(args):
              'roof-geon-extraction',
              cmd_args)
 
-    #############################################
-    # Texture Mapping # TODO: remove/replace
-    #############################################
-    #
-    # crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
-    # for collection_id, files in collection_id_to_files.items():
-    #     cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
-    #     cmd_args += [dsm_file, crop_and_pansharpen_outdir, '--pan', files['pan']['image']]
-    #     rpc_fpath = files['pan'].get('rpc', None)
-    #     if (rpc_fpath):
-    #         cmd_args.append(rpc_fpath)
-    #     cmd_args.extend(['--msi', files['msi']['image']])
-    #     rpc_fpath = files['msi'].get('rpc', None)
-    #     if (rpc_fpath):
-    #         cmd_args.append(rpc_fpath)
-    #     run_step(crop_and_pansharpen_outdir,
-    #              'crop-and-pansharpen-{}'.format(collection_id),
-    #              cmd_args)
-    #
-    # texture_mapping_outdir = os.path.join(working_dir, 'texture-mapping')
     occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
-    # images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
-    #                                        '*_crop_pansharpened_processed.tif'))
-    # orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
-    # orig_meshes = [e for e in orig_meshes
-    #                if e.find(occlusion_mesh) < 0 and e.find('building_') < 0]
-    # cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
-    # cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, '--crops']
-    # cmd_args.extend(images_to_use)
-    # cmd_args.append('--buildings')
-    # cmd_args.extend(orig_meshes)
-    # run_step(texture_mapping_outdir,
-    #          'texture-mapping',
-    #          cmd_args)
 
     #############################################
     # Buildings to DSM
@@ -478,7 +372,6 @@ def main(args):
         '--ref-prefix', config['metrics']['ref_data_prefix'],
         '--dsm', output_dsm,
         '--cls', output_cls,
-    #    '--mtl', output_mtl,
         '--dtm', dtm_file]
 
     run_step(run_metrics_outdir,
