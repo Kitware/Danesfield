@@ -31,7 +31,7 @@ ERROR = 10
 
 def orthorectify(args_source_image, args_dsm, args_destination_image,
                  args_occlusion_thresh=1.0, args_denoise_radius=2,
-                 args_raytheon_rpc=None, args_dtm=None):
+                 args_raytheon_rpc=None, args_dtm=None, args_convert_to_latlon=True):
     """
     Orthorectify an image given the DSM
 
@@ -39,12 +39,14 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
         source_image: Source image file name
         dsm: Digital surface model (DSM) image file name
         destination_image: Orthorectified image file name
-        occlusion-thresh: Threshold on height difference for detecting
+        occlusion_thresh: Threshold on height difference for detecting
                           and masking occluded regions (in meters)
-        denoise-radius: Apply morphological operations with this radius
+        denoise_radius: Apply morphological operations with this radius
                         to the DSM reduce speckled noise
-        raytheon-rpc: Raytheon RPC file name. If not provided
+        raytheon_rpc: Raytheon RPC file name or model object. If not provided
                       the RPC is read from the source_image
+        dtm: Optional DTM parameter used to replace nodata areas in the
+             orthorectified image
 
     Returns:
         COMPLETE_DSM_INTERSECTION = 0
@@ -60,9 +62,12 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
     sourceBand = sourceImage.GetRasterBand(1)
 
     if (args_raytheon_rpc):
-        # read the RPC from raytheon file
-        print("Reading RPC from Raytheon file: {}".format(args_raytheon_rpc))
-        model = raytheon_rpc.read_raytheon_rpc_file(args_raytheon_rpc)
+        if (isinstance(args_raytheon_rpc, str)):
+            # read the RPC from raytheon file
+            print("Reading RPC from Raytheon file: {}".format(args_raytheon_rpc))
+            model = raytheon_rpc.read_raytheon_rpc_file(args_raytheon_rpc)
+        else:
+            model = args_raytheon_rpc
     else:
         # read the RPC from RPC Metadata in the image file
         print("Reading RPC Metadata from {}".format(args_source_image))
@@ -157,12 +162,13 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
         print("Driver {} does not supports Create().".format(driver))
         return ERROR
 
-    # convert coordinates to Long/Lat
-    srs = osr.SpatialReference(wkt=projection)
-    proj_srs = srs.ExportToProj4()
-    inProj = pyproj.Proj(proj_srs)
-    outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
-    arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
+    if (args_convert_to_latlon):
+        # convert coordinates to Long/Lat
+        srs = osr.SpatialReference(wkt=projection)
+        proj_srs = srs.ExportToProj4()
+        inProj = pyproj.Proj(proj_srs)
+        outProj = pyproj.Proj('+proj=longlat +datum=WGS84')
+        arrayX, arrayY = pyproj.transform(inProj, outProj, arrayX, arrayY)
 
     # Sort the points by height so that higher points project last
     if (args_occlusion_thresh > 0):
@@ -240,10 +246,11 @@ def orthorectify(args_source_image, args_dsm, args_destination_image,
         print("Processing band {} ...".format(bandIndex))
         sourceBand = sourceImage.GetRasterBand(bandIndex)
         nodata_value = sourceBand.GetNoDataValue()
-        # for now use zero as a no-data value if one is not specified
+        # for now use -9999 as a no-data value if one is not specified
         # it would probably be better to add a mask (alpha) band instead
         if nodata_value is None:
-            nodata_value = 0
+            nodata_value = -9999
+        print("nodata: {}".format(nodata_value))
         if numpy.any(cropSize < 1):
             # read one value for data type
             sourceRaster = sourceBand.ReadAsArray(

@@ -11,7 +11,7 @@ import pyproj
 import re
 import ogr
 import osr
-
+from vtk.util import numpy_support
 
 def gdal_bounding_box(raster, outProj=None):
     """
@@ -148,3 +148,18 @@ def read_offset(fileName, offset):
             if match:
                 for i in range(3):
                     offset[i] = float(match.group(1+i))
+
+def vtk_to_numpy_order(aFlatVtk, dimensions):
+    '''
+    Convert a 2D array from VTK order to numpy order
+    '''
+    # VTK to numpy
+    aFlat = numpy_support.vtk_to_numpy(aFlatVtk)
+    # VTK X,Y corresponds to numpy cols,rows. VTK stores as
+    # in Fortran order.
+    aTranspose = numpy.reshape(aFlat, dimensions, "F")
+    # changes from cols, rows to rows,cols.
+    a = numpy.transpose(aTranspose)
+    # numpy rows increase as you go down, Y for VTK images increases as you go up
+    a = numpy.flip(a, 0)
+    return a

@@ -197,10 +197,10 @@ def main(args):
     buildingsScalarRange = p2cBuildings.GetOutput().GetCellData().GetScalars().GetRange()
 
     if (args.debug):
-        polyWriter = vtk.vtkXMLPolyDataWriter()
-        polyWriter.SetFileName("p2c.vtp")
-        polyWriter.SetInputConnection(p2cBuildings.GetOutputPort())
-        polyWriter.Write()
+        writer = vtk.vtkXMLPolyDataWriter()
+        writer.SetFileName("p2c.vtp")
+        writer.SetInputConnection(p2cBuildings.GetOutputPort())
+        writer.Write()
 
     buildingsMapper = vtk.vtkPolyDataMapper()
     buildingsMapper.SetInputDataObject(p2cBuildings.GetOutput())
@@ -217,7 +217,26 @@ def main(args):
         dtmReader = vtk.vtkGDALRasterReader()
         dtmReader.SetFileName(args.input_dtm)
         dtmReader.Update()
-        dtmVtk = dtmReader.GetOutput()
+        dtmVtkCell = dtmReader.GetOutput()
+
+        # convert from cell to point data
+        origin = dtmVtkCell.GetOrigin()
+        spacing = dtmVtkCell.GetSpacing()
+        dims = list(dtmVtkCell.GetDimensions())
+        dims[0] = dims[0] - 1
+        dims[1] = dims[1] - 1
+        dtmVtk = vtk.vtkUniformGrid()
+        dtmVtk.SetDimensions(dims)
+        dtmVtk.SetOrigin(origin)
+        dtmVtk.SetSpacing(spacing)
+        data = dtmVtkCell.GetCellData().GetScalars()
+        dtmVtk.GetPointData().SetScalars(data)
+
+        if (args.debug):
+            writer = vtk.vtkXMLImageDataWriter()
+            writer.SetFileName("dtm.vti")
+            writer.SetInputDataObject(dtmVtk)
+            writer.Write()
 
         # Convert the terrain into a polydata.
         surface = vtk.vtkImageDataGeometryFilter()
@@ -235,6 +254,12 @@ def main(args):
         warp.SetNormal(0, 0, 1)
         warp.Update()
         dsmScalarRange = warp.GetOutput().GetPointData().GetScalars().GetRange()
+
+        if (args.debug):
+            writer = vtk.vtkXMLPolyDataWriter()
+            writer.SetFileName("dtm_warped.vtp")
+            writer.SetInputConnection(warp.GetOutputPort())
+            writer.Write()
 
         dtmMapper = vtk.vtkPolyDataMapper()
         dtmMapper.SetInputConnection(warp.GetOutputPort())
@@ -264,6 +289,10 @@ def main(args):
             ren.RemoveActor(dtmActor)
 
         renWin.Render()
+        # iren = vtk.vtkRenderWindowInteractor()
+        # iren.SetRenderWindow(renWin)
+        # iren.Start();
+
         windowToImageFilter = vtk.vtkWindowToImageFilter()
         windowToImageFilter.SetInput(renWin)
         windowToImageFilter.SetInputBufferTypeToRGBA()
@@ -310,15 +339,8 @@ def main(args):
         valuePass.ReleaseGraphicsResources(renWin)
 
         print("Writing the DSM ...")
-        elevationFlat = numpy_support.vtk_to_numpy(elevationFlatVtk)
-        # VTK X,Y corresponds to numpy cols,rows. VTK stores arrays
-        # in Fortran order.
-        elevationTranspose = numpy.reshape(
-            elevationFlat, [dtm.RasterXSize, dtm.RasterYSize], "F")
-        # changes from cols, rows to rows,cols.
-        elevation = numpy.transpose(elevationTranspose)
-        # numpy rows increase as you go down, Y for VTK images increases as you go up
-        elevation = numpy.flip(elevation, 0)
+        elevation = gdal_utils.vtk_to_numpy_order(elevationFlatVtk,
+                                                  [dtm.RasterXSize, dtm.RasterYSize])
         if args.buildings_only:
             dsmElevation = elevation
         else:
