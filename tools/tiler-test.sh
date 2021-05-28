@@ -57,28 +57,28 @@ if [ "${CITY}" = "jacksonville" ]; then
     if [ ! ${GLTF_ONLY} ]; then
         rm -rf ${dir}
         mkdir ${dir}
-        tiler ../../../data/CORE3D/Jacksonville/building_*building*.obj -o 3d-tiles --utm_zone 17 --utm_hemisphere N -b 16
+        tiler ../../../data/CORE3D/Jacksonville/building_*building*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -b 16
     fi
 elif [ "${CITY}" = "test-jacksonville" ]; then
     dir=jacksonville-3d-tiles
     if [ ! ${GLTF_ONLY} ]; then
         rm -rf ${dir}
         mkdir ${dir}
-        tiler ../../../data/CORE3D/Jacksonville/triangle.obj -o 3d-tiles --utm_zone 17 --utm_hemisphere N -b 2 --dont_save_textures
+        tiler ../../../data/CORE3D/Jacksonville/triangle.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -b 2 --dont_save_textures
     fi
 elif [ "${CITY}" = "berlin" ]; then
     dir=berlin-3d-tiles
     if [ ! ${GLTF_ONLY} ]; then
         rm -rf $dir
         mkdir $dir
-        tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o berlin-3d-tiles --utm_zone 33 --utm_hemisphere N -b 16 --dont_save_textures --number_of_buildings 17
+        tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -b 16 --dont_save_textures --number_of_buildings 17
     fi
 elif [ "${CITY}" = "test-berlin" ]; then
     dir=berlin-3d-tiles
     if [ ! ${GLTF_ONLY} ]; then
         rm -rf $dir
         mkdir $dir
-        tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/triangle-berlin.gml -o berlin-3d-tiles --utm_zone 33 --utm_hemisphere N -b 100 --dont_save_textures --number_of_buildings 1
+        tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/triangle-berlin.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -b 100 --dont_save_textures --number_of_buildings 1
     fi
 elif [ "${CITY}" = "nyc" ]; then
     dir=ny-3d-tiles
