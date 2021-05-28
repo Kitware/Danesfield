@@ -147,6 +147,7 @@ def tiler(input_list, output, number_of_buildings,
     writer.SetOrigin(file_offset)
     writer.SetSaveTextures(not dont_save_textures)
     writer.SetSaveGLTF(not dont_save_gltf)
+    writer.SetNumberOfBuildingsPerTile(buildings_per_tile)
     if srs_name:
         writer.SetSrsName(srs_name)
     else:
