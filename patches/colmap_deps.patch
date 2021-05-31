@@ -19,7 +19,7 @@ index 44ed98a..56dec82 100755
 +    libcgal-qt5-dev
  
 -sudo apt-get install nvidia-driver-390 nvidia-utils-390 nvidia-cuda-toolkit
-+sudo DEBIAN_FRONTEND=noninteractive apt-get install nvidia-driver-390 nvidia-utils-390 nvidia-cuda-toolkit -y
++sudo DEBIAN_FRONTEND=noninteractive apt-get install nvidia-driver-410 nvidia-utils-410 nvidia-cuda-toolkit -y
  
 -sudo apt-get install libatlas-base-dev libsuitesparse-dev
 +sudo DEBIAN_FRONTEND=noninteractive apt-get install libatlas-base-dev libsuitesparse-dev -y
