@@ -22,6 +22,7 @@ import subprocess
 from pathlib import Path
 import sys
 import itertools
+import json
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -200,6 +201,8 @@ def main(args):
         description="Run the Danesfield processing pipeline on an AOI from start to finish.")
     parser.add_argument("ini_file",
                         help="ini file")
+    parser.add_argument("--vissat", help="run Vissat stereo pipeline", action="store_true")
+    parser.add_argument("--run_metrics", help="run metrics", action="store_true")
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -225,13 +228,38 @@ def main(args):
     p3d_file = config['paths']['p3d_fpath']
 
     #############################################
+    # Run VisSat pipeline
+    #############################################
+    if args.vissat:
+        aoi_config = config['paths'].get('aoi_config')
+        if aoi_config == None:
+            print("Error: Path to aoi_config file must be provided when using VisSat")
+            exit(1)
+        with open(aoi_config) as f:
+            data = json.load(f)
+
+        vissat_workdir = data['work_dir']
+        utm = str(data['bounding_box']['zone_number']) + data['bounding_box']['hemisphere']
+        cmd_args = py_cmd(relative_tool_path('generate_point_cloud.py'))
+        cmd_args += ["--config_file", aoi_config, 
+                     "--work_dir", vissat_workdir, 
+                     "--point_cloud", p3d_file, 
+                     "--utm", utm]
+        run_step(vissat_workdir, "VisSat", cmd_args)
+
+    #############################################
     # Find all NTF and corresponding rpc and info
     # tar files
     #############################################
 
     input_paths = []
-    for root, dirs, files in itertools.chain(os.walk(config['paths']['imagery_dir']),
-                                             os.walk(config['paths']['rpc_dir'])):
+    use_rpcs = (config['paths'].get('rpc_dir')!=None)
+    if use_rpcs:
+        iterable = itertools.chain(os.walk(config['paths']['imagery_dir']), 
+                                   os.walk(config['paths']['rpc_dir']))
+    else:
+        iterable = os.walk(config['paths']['imagery_dir'])
+    for root, dirs, files in iterable:
         input_paths.extend([os.path.join(root, f) for f in files])
 
     collection_id_to_files = collate_input_paths(input_paths)
@@ -239,8 +267,8 @@ def main(args):
     # Prune the collection
     incomplete_ids = []
     for prefix, files in collection_id_to_files.items():
-        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=True) and \
-           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=True):
+        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=use_rpcs) and \
+           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=use_rpcs):
             pass
         else:
             logging.warning("Don't have complete modality for collection ID: '{}', skipping!"
@@ -449,8 +477,9 @@ def main(args):
     images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
                                            "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
-    orig_meshes = [e for e in orig_meshes
-                   if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+
+    orig_meshes = [e for e in orig_meshes if e.find(occlusion_mesh) < 0]
+
     cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
     cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, "--crops"]
     cmd_args.extend(images_to_use)
@@ -464,6 +493,7 @@ def main(args):
     #############################################
     # Buildings to DSM
     #############################################
+    roof_geon_extraction_outdir = os.path.join(working_dir, 'roof-geon-extraction')
 
     buildings_to_dsm_outdir = os.path.join(working_dir, 'buildings-to-dsm')
     # Generate the output DSM
@@ -473,9 +503,8 @@ def main(args):
                  output_dsm]
     cmd_args.append('--input_obj_paths')
     obj_list = glob.glob("{}/*.obj".format(roof_geon_extraction_outdir))
-    # remove occlusion_mesh and results (building_<i>.obj)
-    obj_list = [e for e in obj_list
-                if e.find(occlusion_mesh) < 0 and e.find("building_") < 0]
+    # remove occlusion_mesh
+    obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
     cmd_args.extend(obj_list)
 
     run_step(buildings_to_dsm_outdir,
@@ -495,28 +524,30 @@ def main(args):
              'buildings-to-dsm_CLS',
              cmd_args)
 
+    
     #############################################
     # Run metrics
     #############################################
+    if(args.run_metrics):
+        run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
 
-    run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
+        # Expected file path for material classification output MTL file
+        output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
 
-    # Expected file path for material classification output MTL file
-    output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
+        cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
+        cmd_args += [
+            '--output-dir', run_metrics_outdir,
+            '--ref-dir', config['metrics']['ref_data_dir'],
+            '--ref-prefix', config['metrics']['ref_data_prefix'],
+            '--dsm', output_dsm,
+            '--cls', output_cls,
+            '--mtl', output_mtl,
+            '--dtm', dtm_file]
 
-    cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
-    cmd_args += [
-        '--output-dir', run_metrics_outdir,
-        '--ref-dir', config['metrics']['ref_data_dir'],
-        '--ref-prefix', config['metrics']['ref_data_prefix'],
-        '--dsm', output_dsm,
-        '--cls', output_cls,
-        '--mtl', output_mtl,
-        '--dtm', dtm_file]
-
-    run_step(run_metrics_outdir,
-             'run-metrics',
-             cmd_args)
+        run_step(run_metrics_outdir,
+                'run-metrics',
+                cmd_args)
+    
 
 
 if __name__ == '__main__':
