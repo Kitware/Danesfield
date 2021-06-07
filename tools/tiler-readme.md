@@ -1,10 +1,10 @@
 # Tiler - Convert large 3D geospatial datasets to the 3D Tiles format.
 
 # Install
-- Using node and npm installed on Ubuntu 20.04:
+- Install nodejs, npm and proj-bin packages on Ubuntu 20.04
 - `cd ~/external/3d-tiles-tools/;npm install 3d-tiles-tools`. Help at: <https://github.com/AnalyticalGraphicsInc/3d-tiles-tools/tree/master/tools>
 - `cd ~/external/gltf-pipeline;npm install gltf-pipeline`. Help at: <https://github.com/CesiumGS/gltf-pipeline>
-- Clone <https://github.com/CesiumGS/3d-tiles-samples>. and then `npm install.`
+- Clone <https://github.com/CesiumGS/3d-tiles-samples>. and then `npm install.` (only if you want to see datasets in Cesium)
 
 # Convert data to 3D Tiles
 - Create a gltf file for all Jacksonville OBJs, convert gltf to glb and glb to b3dm
