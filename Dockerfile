@@ -78,8 +78,7 @@ RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.ym
 # Install core3d-tf_ops package from kitware-danesfield / defaults
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
-  pip install pip==20.0.1 && \
-  conda install -c kitware-danesfield -c kitware-danesfield-df -y core3d-tf_ops && \
+  conda install -c kitware-danesfield -c kitware-danesfield-df -c conda-forge -c defaults -c pytorch -y core3d-tf_ops && \
   conda clean -tipsy"]
 
 # Install opencv package from conda-forge
@@ -109,8 +108,10 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteSter
   git checkout e5ca3a0 && \
   git apply ../patches/vissat.patch && \
   source /opt/conda/etc/profile.d/conda.sh && \
-  conda activate core3d && \
-  pip install -r /VisSatSatelliteStereo/requirements.txt"]
+  conda create -n vissat python=3.6 pip=20.0.* && \
+  conda activate vissat && \
+  pip install -r /VisSatSatelliteStereo/requirements.txt && \
+  conda install -y -c kitware-danesfield-cf -c kitware-danesfield-df libgdal gdal"]
 
 # Install LAStools package from Github
 RUN git clone https://github.com/LAStools/LAStools.git && \
