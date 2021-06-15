@@ -32,9 +32,11 @@ dependencies:
 - geojson
 - flake8
 - pytest
-# Rutgers needs 0.4.*, we need cuda 9 and python 3.6
-- cuda90
-- pytorch=0.4.*
+- cuda100
+- cudatoolkit=10.0
+- pytorch=1.0.0
+- cudnn
+- cupti
 - shapely
 - scikit-learn
 - scikit-image
@@ -46,9 +48,11 @@ dependencies:
 - xorg-libsm
 - xorg-libX11
 - core3d-purdue
+- pip=20.0.*
 - pip:
   - ubelt
   - plyfile
+  - open3d-python
 - torchvision
 - tqdm
 - matplotlib
