@@ -16,9 +16,6 @@ channels:
 - kitware-danesfield-pt
 - kitware-danesfield-cf
 - kitware-danesfield-df
-- pytorch
-- conda-forge
-- defaults
 
 dependencies:
 - pubgeo-core3d-metrics
@@ -62,4 +59,3 @@ dependencies:
 - requests
 - opencv
 - core3d-tf_ops
-

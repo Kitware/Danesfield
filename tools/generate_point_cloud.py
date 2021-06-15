@@ -24,7 +24,10 @@ def main(args):
     parser.add_argument('--utm', 
                         help='UTM zone that AOI is located in', required=True)
     args = parser.parse_args(args)
-    cmd_args = ['/bin/bash', '-c', 'source /opt/conda/etc/profile.d/conda.sh && conda activate vissat && python3 /VisSatSatelliteStereo/stereo_pipeline.py --config_file '+args.config_file]
+    cmd_args = ['/bin/bash', '-c', 
+                'source /opt/conda/etc/profile.d/conda.sh && conda activate vissat \
+                && python3 /VisSatSatelliteStereo/stereo_pipeline.py --config_file '
+                +args.config_file]
     subprocess.run(cmd_args, check=True)
     
     convert([os.path.join(args.work_dir, 
