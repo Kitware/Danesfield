@@ -29,7 +29,8 @@
 }
 ```
 
-The configuration file for VisSatSatelliteStereo requires all of the information shown in the example above, which defines an area of interest in Jacksonville, Florida. 
+The configuration file for VisSatSatelliteStereo requires all of the information shown in the example above, which defines an area of interest in Jacksonville, Florida. Before using VisSat, activate
+the necessary conda environment with ```conda activate vissat```.
 
 First, it requires paths to the work directory and the directory that contains panchromatic satellite images of the area of interest. Next, the area of interest needs to be defined. This includes the 
 UTM zone and hemisphere that the AOI is located within. It also includes the width and height of the AOI (in meters), and the coordinates (in UTM) of the upper left corner of the AOI. "Easting" 
