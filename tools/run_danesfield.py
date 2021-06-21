@@ -473,7 +473,7 @@ def main(args):
                  cmd_args)
 
     texture_mapping_outdir = os.path.join(working_dir, 'texture-mapping')
-    occlusion_mesh = "xxxx.obj"
+    occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
     images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
                                            "*_crop_pansharpened_processed.tif"))
     orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
