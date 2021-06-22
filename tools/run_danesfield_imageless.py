@@ -190,6 +190,7 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
 def main(args):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('cfg', help='path/to/configuration.ini file')
+    parser.add_argument("--vissat", help="run Vissat stereo pipeline", action="store_true")
     args = parser.parse_args(args)
 
 ### read configuration ini file
@@ -211,12 +212,36 @@ def main(args):
     p3d_file = config['paths']['p3d_fpath']
 
     #############################################
+    # Run VisSat pipeline
+    #############################################
+    if args.vissat:
+        aoi_config = config['paths'].get('aoi_config')
+        if aoi_config == None:
+            print("Error: Path to aoi_config file must be provided when using VisSat")
+            exit(1)
+        with open(aoi_config) as f:
+            data = json.load(f)
+
+        vissat_workdir = data['work_dir']
+        utm = str(data['bounding_box']['zone_number']) + data['bounding_box']['hemisphere']
+        cmd_args = py_cmd(relative_tool_path('generate_point_cloud.py'))
+        cmd_args += ["--config_file", aoi_config, 
+                     "--work_dir", vissat_workdir, 
+                     "--point_cloud", p3d_file, 
+                     "--utm", utm]
+        run_step(vissat_workdir, "VisSat", cmd_args)
+
+    #############################################
     # Find all NTF and corresponding rpc and info
     # tar files
     #############################################
 
     input_paths = []
-    for root, dirs, files in itertools.chain(os.walk(config['paths']['rpc_dir'])):
+    use_rpcs = (config['paths'].get('rpc_dir')!=None)
+    assert use_rpcs, 'expected an rpc_dir in the config'
+    if use_rpcs:
+        iterable = os.walk(config['paths']['rpc_dir'])
+    for root, dirs, files in iterable:
         input_paths.extend([os.path.join(root, f) for f in files])
 
     collection_id_to_files = collate_input_paths(input_paths)
@@ -224,8 +249,8 @@ def main(args):
     # Prune the collection
     incomplete_ids = []
     for prefix, files in collection_id_to_files.items():
-        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=True) and \
-           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=True):
+        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=use_rpcs) and \
+           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=use_rpcs):
             pass
         else:
             logging.warning("incomplete modality for collection ID: '{}', skipping!"
@@ -334,9 +359,8 @@ def main(args):
                  output_dsm]
     cmd_args.append('--input_obj_paths')
     obj_list = glob.glob('{}/*.obj'.format(roof_geon_extraction_outdir))
-    # remove occlusion_mesh and results (building_<i>.obj)
-    obj_list = [e for e in obj_list
-                if e.find(occlusion_mesh) < 0 and e.find('building_') < 0]
+    # remove occlusion_mesh
+    obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
     cmd_args.extend(obj_list)
 
     run_step(buildings_to_dsm_outdir,
@@ -361,10 +385,6 @@ def main(args):
     #############################################
 
     run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
-
-    # Expected file path for material classification output MTL file
-    # output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
-
     cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
     cmd_args += [
         '--output-dir', run_metrics_outdir,
@@ -373,9 +393,8 @@ def main(args):
         '--dsm', output_dsm,
         '--cls', output_cls,
         '--dtm', dtm_file]
-
     run_step(run_metrics_outdir,
-             'run-metrics',
+        'run-metrics',
              cmd_args)
 
 
