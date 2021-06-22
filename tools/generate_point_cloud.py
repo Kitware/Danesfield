@@ -33,9 +33,22 @@ def main(args):
             os.path.join(args.work_dir, 
             'mvs_results/aggregate_3d/aggregate_3d.txt')])
 
+    subprocess.run(['/BilateralFilter/build/bilateralfilter',
+                    os.path.join(args.work_dir, 
+                    'mvs_results/aggregate_3d/aggregate_3d.txt'),
+                    os.path.join(args.work_dir, 
+                    'mvs_results/aggregate_3d/aggregate_3d_filtered.txt'),
+                    '-N', 1, '-r', 2, '-n', 2], check=True)
+
+    subprocess.run(['python3', '/densify.py', 
+                    os.path.join(args.work_dir, 
+                    'mvs_results/aggregate_3d/aggregate_3d_filtered.txt'),
+                    os.path.join(args.work_dir, 
+                    'mvs_results/aggregate_3d/aggregate_3d_dense.txt')], check=True)
+
     subprocess.run(["/LAStools/bin/txt2las", 
                     "-i", os.path.join(args.work_dir,
-                    'mvs_results/aggregate_3d/aggregate_3d.txt'), 
+                    'mvs_results/aggregate_3d/aggregate_3d_dense.txt'), 
                     "-parse", "xyz", 
                     "-o", args.point_cloud, 
                     "-utm", args.utm, 
