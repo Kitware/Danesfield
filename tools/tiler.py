@@ -8,12 +8,13 @@
 
 
 import argparse
+from glob import glob
 import logging
 import os
-import vtk
-from vtk.numpy_interface import dataset_adapter as dsa
-from vtk.util import numpy_support
+from subprocess import run
+
 from danesfield import gdal_utils
+import vtk
 
 
 def get_obj_texture_file_name(filename):
@@ -220,6 +221,30 @@ def main(args):
           args.buildings_per_tile, args.lod, args.translation,
           args.dont_save_gltf, args.dont_save_textures, args.srs_name,
           args.utm_zone, args.utm_hemisphere)
+
+    print("Converting gltf to glb ...")
+    gltf_files = glob(args.output + "/*/*.gltf")
+    for gltf_file in gltf_files:
+        cmd_args = ["nodejs", "/gltf-pipeline/bin/gltf-pipeline.js",
+                    "-i"]
+        cmd_args.append(gltf_file)
+        cmd_args.append("-o")
+        cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
+        run(cmd_args, check=True)
+        os.remove(gltf_file)
+    bin_files = glob(args.output + "/*/*.bin")
+    for bin_file in bin_files:
+        os.remove(bin_file)
+
+    print("Converting glb to b3dm ...")
+    glb_files = glob(args.output + "/*/*.glb")
+    for glb_file in glb_files:
+        cmd_args = ["nodejs", "/3d-tiles-tools/tools/bin/3d-tiles-tools.js",
+                    "glbToB3dm"]
+        cmd_args.append(glb_file)
+        cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
+        run(cmd_args, check=True)
+        os.remove(glb_file)
 
 
 if __name__ == '__main__':

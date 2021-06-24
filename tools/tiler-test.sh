@@ -88,20 +88,3 @@ else
     print_parameters "$0"
     exit 1
 fi
-
-cd ${dir} || exit
-# convert to glb
-echo "Converting to glb..."
-find . -name '*.gltf' -exec bash -c 'nodejs ~/external/gltf-pipeline/bin/gltf-pipeline.js -i ${0} -o ${0%.*}.glb' {} \;
-if [ ! ${KEEP} ]; then
-    echo "Deleting gltf and bin files..."
-    find . -name '*.gltf' -exec rm {} \;
-    find . -name '*.bin' -exec rm {} \;
-fi
-# convert to b3dm
-echo "Converting to b3dm..."
-find . -name '*.glb' -exec bash -c 'nodejs ~/external/3d-tiles-tools/tools/bin/3d-tiles-tools.js glbToB3dm ${0} ${0%.*}.b3dm' {} \;
-if [ ! ${KEEP} ]; then
-    echo "Deleting glb files..."
-    find . -name '*.glb' -exec rm {} \;
-fi

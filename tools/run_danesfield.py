@@ -491,6 +491,24 @@ def main(args):
              cmd_args)
 
     #############################################
+    # 3D Tiles Generation
+    #############################################
+    tiler_outdir = os.path.join(working_dir, 'tiler')
+    input_tiler = glob.glob(os.path.join(texture_mapping_outdir, "*.obj"))
+    utm_zone = 17        # jacksonville dataset
+    utm_hemisphere = "N"
+
+    cmd_args = py_cmd(relative_tool_path('tiler.py'))
+    cmd_args.extend(input_tiler)
+    cmd_args.extend(["-o", tiler_outdir])
+    cmd_args.extend(["--utm-hemisphere", utm_hemisphere,
+                     "--utm_zone", str(utm_zone)])
+
+    run_step(tiler_outdir,
+             'tiler',
+             cmd_args)
+
+    #############################################
     # Buildings to DSM
     #############################################
     roof_geon_extraction_outdir = os.path.join(working_dir, 'roof-geon-extraction')

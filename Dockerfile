@@ -47,6 +47,7 @@ RUN apt-get update && \
   libgl1-mesa-glx \
   libglu1-mesa \
   libxt6 \
+  nodejs \
   xvfb && \
   apt-get clean -y && \
   rm -rf /var/lib/apt/lists/*
@@ -124,6 +125,13 @@ RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
+
+# Install 3d-tiles-tools for converting glb to b3dm
+RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git"]
+
+# Install gltf-pipeline for converting gltf to glb
+RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/gltf-pipeline.git"]
+
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
