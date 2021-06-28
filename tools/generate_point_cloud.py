@@ -11,6 +11,7 @@ import sys
 import argparse
 import subprocess
 from ply2txt import convert
+from clean_point_cloud import clean
 
 def main(args):
     parser = argparse.ArgumentParser(
@@ -25,27 +26,21 @@ def main(args):
                         help='UTM zone that AOI is located in', required=True)
     args = parser.parse_args(args)
 
-    subprocess.run(["python3", "/VisSatSatelliteStereo/stereo_pipeline.py", 
-                    "--config_file", args.config_file], check=True)
+    cmd_args = ['/bin/bash', '-c', 
+                'source /opt/conda/etc/profile.d/conda.sh && conda activate vissat \
+                && python3 /VisSatSatelliteStereo/stereo_pipeline.py --config_file '
+                +args.config_file]
+    subprocess.run(cmd_args, check=True)
     
     convert([os.path.join(args.work_dir, 
             'mvs_results/aggregate_3d/aggregate_3d.ply'), 
             os.path.join(args.work_dir, 
             'mvs_results/aggregate_3d/aggregate_3d.txt')])
 
-    subprocess.run(['/BilateralFilter/build/bilateralfilter',
-                    os.path.join(args.work_dir, 
-                    'mvs_results/aggregate_3d/aggregate_3d.txt'),
-                    os.path.join(args.work_dir, 
-                    'mvs_results/aggregate_3d/aggregate_3d_filtered.txt'),
-                    '-N', 1, '-r', 2, '-n', 2], check=True)
-
-    subprocess.run(['python3', '/densify.py', 
-                    os.path.join(args.work_dir, 
-                    'mvs_results/aggregate_3d/aggregate_3d_filtered.txt'),
-                    os.path.join(args.work_dir, 
-                    'mvs_results/aggregate_3d/aggregate_3d_dense.txt')], check=True)
-
+    clean(['--input_cloud', os.path.join(args.work_dir, 
+           'mvs_results/aggregate_3d/aggregate_3d.txt'),
+           '--output_cloud', os.path.join(args.work_dir,
+            'mvs_results/aggregate_3d/aggregate_3d_dense.txt')])
     subprocess.run(["/LAStools/bin/txt2las", 
                     "-i", os.path.join(args.work_dir,
                     'mvs_results/aggregate_3d/aggregate_3d_dense.txt'), 
