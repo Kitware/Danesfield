@@ -37,10 +37,8 @@ def main(args):
             os.path.join(args.work_dir, 
             'mvs_results/aggregate_3d/aggregate_3d.txt')])
 
-    clean(['--input_cloud', os.path.join(args.work_dir, 
-           'mvs_results/aggregate_3d/aggregate_3d.txt'),
-           '--output_cloud', os.path.join(args.work_dir,
-            'mvs_results/aggregate_3d/aggregate_3d_dense.txt')])
+    clean(os.path.join(args.work_dir, 'mvs_results/aggregate_3d/aggregate_3d.txt'),
+          os.path.join(args.work_dir, 'mvs_results/aggregate_3d/aggregate_3d_dense.txt'))
     subprocess.run(["/LAStools/bin/txt2las", 
                     "-i", os.path.join(args.work_dir,
                     'mvs_results/aggregate_3d/aggregate_3d_dense.txt'), 
