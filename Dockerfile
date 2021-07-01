@@ -47,7 +47,8 @@ RUN apt-get update && \
   libgl1-mesa-glx \
   libglu1-mesa \
   libxt6 \
-  xvfb && \
+  xvfb \
+  unzip && \
   apt-get clean -y && \
   rm -rf /var/lib/apt/lists/*
 
@@ -123,6 +124,15 @@ RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
+
+RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
+  unzip /BilateralFilter.zip && \
+  rm /BilateralFilter.zip && \
+  cd BilateralFilter && \
+  mkdir build && \
+  cd build && \
+  cmake -DCMAKE_BUILD_TYPE=Release .. && \
+  make
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
