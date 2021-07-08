@@ -15,7 +15,7 @@ import argparse
 import configparser
 import datetime
 import glob
-import itertools
+# import itertools
 import logging
 import os
 import re
