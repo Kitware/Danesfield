@@ -48,6 +48,7 @@ RUN apt-get update && \
   libglu1-mesa \
   libxt6 \
   nodejs \
+  npm \
   xvfb && \
   apt-get clean -y && \
   rm -rf /var/lib/apt/lists/*
@@ -126,11 +127,20 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
 
+# Install latest stable version of node and npm
+RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \
+     /usr/bin/npm install -g n  && \
+     n stable"]
+
 # Install 3d-tiles-tools for converting glb to b3dm
-RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git"]
+RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git && \
+     cd 3d-tiles-validator/tools && \
+     /usr/local/bin/npm install"]
 
 # Install gltf-pipeline for converting gltf to glb
-RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/gltf-pipeline.git"]
+RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/gltf-pipeline.git && \
+     cd gltf-pipeline && \
+     /usr/local/bin/npm install"]
 
 
 # Set entrypoint to script that sets up and activates CORE3D environment
