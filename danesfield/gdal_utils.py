@@ -7,6 +7,7 @@
 import gdal
 import gdalnumeric
 import numpy
+import math
 import pyproj
 import re
 import ogr
@@ -148,3 +149,56 @@ def read_offset(fileName, offset):
             if match:
                 for i in range(3):
                     offset[i] = float(match.group(1+i))
+
+
+def compute_utm_zone(lon, lat):
+    '''
+    Computes Universal Transverse Mercator (UTM) zone given the
+    longitude and latitude of the point.
+    It correctly computes the zones in the two exception areas.
+    It returns the UTM zone between 1 and 60 for valid lon lat, raises an
+    exception otherwise.
+    '''
+    lon = math.fmod(lon + 180, 360) - 180
+    lat = math.fmod(lat + 90, 180) - 90
+    zone = 0  # invalid UTM zone: error.
+    if lat > 0:
+        hemisphere = 'N'
+    else:
+        hemisphere = 'S'
+    # UTM is not defined outside of these limits
+    if -80 <= lat <= 84:
+        # first special case
+        if lat >= 72 and 0 <= lon < 42:
+            if lon < 9:
+                zone = 31
+            elif lon < 21:
+                zone = 33
+            elif lon < 33:
+                zone = 35
+            else:
+                zone = 37
+        # second special case
+        elif 56 <= lat < 64 and 0 <= lon < 12:
+            if lon < 3:
+                zone = 31
+            else:
+                zone = 32
+        else:
+            # general case: zones are 6 degrees, from 1 to 60.
+            zone = int((int(lon) + 180) / 6 + 1)
+    if zone == 0:
+        raise RuntimeError("Invalid UTM: (lon, lat)=({}, {})".format(lon, lat))
+    return zone, hemisphere
+
+
+def gdal_get_utm_zone(file_name):
+    '''
+    Computes the UTM zone and hemisphere for a given image file.
+    In case of an error, an exception is raised.
+    '''
+    img = gdal_open(file_name)
+    out_proj = pyproj.Proj('+proj=longlat +datum=WGS84')
+    left, bottom, right, top = gdal_bounding_box(img, out_proj)
+    (lon, lat) = ((left + right) / 2, (bottom + top) / 2)
+    return compute_utm_zone(lon, lat)

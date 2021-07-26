@@ -23,6 +23,7 @@ from pathlib import Path
 import sys
 import itertools
 import json
+from danesfield import gdal_utils
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -495,8 +496,7 @@ def main(args):
     #############################################
     tiler_outdir = os.path.join(working_dir, 'tiler')
     input_tiler = glob.glob(os.path.join(texture_mapping_outdir, "*.obj"))
-    utm_zone = 17        # jacksonville dataset
-    utm_hemisphere = "N"
+    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
 
     cmd_args = py_cmd(relative_tool_path('tiler.py'))
     cmd_args.extend(input_tiler)
