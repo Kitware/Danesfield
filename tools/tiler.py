@@ -81,7 +81,7 @@ def read_city_gml_files(number_of_buildings, lod,
     if not root:
         logging.error("Expecting vtkMultiBlockDataSet")
         return None
-    file_offset[:] = 0
+    file_offset[:] = [0, 0, 0]
     return root
 
 
