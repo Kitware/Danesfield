@@ -15,7 +15,7 @@ import argparse
 import configparser
 import datetime
 import glob
-# import itertools
+import json
 import logging
 import os
 import re
@@ -113,8 +113,8 @@ def py_cmd(tool_path):
 
 def run_step(working_dir, step_name, command, abort_on_error=True):
     '''
-    Runs a command if it has not already been run succcessfully.  Log
-    and exit status files are written to `working_dir`.  This script
+    Runs a command if it has not already been run succcessfully. Log
+    and exit status files are written to `working_dir`. This script
     will exit(1) if the command's exit status is anything but 0, and
     if `abort_on_error` is True.
 
@@ -191,6 +191,7 @@ def main(args):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('cfg', help='path/to/configuration.ini file')
     parser.add_argument("--vissat", help="run Vissat stereo pipeline", action="store_true")
+    parser.add_argument("--run_metrics", help="run metrics", action="store_true")
     args = parser.parse_args(args)
 
 ### read configuration ini file
@@ -384,18 +385,19 @@ def main(args):
     # Run metrics
     #############################################
 
-    run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
-    cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
-    cmd_args += [
-        '--output-dir', run_metrics_outdir,
-        '--ref-dir', config['metrics']['ref_data_dir'],
-        '--ref-prefix', config['metrics']['ref_data_prefix'],
-        '--dsm', output_dsm,
-        '--cls', output_cls,
-        '--dtm', dtm_file]
-    run_step(run_metrics_outdir,
-        'run-metrics',
-             cmd_args)
+    if(args.run_metrics):
+        run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
+        cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
+        cmd_args += [
+            '--output-dir', run_metrics_outdir,
+            '--ref-dir', config['metrics']['ref_data_dir'],
+            '--ref-prefix', config['metrics']['ref_data_prefix'],
+            '--dsm', output_dsm,
+            '--cls', output_cls,
+            '--dtm', dtm_file]
+        run_step(run_metrics_outdir,
+            'run-metrics',
+                 cmd_args)
 
 
 if __name__ == '__main__':
