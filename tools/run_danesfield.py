@@ -23,6 +23,7 @@ from pathlib import Path
 import sys
 import itertools
 import json
+from danesfield import gdal_utils
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -488,6 +489,23 @@ def main(args):
 
     run_step(texture_mapping_outdir,
              'texture-mapping',
+             cmd_args)
+
+    #############################################
+    # 3D Tiles Generation
+    #############################################
+    tiler_outdir = os.path.join(working_dir, 'tiler')
+    input_tiler = glob.glob(os.path.join(texture_mapping_outdir, "*.obj"))
+    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+
+    cmd_args = py_cmd(relative_tool_path('tiler.py'))
+    cmd_args.extend(input_tiler)
+    cmd_args.extend(["-o", tiler_outdir])
+    cmd_args.extend(["--utm-hemisphere", utm_hemisphere,
+                     "--utm_zone", str(utm_zone)])
+
+    run_step(tiler_outdir,
+             'tiler',
              cmd_args)
 
     #############################################

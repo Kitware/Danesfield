@@ -22,6 +22,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from danesfield import gdal_utils
 
 
 def create_working_dir(working_dir=None):
@@ -349,6 +350,24 @@ def main(args):
     occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
 
     #############################################
+    # 3D Tiles Generation
+    #############################################
+    tiler_outdir = os.path.join(working_dir, 'tiler')
+    input_tiler = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
+    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+
+    cmd_args = py_cmd(relative_tool_path('tiler.py'))
+    cmd_args.extend(input_tiler)
+    cmd_args.extend(["-o", tiler_outdir])
+    cmd_args.extend(["--utm-hemisphere", utm_hemisphere,
+                     "--utm_zone", str(utm_zone)])
+
+    run_step(tiler_outdir,
+             'tiler',
+             cmd_args)
+
+
+    #############################################
     # Buildings to DSM
     #############################################
 
@@ -385,7 +404,7 @@ def main(args):
     # Run metrics
     #############################################
 
-    if(args.run_metrics):
+    if args.run_metrics:
         run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
         cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
         cmd_args += [
@@ -396,8 +415,8 @@ def main(args):
             '--cls', output_cls,
             '--dtm', dtm_file]
         run_step(run_metrics_outdir,
-            'run-metrics',
-                 cmd_args)
+                'run-metrics',
+                cmd_args)
 
 
 if __name__ == '__main__':
