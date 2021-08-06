@@ -184,6 +184,8 @@ def main(args):
 
     parser.add_argument("--dont_save_gltf", action="store_true",
                         help="Create only tileset.json not the B3DM files")
+    parser.add_argument("--dont_convert_gltf", action="store_true",
+                        help="Create tileset.json and GLTFs but do not convert to GLB and B3DM.")
     parser.add_argument("-l", "--lod", action="store_true",
                         help="Level of detail to be read (if available)",
                         default=2)
@@ -222,29 +224,30 @@ def main(args):
           args.dont_save_gltf, args.dont_save_textures, args.srs_name,
           args.utm_zone, args.utm_hemisphere)
 
-    print("Converting gltf to glb ...")
-    gltf_files = glob(args.output + "/*/*.gltf")
-    for gltf_file in gltf_files:
-        cmd_args = ["node", "/gltf-pipeline/bin/gltf-pipeline.js",
-                    "-i"]
-        cmd_args.append(gltf_file)
-        cmd_args.append("-o")
-        cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
-        run(cmd_args, check=True)
-        os.remove(gltf_file)
-    bin_files = glob(args.output + "/*/*.bin")
-    for bin_file in bin_files:
-        os.remove(bin_file)
+    if not args.dont_convert_gltf:
+        print("Converting gltf to glb ...")
+        gltf_files = glob(args.output + "/*/*.gltf")
+        for gltf_file in gltf_files:
+            # noq is no quantization as Cesium 1.84 does not support it.
+            cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
+            cmd_args.append(gltf_file)
+            cmd_args.append("-o")
+            cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
+            run(cmd_args, check=True)
+            os.remove(gltf_file)
+        bin_files = glob(args.output + "/*/*.bin")
+        for bin_file in bin_files:
+            os.remove(bin_file)
 
-    print("Converting glb to b3dm ...")
-    glb_files = glob(args.output + "/*/*.glb")
-    for glb_file in glb_files:
-        cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
-                    "glbToB3dm"]
-        cmd_args.append(glb_file)
-        cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
-        run(cmd_args, check=True)
-        os.remove(glb_file)
+        print("Converting glb to b3dm ...")
+        glb_files = glob(args.output + "/*/*.glb")
+        for glb_file in glb_files:
+            cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
+                        "glbToB3dm"]
+            cmd_args.append(glb_file)
+            cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
+            run(cmd_args, check=True)
+            os.remove(glb_file)
 
 
 if __name__ == '__main__':
