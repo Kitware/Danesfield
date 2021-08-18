@@ -47,7 +47,11 @@ RUN apt-get update && \
   libgl1-mesa-glx \
   libglu1-mesa \
   libxt6 \
-  xvfb && \
+  nodejs \
+  npm \
+  xvfb \
+  unzip \
+  wget && \
   apt-get clean -y && \
   rm -rf /var/lib/apt/lists/*
 
@@ -110,8 +114,8 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteSter
   source /opt/conda/etc/profile.d/conda.sh && \
   conda create -n vissat python=3.6 pip=20.0.* && \
   conda activate vissat && \
-  pip install -r /VisSatSatelliteStereo/requirements.txt && \
-  conda install -y -c kitware-danesfield-cf -c kitware-danesfield-df libgdal gdal"]
+  conda install -y -c kitware-danesfield-cf -c kitware-danesfield-df libgdal gdal && \
+  pip install -r /VisSatSatelliteStereo/requirements.txt"]
 
 # Install LAStools package from Github
 RUN git clone https://github.com/LAStools/LAStools.git && \
@@ -124,6 +128,31 @@ RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
+
+RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
+  unzip /BilateralFilter.zip && \
+  rm /BilateralFilter.zip && \
+  cd BilateralFilter && \
+  mkdir build && \
+  cd build && \
+  cmake -DCMAKE_BUILD_TYPE=Release .. && \
+  make
+
+# Install latest stable version of node and npm
+RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \
+     /usr/bin/npm install -g n  && \
+     n stable"]
+
+# Install 3d-tiles-tools for converting glb to b3dm
+RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git && \
+     cd 3d-tiles-validator/tools && \
+     /usr/local/bin/npm install"]
+
+# Install gltf-pipeline for converting gltf to glb
+RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/gltf-pipeline.git && \
+     cd gltf-pipeline && \
+     /usr/local/bin/npm install"]
+
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
