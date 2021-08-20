@@ -1,8 +1,18 @@
 #!/bin/bash
 
+tiler_profile()
+{
+    PYTHONPATH=. valgrind --tool=callgrind --dump-instr=yes --simulate-cache=yes --collect-jumps=yes ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
+}
+
+tiler_debug()
+{
+    PYTHONPATH=. gdb --args ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
+}
+
 tiler()
 {
-    PYTHONPATH=. ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
+    PYTHONPATH=. ~/projects/VTK/rbuild/bin/vtkpython tools/tiler.py "$@"
 }
 
 print_parameters ()
@@ -45,7 +55,7 @@ if [ "${CITY}" = "jacksonville" ]; then
     dir=jacksonville-3d-tiles
     rm -rf ${dir}
     mkdir ${dir}
-    tiler ../../../data/CORE3D/Jacksonville/building_*building*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -b 100 -n 2 --dont_save_textures --dont_convert_gltf
+    tiler ../../../data/CORE3D/Jacksonville/building_*building*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -b 20 -n 1 --dont_convert_gltf
 elif [ "${CITY}" = "test-jacksonville" ]; then
     dir=jacksonville-3d-tiles
     rm -rf ${dir}

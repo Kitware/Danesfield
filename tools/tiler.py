@@ -138,6 +138,7 @@ def tiler(input_list, output, number_of_buildings,
     file_offset = [0, 0, 0]
     root = READER[os.path.splitext(files[0])[1]](
         number_of_buildings, lod, files, file_offset)
+    logging.info("Done parsing files")
     file_offset = [a + b for a, b in zip(file_offset, input_offset)]
     texture_path = os.path.dirname(files[0])
 
@@ -155,6 +156,7 @@ def tiler(input_list, output, number_of_buildings,
         writer.SetUTMZone(utm_zone)
         writer.SetUTMHemisphere(utm_hemisphere)
     writer.Write()
+    logging.info("Done Write()")
 
 
 class SmartFormatter(argparse.HelpFormatter):
@@ -225,9 +227,10 @@ def main(args):
           args.utm_zone, args.utm_hemisphere)
 
     if not args.dont_convert_gltf:
-        print("Converting gltf to glb ...")
+        logging.info("Optimizing gltf and converting to glb ...")
         gltf_files = glob(args.output + "/*/*.gltf")
         for gltf_file in gltf_files:
+            logging.info("Optimizing %s", gltf_file)
             # noq is no quantization as Cesium 1.84 does not support it.
             cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
             cmd_args.append(gltf_file)
@@ -239,20 +242,25 @@ def main(args):
         for bin_file in bin_files:
             os.remove(bin_file)
 
-        print("Converting glb to b3dm ...")
+        logging.info("Converting glb to b3dm ...")
         glb_files = glob(args.output + "/*/*.glb")
         for glb_file in glb_files:
             cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
                         "glbToB3dm"]
             cmd_args.append(glb_file)
             cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
+            logging.info("Converting %s", glb_file)
             run(cmd_args, check=True)
             os.remove(glb_file)
+        logging.info("Done")
 
 
 if __name__ == '__main__':
     import sys
     try:
+        logging.basicConfig(format='(%(relativeCreated)03d ms) %(levelname)s:%(message)s',
+                            level=logging.DEBUG,
+                            datefmt='%I:%M:%S %p')
         main(sys.argv[1:])
     except Exception as ex:
         logging.exception(ex)
