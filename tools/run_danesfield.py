@@ -501,7 +501,7 @@ def main(args):
     cmd_args = py_cmd(relative_tool_path('tiler.py'))
     cmd_args.extend(input_tiler)
     cmd_args.extend(["-o", tiler_outdir])
-    cmd_args.extend(["--utm-hemisphere", utm_hemisphere,
+    cmd_args.extend(["--utm_hemisphere", utm_hemisphere,
                      "--utm_zone", str(utm_zone)])
 
     run_step(tiler_outdir,
