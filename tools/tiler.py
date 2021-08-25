@@ -22,7 +22,7 @@ def get_obj_texture_file_name(filename):
     Given an OBJ file name return a file name for the texture by removing .obj and
     adding .png
     """
-    file_no_ext = os.path.splitext(filename)[0]
+    file_no_ext = os.path.basename(filename)
     return file_no_ext + ".png"
 
 
@@ -225,7 +225,7 @@ def main(args):
     print("Converting gltf to glb ...")
     gltf_files = glob(args.output + "/*/*.gltf")
     for gltf_file in gltf_files:
-        cmd_args = ["nodejs", "/gltf-pipeline/bin/gltf-pipeline.js",
+        cmd_args = ["node", "/gltf-pipeline/bin/gltf-pipeline.js",
                     "-i"]
         cmd_args.append(gltf_file)
         cmd_args.append("-o")
@@ -239,7 +239,7 @@ def main(args):
     print("Converting glb to b3dm ...")
     glb_files = glob(args.output + "/*/*.glb")
     for glb_file in glb_files:
-        cmd_args = ["nodejs", "/3d-tiles-tools/tools/bin/3d-tiles-tools.js",
+        cmd_args = ["node", "/3d-tiles-tools/tools/bin/3d-tiles-tools.js",
                     "glbToB3dm"]
         cmd_args.append(glb_file)
         cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
