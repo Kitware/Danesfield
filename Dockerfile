@@ -49,7 +49,9 @@ RUN apt-get update && \
   libxt6 \
   nodejs \
   npm \
-  xvfb && \
+  xvfb \
+  unzip \
+  wget && \
   apt-get clean -y && \
   rm -rf /var/lib/apt/lists/*
 
@@ -77,18 +79,6 @@ COPY ./deployment/conda/conda_env.yml \
 RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.yml -n core3d && \
     ${CONDA_EXECUTABLE} clean -tipsy
 
-# Install core3d-tf_ops package from kitware-danesfield / defaults
-RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-  conda activate core3d && \
-  conda install -c kitware-danesfield -c kitware-danesfield-df -y core3d-tf_ops && \
-  conda clean -tipsy"]
-
-# Install opencv package from conda-forge
-RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-  conda activate core3d && \
-  conda install -c conda-forge -y opencv && \
-  conda clean -tipsy"]
-
 # Copy patches for Colmap and VisSat
 COPY patches /patches
 
@@ -112,8 +102,8 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteSter
   source /opt/conda/etc/profile.d/conda.sh && \
   conda create -n vissat python=3.6 pip=20.0.* && \
   conda activate vissat && \
-  pip install -r /VisSatSatelliteStereo/requirements.txt && \
-  conda install -y -c kitware-danesfield-cf -c kitware-danesfield-df libgdal gdal"]
+  conda install -y -c kitware-danesfield-cf -c kitware-danesfield-df libgdal gdal && \
+  pip install -r /VisSatSatelliteStereo/requirements.txt"]
 
 # Install LAStools package from Github
 RUN git clone https://github.com/LAStools/LAStools.git && \
@@ -126,6 +116,15 @@ RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   conda activate core3d && \
   pip install -e ./danesfield"]
+
+RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
+  unzip /BilateralFilter.zip && \
+  rm /BilateralFilter.zip && \
+  cd BilateralFilter && \
+  mkdir build && \
+  cd build && \
+  cmake -DCMAKE_BUILD_TYPE=Release .. && \
+  make
 
 # Install latest stable version of node and npm
 RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \

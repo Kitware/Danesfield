@@ -239,7 +239,7 @@ def main(args):
     print("Converting glb to b3dm ...")
     glb_files = glob(args.output + "/*/*.glb")
     for glb_file in glb_files:
-        cmd_args = ["nodejs", "/3d-tiles-tools/tools/bin/3d-tiles-tools.js",
+        cmd_args = ["nodejs", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
                     "glbToB3dm"]
         cmd_args.append(glb_file)
         cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
