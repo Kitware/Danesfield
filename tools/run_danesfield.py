@@ -6,23 +6,23 @@
 # See accompanying Copyright.txt and LICENSE files for details
 ###############################################################################
 
-
-"""
-Run the Danesfield processing pipeline on an AOI from start to finish.
-"""
+'''
+Run the Danesfield processing pipeline on an AOI from start to finish
+Use the --imageless option to run with no input imagery, just a point cloud.
+'''
 
 import argparse
 import configparser
 import datetime
 import glob
+import itertools
 import logging
 import os
 import re
 import subprocess
-from pathlib import Path
 import sys
-import itertools
 import json
+from pathlib import Path
 from danesfield import gdal_utils
 
 
@@ -45,14 +45,14 @@ def create_working_dir(working_dir, imagery_dir):
         working_dir = 'danesfield-' + date_str.split('.')[0]
     if not os.path.isdir(working_dir):
         os.mkdir(working_dir)
-    if os.path.realpath(imagery_dir) in os.path.realpath(working_dir):
+    if imagery_dir and os.path.realpath(imagery_dir) in os.path.realpath(working_dir):
         raise ValueError('The working directory ({}) is a subdirectory of the imagery directory '
                          '({}).'.format(working_dir, imagery_dir))
     return working_dir
 
 
 def ensure_complete_modality(modality_dict, require_rpc=False):
-    """
+    '''
     Ensures that a certain modality (MSI, PAN, SWIR) has all of the required files for computation
     through the whole pipeline.
 
@@ -62,7 +62,7 @@ def ensure_complete_modality(modality_dict, require_rpc=False):
     :param require_rpc: Whether or not to consider the rpc file being present as a requirement for
     a complete modality.
     :type require_rpc: bool
-    """
+    '''
     keys = ['image', 'info']
     if require_rpc:
         keys.append('rpc')
@@ -70,13 +70,13 @@ def ensure_complete_modality(modality_dict, require_rpc=False):
 
 
 def collate_input_paths(paths):
-    """
+    '''
     Collate a list of input file paths into a dictionary.  Considers
     the files identifier, modality, and extension.
 
     :param paths: List of input files paths to collate
     :type paths: enumerable
-    """
+    '''
     input_re = re.compile(r'(?P<gra>GRA_)?.*'
                           '(?P<prefix>[0-9]{2}[A-Z]{3}[0-9]{8})\-'
                           '(?P<modality>P1BS|M1BS|A1BS)\-'
@@ -122,7 +122,7 @@ def py_cmd(tool_path):
 
 
 def run_step(working_dir, step_name, command, abort_on_error=True):
-    """
+    '''
     Runs a command if it has not already been run succcessfully.  Log
     and exit status files are written to `working_dir`.  This script
     will exit(1) if the command's exit status is anything but 0, and
@@ -144,7 +144,7 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
     :param abort_on_error: If True, the program will exit if the step
     fails.  Default is True.
     :type abort_on_error: bool
-    """
+    '''
     # Path to the log file, which will include both the stdout and
     # stderr from the step command
     step_log_fpath = os.path.join(working_dir, '{}.log'.format(step_name))
@@ -170,7 +170,7 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
         if not os.path.isdir(working_dir):
             os.mkdir(working_dir)
 
-        logging.info("---- Running step: {} ----".format(step_name))
+        logging.info('---- Running step: {} ----'.format(step_name))
         logging.debug(command)
         # Run the step; newline buffered text
         proc = subprocess.Popen(command,
@@ -191,7 +191,7 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
         Path('{}.{}'.format(step_returncode_fpath_prefix, proc.returncode)).touch()
 
         if abort_on_error and proc.returncode != 0:
-            logging.error('---- Error on step: {}.  Aborting! ----'.format(step_name))
+            logging.error('---- Error on step: {}. Aborting! ----'.format(step_name))
             exit(1)
 
         return proc.returncode
@@ -200,10 +200,10 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
 def main(args):
     parser = argparse.ArgumentParser(
         description="Run the Danesfield processing pipeline on an AOI from start to finish.")
-    parser.add_argument("ini_file",
-                        help="ini file")
+    parser.add_argument("ini_file", help="path/to/configuration.ini file")
     parser.add_argument("--vissat", help="run Vissat stereo pipeline", action="store_true")
     parser.add_argument("--run_metrics", help="run metrics", action="store_true")
+    parser.add_argument("--image", help="run pipeline with image data", action="store_true")
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -213,8 +213,15 @@ def main(args):
     # This either parses the working directory from the configuration file and passes it to
     # create the working directory or passes None and so some default working directory is
     # created (based on the time of creation)
-    working_dir = create_working_dir(config['paths'].get('work_dir'),
+
+    if args.vissat and not args.image:
+        print("VisSat cannot be used without satellite imagery.")
+        exit(1)
+    if args.image:
+        working_dir = create_working_dir(config['paths'].get('work_dir'),
                                      config['paths']['imagery_dir'])
+    else:
+        working_dir = create_working_dir(config['paths'].get('work_dir'), None)
 
     aoi_name = config['aoi']['name']
 
@@ -231,7 +238,7 @@ def main(args):
     #############################################
     # Run VisSat pipeline
     #############################################
-    if args.vissat:
+    if args.image and args.vissat:
         aoi_config = config['paths'].get('aoi_config')
         if aoi_config == None:
             print("Error: Path to aoi_config file must be provided when using VisSat")
@@ -254,12 +261,15 @@ def main(args):
     #############################################
 
     input_paths = []
+    iterable = []
     use_rpcs = (config['paths'].get('rpc_dir')!=None)
     if use_rpcs:
-        iterable = itertools.chain(os.walk(config['paths']['imagery_dir']), 
-                                   os.walk(config['paths']['rpc_dir']))
+        iterable = os.walk(config['paths']['rpc_dir'])
+    if args.image:
+        iterable = itertools.chain(os.walk(config['paths']['imagery_dir']), iterable)
     else:
-        iterable = os.walk(config['paths']['imagery_dir'])
+        assert use_rpcs, 'expected an rpc_dir in the config'
+
     for root, dirs, files in iterable:
         input_paths.extend([os.path.join(root, f) for f in files])
 
@@ -285,7 +295,7 @@ def main(args):
 
     generate_dsm_outdir = os.path.join(working_dir, 'generate-dsm')
     dsm_file = os.path.join(generate_dsm_outdir, aoi_name + '_P3D_DSM.tif')
-
+    
     cmd_args = py_cmd(relative_tool_path('generate_dsm.py'))
     cmd_args += [dsm_file, '-s', p3d_file]
     cmd_args += ['--gsd', str(gsd)]
@@ -320,46 +330,48 @@ def main(args):
     # needs to use the DSM, DTM from above and Raytheon RPC file,
     # which is a by-product of P3D.
 
-    orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
-    for collection_id, files in collection_id_to_files.items():
-        # Orthorectify the msi images
-        msi_ntf_fpath = files['msi']['image']
-        msi_fname = os.path.splitext(os.path.split(msi_ntf_fpath)[1])[0]
-        msi_ortho_img_fpath = os.path.join(orthorectify_outdir, '{}_ortho.tif'.format(msi_fname))
-        cmd_args = py_cmd(relative_tool_path('orthorectify.py'))
-        cmd_args += [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
+    if args.image:
+        orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
+        for collection_id, files in collection_id_to_files.items():
+            # Orthorectify the msi images
+            msi_ntf_fpath = files['msi']['image']
+            msi_fname = os.path.splitext(os.path.split(msi_ntf_fpath)[1])[0]
+            msi_ortho_img_fpath = os.path.join(orthorectify_outdir, 
+                                               '{}_ortho.tif'.format(msi_fname))
+            cmd_args = py_cmd(relative_tool_path('orthorectify.py'))
+            cmd_args += [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
 
-        msi_rpc_fpath = files['msi'].get('rpc', None)
-        if msi_rpc_fpath:
-            cmd_args.extend(['--raytheon-rpc', msi_rpc_fpath])
+            msi_rpc_fpath = files['msi'].get('rpc', None)
+            if msi_rpc_fpath:
+                cmd_args.extend(['--raytheon-rpc', msi_rpc_fpath])
 
-        run_step(orthorectify_outdir,
-                 'orthorectify-{}'.format(msi_fname),
+            run_step(orthorectify_outdir,
+                     'orthorectify-{}'.format(msi_fname),
+                     cmd_args)
+
+            files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
+        #
+        # Note: we may eventually select a subset of input images
+        # on which to run this and the following steps
+
+        #############################################
+        # Compute NDVI
+        #############################################
+        # Compute the NDVI from the orthorectified / pansharpened images
+        # for use during segmentation
+
+        ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
+        ndvi_output_fpath = os.path.join(ndvi_outdir, 'ndvi.tif')
+        cmd_args = py_cmd(relative_tool_path('compute_ndvi.py'))
+        cmd_args += [files['msi']['ortho_img_fpath'] for
+                     files in
+                     collection_id_to_files.values() if
+                     'msi' in files and 'ortho_img_fpath' in files['msi']]
+        cmd_args.append(ndvi_output_fpath)
+
+        run_step(ndvi_outdir,
+                 'compute-ndvi',
                  cmd_args)
-
-        files['msi']['ortho_img_fpath'] = msi_ortho_img_fpath
-    #
-    # Note: we may eventually select a subset of input images
-    # on which to run this and the following steps
-
-    #############################################
-    # Compute NDVI
-    #############################################
-    # Compute the NDVI from the orthorectified / pansharpened images
-    # for use during segmentation
-
-    ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
-    ndvi_output_fpath = os.path.join(ndvi_outdir, 'ndvi.tif')
-    cmd_args = py_cmd(relative_tool_path('compute_ndvi.py'))
-    cmd_args += [files['msi']['ortho_img_fpath'] for
-                 files in
-                 collection_id_to_files.values() if
-                 'msi' in files and 'ortho_img_fpath' in files['msi']]
-    cmd_args.append(ndvi_output_fpath)
-
-    run_step(ndvi_outdir,
-             'compute-ndvi',
-             cmd_args)
 
     #############################################
     # Get OSM road vector data
@@ -379,8 +391,8 @@ def main(args):
     #############################################
     # Segment by Height and Vegetation
     #############################################
-    # Call segment_by_height.py using the DSM, DTM, and NDVI.  the
-    # output here has the suffix _threshold_CLS.tif.
+    # Call segment_by_height.py using the DSM, DTM, and NDVI.
+    # The output here has the suffix _threshold_CLS.tif.
 
     seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
     threshold_output_mask_fpath = os.path.join(seg_by_height_outdir, 'threshold_CLS.tif')
@@ -388,12 +400,13 @@ def main(args):
     cmd_args += [dsm_file,
                  dtm_file,
                  threshold_output_mask_fpath,
-                 '--input-ndvi', ndvi_output_fpath,
                  '--road-vector', road_vector_output_fpath,
                  '--road-rasterized',
                  os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
                  '--road-rasterized-bridge',
                  os.path.join(seg_by_height_outdir, 'road_rasterized_bridge.tif')]
+    if args.image:
+        cmd_args.extend(['--input-ndvi', ndvi_output_fpath])
 
     run_step(seg_by_height_outdir,
              'segment-by-height',
@@ -403,30 +416,31 @@ def main(args):
     # Material Segmentation
     #############################################
 
-    material_classifier_outdir = os.path.join(working_dir, 'material-classification')
-    cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
-    cmd_args += ['--image_paths']
-    # We build these up separately because they have to be 1-to-1 on the command line and
-    # dictionaries are unordered
-    img_paths = []
-    info_paths = []
-    for collection_id, files in collection_id_to_files.items():
-        img_paths.append(files['msi']['ortho_img_fpath'])
-        info_paths.append(files['msi']['info'])
-    cmd_args.extend(img_paths)
-    cmd_args.append('--info_paths')
-    cmd_args.extend(info_paths)
-    cmd_args.extend(['--output_dir', material_classifier_outdir,
-                     '--model_path', config['material']['model_fpath'],
-                     '--outfile_prefix', aoi_name])
-    if config.has_option('material', 'batch_size'):
-        cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
-    if config['material'].getboolean('cuda'):
-            cmd_args.append('--cuda')
+    if args.image:
+        material_classifier_outdir = os.path.join(working_dir, 'material-classification')
+        cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
+        cmd_args += ['--image_paths']
+        # We build these up separately because they have to be 1-to-1 on the command line
+        # and dictionaries are unordered
+        img_paths = []
+        info_paths = []
+        for collection_id, files in collection_id_to_files.items():
+            img_paths.append(files['msi']['ortho_img_fpath'])
+            info_paths.append(files['msi']['info'])
+        cmd_args.extend(img_paths)
+        cmd_args.append('--info_paths')
+        cmd_args.extend(info_paths)
+        cmd_args.extend(['--output_dir', material_classifier_outdir,
+                         '--model_path', config['material']['model_fpath'],
+                         '--outfile_prefix', aoi_name])
+        if config.has_option('material', 'batch_size'):
+            cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
+        if config['material'].getboolean('cuda'):
+                cmd_args.append('--cuda')
 
-    run_step(material_classifier_outdir,
-             'material-classification',
-             cmd_args)
+        run_step(material_classifier_outdir,
+                 'material-classification',
+                 cmd_args)
 
     #############################################
     # Roof Geon Extraction & PointNet Geon Extraction
@@ -453,49 +467,58 @@ def main(args):
              'roof-geon-extraction',
              cmd_args)
 
-    #############################################
-    # Texture Mapping
-    #############################################
+    if not args.image:
+        occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
+    else:
+        #############################################
+        # Texture Mapping
+        #############################################
 
-    crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
-    for collection_id, files in collection_id_to_files.items():
-        cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
-        cmd_args += [dsm_file, crop_and_pansharpen_outdir, "--pan", files['pan']['image']]
-        rpc_fpath = files['pan'].get('rpc', None)
-        if (rpc_fpath):
-            cmd_args.append(rpc_fpath)
-        cmd_args.extend(["--msi", files['msi']['image']])
-        rpc_fpath = files['msi'].get('rpc', None)
-        if (rpc_fpath):
-            cmd_args.append(rpc_fpath)
+        crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
+        for collection_id, files in collection_id_to_files.items():
+            cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
+            cmd_args += [dsm_file, crop_and_pansharpen_outdir, "--pan", 
+                         files['pan']['image']]
+            rpc_fpath = files['pan'].get('rpc', None)
+            if (rpc_fpath):
+                cmd_args.append(rpc_fpath)
+            cmd_args.extend(["--msi", files['msi']['image']])
+            rpc_fpath = files['msi'].get('rpc', None)
+            if (rpc_fpath):
+                cmd_args.append(rpc_fpath)
 
-        run_step(crop_and_pansharpen_outdir,
-                 'crop-and-pansharpen-{}'.format(collection_id),
+            run_step(crop_and_pansharpen_outdir,
+                     'crop-and-pansharpen-{}'.format(collection_id),
+                     cmd_args)
+
+        texture_mapping_outdir = os.path.join(working_dir, 'texture-mapping')
+        occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
+        images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
+                                               "*_crop_pansharpened_processed.tif"))
+        orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
+
+        orig_meshes = [e for e in orig_meshes if e.find(occlusion_mesh) < 0]
+
+        cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
+        cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, 
+                     "--crops"]
+        cmd_args.extend(images_to_use)
+        cmd_args.append("--buildings")
+        cmd_args.extend(orig_meshes)
+
+        run_step(texture_mapping_outdir,
+                 'texture-mapping',
                  cmd_args)
-
-    texture_mapping_outdir = os.path.join(working_dir, 'texture-mapping')
-    occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
-    images_to_use = glob.glob(os.path.join(crop_and_pansharpen_outdir,
-                                           "*_crop_pansharpened_processed.tif"))
-    orig_meshes = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
-
-    orig_meshes = [e for e in orig_meshes if e.find(occlusion_mesh) < 0]
-
-    cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
-    cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, "--crops"]
-    cmd_args.extend(images_to_use)
-    cmd_args.append("--buildings")
-    cmd_args.extend(orig_meshes)
-
-    run_step(texture_mapping_outdir,
-             'texture-mapping',
-             cmd_args)
 
     #############################################
     # 3D Tiles Generation
     #############################################
     tiler_outdir = os.path.join(working_dir, 'tiler')
-    input_tiler = glob.glob(os.path.join(texture_mapping_outdir, "*.obj"))
+    if args.image:
+        input_tiler = glob.glob(os.path.join(texture_mapping_outdir, "*.obj"))
+    else:
+        input_tiler = glob.glob(os.path.join(roof_geon_extraction_outdir, "*.obj"))
+
     utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
 
     cmd_args = py_cmd(relative_tool_path('tiler.py'))
@@ -511,16 +534,15 @@ def main(args):
     #############################################
     # Buildings to DSM
     #############################################
-    roof_geon_extraction_outdir = os.path.join(working_dir, 'roof-geon-extraction')
 
     buildings_to_dsm_outdir = os.path.join(working_dir, 'buildings-to-dsm')
     # Generate the output DSM
-    output_dsm = os.path.join(buildings_to_dsm_outdir, "buildings_to_dsm_DSM.tif")
+    output_dsm = os.path.join(buildings_to_dsm_outdir, 'buildings_to_dsm_DSM.tif')
     cmd_args = py_cmd(relative_tool_path('buildings_to_dsm.py'))
     cmd_args += [dtm_file,
                  output_dsm]
     cmd_args.append('--input_obj_paths')
-    obj_list = glob.glob("{}/*.obj".format(roof_geon_extraction_outdir))
+    obj_list = glob.glob('{}/*.obj'.format(roof_geon_extraction_outdir))
     # remove occlusion_mesh
     obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
     cmd_args.extend(obj_list)
@@ -530,7 +552,7 @@ def main(args):
              cmd_args)
 
     # Generate the output CLS
-    output_cls = os.path.join(buildings_to_dsm_outdir, "buildings_to_dsm_CLS.tif")
+    output_cls = os.path.join(buildings_to_dsm_outdir, 'buildings_to_dsm_CLS.tif')
     cmd_args = py_cmd(relative_tool_path('buildings_to_dsm.py'))
     cmd_args += [dtm_file,
                  output_cls,
@@ -542,15 +564,11 @@ def main(args):
              'buildings-to-dsm_CLS',
              cmd_args)
 
-    
     #############################################
     # Run metrics
     #############################################
     if(args.run_metrics):
         run_metrics_outdir = os.path.join(working_dir, 'run_metrics')
-
-        # Expected file path for material classification output MTL file
-        output_mtl = os.path.join(material_classifier_outdir, '{}_MTL.tif'.format(aoi_name))
 
         cmd_args = py_cmd(relative_tool_path('run_metrics.py'))
         cmd_args += [
@@ -559,13 +577,16 @@ def main(args):
             '--ref-prefix', config['metrics']['ref_data_prefix'],
             '--dsm', output_dsm,
             '--cls', output_cls,
-            '--mtl', output_mtl,
             '--dtm', dtm_file]
+        if args.image:
+            # Expected file path for material classification output MTL file
+            output_mtl = os.path.join(material_classifier_outdir, 
+                                      '{}_MTL.tif'.format(aoi_name))
+            cmd_args.extend(['--mtl', output_mtl])
 
         run_step(run_metrics_outdir,
                 'run-metrics',
-                cmd_args)
-    
+                cmd_args)   
 
 
 if __name__ == '__main__':
