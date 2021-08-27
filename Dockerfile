@@ -102,8 +102,9 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteSter
   source /opt/conda/etc/profile.d/conda.sh && \
   conda create -n vissat python=3.6 pip=20.0.* && \
   conda activate vissat && \
-  conda install -y -c kitware-danesfield-cf -c kitware-danesfield-df libgdal gdal && \
-  pip install -r /VisSatSatelliteStereo/requirements.txt"]
+  pip install -r /VisSatSatelliteStereo/requirements.txt && \
+  pip uninstall -y numpy && \
+  conda install -y numpy libgdal gdal"]
 
 # Install LAStools package from Github
 RUN git clone https://github.com/LAStools/LAStools.git && \
