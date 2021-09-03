@@ -123,7 +123,7 @@ def py_cmd(tool_path):
 
 def run_step(working_dir, step_name, command, abort_on_error=True):
     '''
-    Runs a command if it has not already been run succcessfully.  Log
+    Runs a command if it has not already been run successfully.  Log
     and exit status files are written to `working_dir`.  This script
     will exit(1) if the command's exit status is anything but 0, and
     if `abort_on_error` is True.
