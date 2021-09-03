@@ -27,7 +27,7 @@ dependencies:
 - gaia
 - pyproj
 - scipy
-- vtk
+- vtk=v8.2.*
 - jsonschema
 - geojson
 - flake8
@@ -48,7 +48,7 @@ dependencies:
 - xorg-libsm
 - xorg-libX11
 - core3d-purdue
-- pip=20.0.*
+- pip
 - pip:
   - ubelt
   - plyfile

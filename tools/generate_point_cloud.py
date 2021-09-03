@@ -11,6 +11,7 @@ import sys
 import argparse
 import subprocess
 from ply2txt import convert
+from clean_point_cloud import clean
 
 def main(args):
     parser = argparse.ArgumentParser(
@@ -34,10 +35,12 @@ def main(args):
             'mvs_results/aggregate_3d/aggregate_3d.ply'), 
             os.path.join(args.work_dir, 
             'mvs_results/aggregate_3d/aggregate_3d.txt')])
+    clean(os.path.join(args.work_dir, 'mvs_results/aggregate_3d/aggregate_3d.txt'),
+          os.path.join(args.work_dir, 'mvs_results/aggregate_3d/aggregate_3d_dense.txt'))
 
     subprocess.run(["/LAStools/bin/txt2las", 
                     "-i", os.path.join(args.work_dir,
-                    'mvs_results/aggregate_3d/aggregate_3d.txt'), 
+                    'mvs_results/aggregate_3d/aggregate_3d_dense.txt'), 
                     "-parse", "xyz", 
                     "-o", args.point_cloud, 
                     "-utm", args.utm, 
