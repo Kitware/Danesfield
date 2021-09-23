@@ -23,6 +23,9 @@ def get_uint32(pos, data):
 def get_int(pos, data):
   return int.from_bytes(data[pos:pos + 4], 'little'), pos + 4
 
+def get_int8(pos, data):
+  return int.from_bytes(data[pos:pos + 1], 'little'), pos + 1
+
 def get_double(pos, data):
   return struct.unpack('d', data[pos:pos + 8])[0], pos + 8
 
@@ -191,8 +194,30 @@ def load_GPM_GndSpace_Direct(data):
 
   retDict['DATASET_ID'], currPos = get_string(currPos, ppe_bytes)
 
-  # Skip for now
-  currPos += 1 # 3DC_PARAM_INDEX_FLAGS
+  # Get 3DC parameter flags as an integer
+  param_flags, currPos = get_int8(currPos, ppe_bytes)
+
+  if param_flags:
+    retDict['CU_X_COORD_RE_CENTERING_VALUE'], currPos = get_double(currPos, ppe_bytes)
+    retDict['CU_Y_COORD_RE_CENTERING_VALUE'], currPos = get_double(currPos, ppe_bytes)
+    retDict['CU_Z_COORD_RE_CENTERING_VALUE'], currPos = get_double(currPos, ppe_bytes)
+    retDict['CU_S_NORMALIZING_SCALE_FACTOR'], currPos = get_double(currPos, ppe_bytes)
+
+    # Apply masks to get other 3DC parameters
+    if param_flags & 0b00000001:
+      retDict['CU_DELTA_X'], currPos = get_double(currPos, ppe_bytes)
+    if param_flags & 0b00000010:
+      retDict['CU_DELTA_y'], currPos = get_double(currPos, ppe_bytes)
+    if param_flags & 0b00000100:
+      retDict['CU_DELTA_Z'], currPos = get_double(currPos, ppe_bytes)
+    if param_flags & 0b00001000:
+      retDict['CU_OMEGA'], currPos = get_double(currPos, ppe_bytes)
+    if param_flags & 0b00010000:
+      retDict['CU_PHI'], currPos = get_double(currPos, ppe_bytes)
+    if param_flags & 0b00100000:
+      retDict['CU_KAPPA'], currPos = get_double(currPos, ppe_bytes)
+    if param_flags & 0b01000000:
+      retDict['CU_DELTA_S'], currPos = get_double(currPos, ppe_bytes)
 
   retDict['NUM_AP_RECORDS'], currPos = get_uint16(currPos, ppe_bytes)
   retDict['INTERPOLATION_MODE'], currPos = get_uint16(currPos, ppe_bytes)
@@ -234,7 +259,7 @@ def load_GPM_Unmodeled_Error_Data(data):
   for i in range(retDict['NUM_UE_RECORDS']):
     ue_dict = {}
     ue_dict['TRAJECTORY_ID'], currPos = get_int(currPos, ppe_bytes)
-    ue_dict['UNIQUE_ID'], currPos = get_string(currPos, ppe_bytes)
+    ue_dict['UNIQUE_ID'], currPos = get_string(currPos, ppe_bytes, length=128)
     ue_dict['CORR_ROT_THETA_X'], currPos = get_double(currPos, ppe_bytes)
     ue_dict['CORR_ROT_THETA_Y'], currPos = get_double(currPos, ppe_bytes)
     ue_dict['CORR_ROT_THETA_Z'], currPos = get_double(currPos, ppe_bytes)
