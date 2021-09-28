@@ -90,7 +90,7 @@ from a docker container.
 
     python run_danesfield.py path/to/input.ini
 
-Note: `input.ini` should contain a valid path to imagery via `p3d_fpath`
+Note: `input.ini` should contain a valid point cloud path via `p3d_fpath`.
 
 - To execute a pipeline with a set of satellite images, run
 
@@ -98,8 +98,7 @@ Note: `input.ini` should contain a valid path to imagery via `p3d_fpath`
 
     python run_danesfield.py --image path/to/input.ini
 
-Note: `input.ini` should contain a valid path to imagery via `imagery_dir`
-
+Note: `input.ini` should contain a valid path to imagery via `imagery_dir`.
 
 Some Useful Resources
 =====================
