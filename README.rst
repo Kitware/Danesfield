@@ -96,6 +96,8 @@ from a docker container.
 
     python run_danesfield.py --image path/to/input.ini
 
+Note: `input.ini` should contain a valid path to imagery via `imagery_dir`
+
 
 Some Useful Resources
 =====================
