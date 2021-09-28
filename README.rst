@@ -21,13 +21,13 @@ Getting Started
 Clone repository
 ----------------
 
-Clone this repository with its submodules by running:
+Clone this repository with its sub-modules by running:
 
 .. code-block::
 
     git clone --recursive git@github.com:Kitware/Danesfield.git
 
-To fetch the latest version of this repository and its submodules, run:
+To fetch the latest version of this repository and its sub-modules, run:
 
 .. code-block::
 
@@ -68,6 +68,48 @@ The Danesfield project is organized as follows:
   live.
 - `<tools>`_ This directory contains command line tools to execute the
   Danesfield algorithms.
+
+Run Danesfield CLI
+==================
+
+The Danesfield pipeline can be run from a command line using `tools/run_danesfield.py`
+via a docker container.
+
+- Ensure the latest danesfield docker image and nvidia-docker.
+- Create/edit a danesfield configuration file `input.ini`
+- Start an docker session with access to `tools/run_danesfield.py` and `input.ini`
+
+.. code-block::
+
+    nvidia-docker run -it --rm --gpus all --shm-size 8G\
+     -v /$DATA:/mnt -v $HOME:/home/$USER -v /$WORK:/work\
+     kitware/danesfield /bin/bash
+
+where `$DATA` is a data directory with a point cloud and/or imagery,
+`$WORK` is a working directory with run_danesfield.py and input.ini,
+`$HOME` is a user directory.
+
+- To execute a pipeline with a point cloud, run
+
+.. code-block::
+
+    python run_danesfield.py path/to/input.ini
+
+Note: `<input.ini>`_ should contain a valid point cloud path via `p3d_fpath`.
+
+- To execute a pipeline with a set of satellite images, run
+
+.. code-block::
+
+    python run_danesfield.py --image path/to/input.ini
+
+Note: `<input.ini>`_ should contain a valid path to imagery via `imagery_dir`.
+
+- To see more options for a pipeline run, execute
+
+.. code-block::
+
+    python run_danesfield.py -h
 
 Some Useful Resources
 =====================
