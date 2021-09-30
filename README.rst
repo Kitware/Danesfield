@@ -73,7 +73,8 @@ Run Danesfield CLI
 ==================
 
 The Danesfield pipeline can be run from a command line using `tools/run_danesfield.py`
-from a docker container.
+via a docker container.
+
 - Ensure the latest danesfield docker image and nvidia-docker.
 - Create/edit a danesfield configuration file `input.ini`
 - Start an docker session with access to `tools/run_danesfield.py` and `input.ini`
@@ -90,7 +91,7 @@ from a docker container.
 
     python run_danesfield.py path/to/input.ini
 
-Note: `input.ini` should contain a valid point cloud path via `p3d_fpath`.
+Note: `<input.ini>`_ should contain a valid point cloud path via `p3d_fpath`.
 
 - To execute a pipeline with a set of satellite images, run
 
@@ -98,7 +99,7 @@ Note: `input.ini` should contain a valid point cloud path via `p3d_fpath`.
 
     python run_danesfield.py --image path/to/input.ini
 
-Note: `input.ini` should contain a valid path to imagery via `imagery_dir`.
+Note: `<input.ini>`_ should contain a valid path to imagery via `imagery_dir`.
 
 Some Useful Resources
 =====================
