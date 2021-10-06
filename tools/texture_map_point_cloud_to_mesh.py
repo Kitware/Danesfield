@@ -14,7 +14,7 @@ a mesh.
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-import open3d as o3d
+import pdal
 import sys
 
 from pathlib import Path
@@ -26,6 +26,26 @@ from kwiver.arrows.core import mesh_triangulate
 from kwiver.arrows.core import mesh_closest_point
 
 from kwiver.vital.modules import load_known_modules
+
+# Load point cloud data with pdal
+def load_point_cloud(filename):
+    pdal_input = u"""
+    {{
+        "pipeline":
+        [
+          "{}"
+        ]
+    }}"""
+    print("Loading Point Cloud")
+    pdal_input = pdal_input.format(filename)
+
+    print(pdal_input)
+    pipeline = pdal.Pipeline(pdal_input)
+    pipeline.validate()  # check if our JSON and options were good
+    pipeline.execute()
+    points = pipeline.arrays[0]
+    pipeline = None
+    return points
 
 def main(args):
     parser = argparse.ArgumentParser(
@@ -50,8 +70,9 @@ def main(args):
     uv_unwrap_mesh = UVUnwrapMesh.create('core')
     uv_unwrap_mesh.unwrap(new_mesh)
 
-    pcd = o3d.io.read_point_cloud(args.point_cloud_file)
-    points = np.asarray(pcd.points)
+    pc_data = load_point_cloud(args.point_cloud_file)
+
+    points = np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
 
     img_size = (1000, 1000, 3)
     img_arr = np.zeros(img_size, dtype=np.uint8)
@@ -70,7 +91,7 @@ def main(args):
       pc_max[i] = np.max(points[:,i])
     pc_len = pc_max - pc_min
 
-    for pt in points[:5000]:
+    for pt in points:
         point.value = pt
         (idx, u, v) = mesh_closest_point(point, new_mesh, closest_point)
         tx_coord = new_mesh.texture_map(idx, u, v)
