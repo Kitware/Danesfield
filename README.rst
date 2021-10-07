@@ -82,8 +82,12 @@ via a docker container.
 .. code-block::
 
     nvidia-docker run -it --rm --gpus all --shm-size 8G\
-     -v /$DATA/CORE3D:/mnt -v $HOME:/home/$USER -v /$WORK:/work\
+     -v /$DATA:/mnt -v $HOME:/home/$USER -v /$WORK:/work\
      kitware/danesfield /bin/bash
+
+where `$DATA` is a data directory with a point cloud and/or imagery,
+`$WORK` is a working directory with run_danesfield.py and input.ini,
+`$HOME` is a user directory.
 
 - To execute a pipeline with a point cloud, run
 
