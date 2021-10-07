@@ -204,6 +204,7 @@ def main(args):
     parser.add_argument("--vissat", help="run Vissat stereo pipeline", action="store_true")
     parser.add_argument("--run_metrics", help="run metrics", action="store_true")
     parser.add_argument("--image", help="run pipeline with image data", action="store_true")
+    parser.add_argument("--roads", help="get roads from open street maps", action="store_true")
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -378,15 +379,15 @@ def main(args):
     #############################################
     # Query OpenStreetMap for road vector data
 
-    get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
-    road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
-    cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
-    cmd_args += ['--bounding-img', dsm_file,
-                 '--output-dir', get_road_vector_outdir]
-
-    run_step(get_road_vector_outdir,
-             'get-road-vector',
-             cmd_args)
+    if args.roads:
+        get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
+        road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
+        cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
+        cmd_args += ['--bounding-img', dsm_file,
+                     '--output-dir', get_road_vector_outdir]
+        run_step(get_road_vector_outdir,
+                 'get-road-vector',
+                 cmd_args)
 
     #############################################
     # Segment by Height and Vegetation
@@ -399,8 +400,9 @@ def main(args):
     cmd_args = py_cmd(relative_tool_path('segment_by_height.py'))
     cmd_args += [dsm_file,
                  dtm_file,
-                 threshold_output_mask_fpath,
-                 '--road-vector', road_vector_output_fpath,
+                 threshold_output_mask_fpath]
+    if args.roads:
+        cmd_args += ['--road-vector', road_vector_output_fpath,
                  '--road-rasterized',
                  os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
                  '--road-rasterized-bridge',
