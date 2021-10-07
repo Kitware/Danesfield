@@ -105,6 +105,12 @@ Note: `<input.ini>`_ should contain a valid point cloud path via `p3d_fpath`.
 
 Note: `<input.ini>`_ should contain a valid path to imagery via `imagery_dir`.
 
+- To see more options for a pipeline, run
+
+.. code-block::
+
+    python run_danesfield.py -h
+
 Some Useful Resources
 =====================
 
