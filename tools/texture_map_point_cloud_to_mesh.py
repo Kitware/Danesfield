@@ -54,12 +54,27 @@ def main(args):
     parser.add_argument("mesh_file", help="path to mesh file")
     parser.add_argument("point_cloud_file", help="path to point cloud file")
     parser.add_argument("out_mesh_file", help="path new mesh file with texture map")
-    parser.add_argument("--mtl_file", help="path to mtl file for mesh. "
-                        " Default to out file name with .mtl extension.")
+    parser.add_argument("--bit_depth", help="bit depth of the colors in "
+                        "the las file.", type=int, default=8)
     args = parser.parse_args(args)
 
     # Load kwiver modules
     load_known_modules()
+
+    # Check for UTM corrections in mesh file header
+    with open(args.mesh_file, "r") as in_f:
+        header = [next(in_f) for x in range(3)]
+
+    # Set the shift values for the mesh from header data
+    utm_shift = np.zeros(3)
+    for l in header:
+      cols = l.split()
+      if '#x' in cols[0]:
+          utm_shift[0] = float(cols[2])
+      elif '#y' in cols[0]:
+          utm_shift[1] = float(cols[2])
+      elif '#z' in cols[0]:
+          utm_shift[2] = float(cols[2])
 
     new_mesh = Mesh.from_obj_file(args.mesh_file)
 
@@ -72,38 +87,41 @@ def main(args):
 
     pc_data = load_point_cloud(args.point_cloud_file)
 
-    points = np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
+    points = (np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
+              - utm_shift)
+    rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
 
     img_size = (1000, 1000, 3)
-    img_arr = np.zeros(img_size, dtype=np.uint8)
+    img_pre_arr = [ [ [] for i in range(img_size[0]) ] for j in range(img_size[1]) ]
+    img_arr = np.zeros(img_size, dtype=np.float64)
 
-    coords = []
     idx = 0
     u = v = 0.0
     closest_point = Point3d()
     point = Point3d()
 
-    pc_min = np.zeros(3)
-    pc_max = np.zeros(3)
+    num_points = len(points)
+    count = 0
 
-    for i in range(3):
-      pc_min[i] = np.min(points[:,i])
-      pc_max[i] = np.max(points[:,i])
-    pc_len = pc_max - pc_min
-
-    for pt in points:
+    for pt, rgb in zip(points, rgb_data):
         point.value = pt
         (idx, u, v) = mesh_closest_point(point, new_mesh, closest_point)
         tx_coord = new_mesh.texture_map(idx, u, v)
-        coords.append(tx_coord)
-        for i in range(3):
-            val = 63 + int(192.0*(pt[i] - pc_min[i])/pc_len[i])
-            img_arr[int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0]), i] = val
+        px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
+        img_pre_arr[px][py].append(rgb)
+        count += 1
+        sys.stdout.write('\rPoint {}/{}'.format(count, num_points))
+        sys.stdout.flush()
 
-    img_arr = 255.0*img_arr/np.max(img_arr)
-    img_arr = img_arr.astype(np.uint8)
+    # Take the average at each pixel
+    for i in range(img_size[0]):
+        for j in range(img_size[1]):
+            if img_pre_arr[i][j]:
+                img_arr[i, j] = np.concatenate(img_pre_arr[i][j]).mean(axis=0)
 
-    plt.imsave(Path(args.mesh_file).with_suffix('.png'), img_arr)
+    img_arr = img_arr/2**args.bit_depth
+
+    plt.imsave(Path(args.out_mesh_file).with_suffix('.png'), img_arr)
 
     new_mesh.set_tex_source(Path(args.out_mesh_file).with_suffix('.mtl').name)
     Mesh.to_obj_file(args.out_mesh_file, new_mesh)
