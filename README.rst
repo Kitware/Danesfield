@@ -82,12 +82,11 @@ The Danesfield pipeline can be run from a command line using
 .. code-block::
 
     nvidia-docker run -it --rm --gpus all --shm-size 8G\
-     -v /$DATA:/mnt -v $HOME:/home/$USER -v /$WORK:/work\
+     -v /$DATA:/mnt -v /$WORK:/wrk\
      kitware/danesfield /bin/bash
 
-where `$DATA` is a data directory with a point cloud and/or imagery,
-`$WORK` is a working directory with run_danesfield.py and input.ini,
-`$HOME` is a user directory.
+where `$DATA` is a path to data with point cloud, imagery, input.ini
+  `$WORK` is a path to the folder with danesfield executable code
 
 - To execute a pipeline with a point cloud, run
 
