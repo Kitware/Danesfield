@@ -30,6 +30,19 @@ in a separate project called
 The algorithms in this repository
 are written in Python or at least provide a Python interface.
 
+The initial implementation of this project, as presented at EarthVision_,
+included a dependency on proprietary software developed by Raytheon.
+The Raytheon P3D software was used to extract point clouds from satellite
+images and bundle adjust RPC camera models.
+This dependency limited the use Danesfield to users with a license for
+the Raytheon P3D.
+We have since integrated VisSat_ as an open source alternative to P3D
+to allow for an end-to-end open source pipeline.
+Note that while VisSat works as a replacement to P3D, several downstream
+algorithms were trained on, or had parameters tuned for, P3D data.
+So results produced with VisSat instead of P3D may not achieve the
+same results as published.
+
 Getting Started
 ===============
 
@@ -147,3 +160,4 @@ Some Useful Resources
 .. _EarthVision: http://www.classic.grss-ieee.org/earthvision2019/
 .. _EarthVisionPaper: http://openaccess.thecvf.com/content_CVPRW_2019/html/EarthVision/Leotta_Urban_Semantic_3D_Reconstruction_From_Multiview_Satellite_Imagery_CVPRW_2019_paper.html
 __ EarthVisionPaper_
+.. _VisSat: https://github.com/Kai-46/VisSatSatelliteStereo
