@@ -10,9 +10,24 @@ program.  The goal of this software is to reconstruct semantically meaningful
     :align: center
     :alt: The Danesfield system performs 3D reconstruction from satellite imagery
 
-This repository contains the algorithms to solve the CORE3D problem, but the
-user interface and cloud-based processing infrastructure are provided
-in a separate project called Resonant Geo.  The algorithms in this repository
+This software is designed to process multiple view satellite imagery and is
+currently configured to process collections of panchromatic and multispectral
+WorldView3 imagery such as the examples provided in the public
+`CORE3D Dataset <https://spacenet.ai/core3d/>`_.
+The algorithms were described in a **Best Paper** awarding winning paper at
+EarthVision_ 2019:
+
+    M. Leotta, C. Long, B. Jacquet, M. Zins, D. Lipsa, J. Shan, B. Xu, Z. Li,
+    X. Zhang, S. Chang, M. Purri, J. Xue, and K. Dana,
+    "`Urban Semantic 3D Reconstruction From Multiview Satellite Imagery`__,"
+    in The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)
+    Workshops: EarthVision, 2019.
+
+This repository contains the algorithms to solve the CORE3D problem, but a
+web-based user interface and cloud-based processing infrastructure are provided
+in a separate project called
+`Danesfield-App <https://github.com/Kitware/Danesfield-App>`_.
+The algorithms in this repository
 are written in Python or at least provide a Python interface.
 
 Getting Started
@@ -128,3 +143,7 @@ Some Useful Resources
 
 `Workshop: Raster and vector processing with GDAL
 <http://download.osgeo.org/gdal/workshop/foss4ge2015/workshop_gdal.pdf>`_
+
+.. _EarthVision: http://www.classic.grss-ieee.org/earthvision2019/
+.. _EarthVisionPaper: http://openaccess.thecvf.com/content_CVPRW_2019/html/EarthVision/Leotta_Urban_Semantic_3D_Reconstruction_From_Multiview_Satellite_Imagery_CVPRW_2019_paper.html
+__ EarthVisionPaper_
