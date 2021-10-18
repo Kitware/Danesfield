@@ -101,38 +101,42 @@ Run Danesfield CLI
 ==================
 
 The Danesfield pipeline can be run from a command line using
-`tools/run_danesfield.py` via a docker container.
+`tools/run_danesfield.py` and constructing a danesfield
+configuration file based on the example in `<input.ini>`_.
 
-- Ensure the latest danesfield docker image and nvidia-docker.
-- Create/edit a danesfield configuration file `input.ini`
-- Start an docker session with access to `run_danesfield.py` and `input.ini`
+If running via the docker container, first ensure you have the latest
+danesfield docker image and nvidia-docker.  Use ``nvidia-docker``
+to start a bash session inside the container:
 
 .. code-block::
 
     nvidia-docker run -it --rm --gpus all --shm-size 8G\
      -v /$DATA:/mnt kitware/danesfield /bin/bash
 
-where `$DATA` is a path to data with point cloud, imagery, input.ini
+where ``$DATA`` is a path on the host to data directory containing your input
+imagery or point cloud and input.ini.  This host directory is mounted inside
+the container at ``/mnt`` in the above command.
 
-- To execute a pipeline with a point cloud, run
+Once the environment is set up, you can execute a pipeline to process either
+multiple satellite images or start with a geospatial point cloud.
+To execute a pipeline with a point cloud, run
 
 .. code-block::
 
     python run_danesfield.py path/to/input.ini
 
-Note: `<input.ini>`_ should contain a valid point cloud path via `p3d_fpath`.
+Note: `<input.ini>`_ should contain a valid point cloud path via ``p3d_fpath``.
 
-- To execute a pipeline with a set of satellite images, run
+To execute a pipeline with a set of satellite images, run
 
 .. code-block::
 
     python run_danesfield.py --image path/to/input.ini
 
-Note: `<input.ini>`_ should contain a valid path to imagery via `imagery_dir`.
+Note: `<input.ini>`_ should contain a valid path to imagery via ``imagery_dir``.
 
-- See comments in `<input.ini>`_ for each configuration option.
-
-- See more options on runnning danesfield pipeline, execute
+See comments in `<input.ini>`_ for each configuration option.
+To see more options on runnning danesfield pipeline, execute
 
 .. code-block::
 
@@ -140,13 +144,13 @@ Note: `<input.ini>`_ should contain a valid path to imagery via `imagery_dir`.
 
 where notable options are
 
---image: run pipeline with image data as the source; default uses a point cloud
+- ``--image``: run pipeline with image data as the source; default uses a point cloud
 
---roads: get roads from open street maps; default extracts no roads
+- ``--roads``: get roads from open street maps; default extracts no roads
 
---vissat: run VisSat stereo pipeline using satellite imagery
+- ``--vissat``: run VisSat stereo pipeline using satellite imagery
 
---run_metrics: run evaluation metrics; requires ground truth for DSM, DTM, etc.
+- ``--run_metrics``: run evaluation metrics; requires ground truth for DSM, DTM, etc.
 
 
 Some Useful Resources
