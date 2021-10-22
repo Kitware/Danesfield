@@ -183,13 +183,6 @@ Third, we are adding open source tools to convert the meshes produced by
 Danesfield into the `3D Tiles <https://www.ogc.org/standards/3DTiles/>`_
 format for more efficient transmission over the web.
 
-Some Useful Resources
-=====================
-
-`GDAL/OGR cookbook <https://pcjericks.github.io/py-gdalogr-cookbook/>`_
-
-`Workshop: Raster and vector processing with GDAL
-<http://download.osgeo.org/gdal/workshop/foss4ge2015/workshop_gdal.pdf>`_
 
 .. _EarthVision: http://www.classic.grss-ieee.org/earthvision2019/
 .. _EarthVisionPaper: http://openaccess.thecvf.com/content_CVPRW_2019/html/EarthVision/Leotta_Urban_Semantic_3D_Reconstruction_From_Multiview_Satellite_Imagery_CVPRW_2019_paper.html
