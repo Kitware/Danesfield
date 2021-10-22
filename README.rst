@@ -28,7 +28,7 @@ web-based user interface and cloud-based processing infrastructure are provided
 in a separate project called
 `Danesfield-App <https://github.com/Kitware/Danesfield-App>`_.
 The algorithms in this repository
-are written in Python or at least provide a Python interface.
+are written in Python or provide a Python interface.
 
 The initial implementation of this project, as presented at EarthVision_,
 included a dependency on proprietary software developed by Raytheon.
