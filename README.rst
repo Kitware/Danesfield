@@ -23,6 +23,9 @@ EarthVision_ 2019:
     in The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)
     Workshops: EarthVision, 2019.
 
+The Danesfield project has evolved since this publication.
+For details, see `Project History`_.
+
 This repository contains the algorithms to solve the CORE3D problem, but a
 web-based user interface and cloud-based processing infrastructure are provided
 in a separate project called
@@ -30,18 +33,6 @@ in a separate project called
 The algorithms in this repository
 are written in Python or provide a Python interface.
 
-The initial implementation of this project, as presented at EarthVision_,
-included a dependency on proprietary software developed by Raytheon.
-The Raytheon P3D software was used to extract point clouds from satellite
-images and bundle adjust RPC camera models.
-This dependency limited the use Danesfield to users with a license for
-the Raytheon P3D.
-We have since integrated VisSat_ as an open source alternative to P3D
-to allow for an end-to-end open source pipeline.
-Note that while VisSat works as a replacement to P3D, several downstream
-algorithms were trained on, or had parameters tuned for, P3D data.
-So results produced with VisSat instead of P3D may not achieve the
-same results as published.
 
 Getting Started
 ===============
@@ -152,6 +143,45 @@ where notable options are
 
 - ``--run_metrics``: run evaluation metrics; requires ground truth for DSM, DTM, etc.
 
+
+Project History
+===============
+
+The Danesfield project is named for Danesfield House in
+Buckinghamshire, England.  This location was the center of `Allied
+image intelligence <https://en.wikipedia.org/wiki/RAF_Medmenham>`_
+during World War II.  During the war, analysts use multiple
+overhead images to physically build 3D models of important sites.
+
+Initial work on this project was funded by the
+`IARPA CORE3D <https://www.iarpa.gov/index.php/research-programs/core3d>`_
+program in 2017 and 2018.
+The results of this initial work were presented at EarthVision_ 2019.
+At the time of this publication, Danesfield included a dependency on
+proprietary software developed by Raytheon.
+The Raytheon P3D software was used to extract point clouds from satellite
+images and bundle adjust RPC camera models.
+This dependency limited the use Danesfield to users with a license for
+the Raytheon P3D.
+
+Since the initial CORE3D work, we have extended Danesfield in a few ways.
+First, we have since integrated VisSat_ as an open source alternative to P3D
+to allow for an end-to-end open source pipeline.
+Note that while VisSat works as a replacement to P3D, several downstream
+algorithms were trained on, or had parameters tuned for, P3D data.
+So results produced with VisSat instead of P3D may not achieve the
+same results as published.
+
+Second, we have started to explore other input data in addition to WorldView 3.
+We have generalized the pipeline to allow processing a geospatial point cloud
+directly. This allows Danesfield to run on Lidar or other sources of point
+clouds. We are also exploring other options, such as integrating the
+`TeleSculptor <https://telesculptor.org/>`_ project to extract the point
+cloud from aerial video sources.
+
+Third, we are adding open source tools to convert the meshes produced by
+Danesfield into the `3D Tiles <https://www.ogc.org/standards/3DTiles/>`_
+format for more efficient transmission over the web.
 
 Some Useful Resources
 =====================
