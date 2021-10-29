@@ -43,7 +43,7 @@ def create_working_dir(working_dir, imagery_dir):
         date_str = str(datetime.datetime.now().timestamp())
         working_dir = 'danesfield-' + date_str.split('.')[0]
     if not os.path.isdir(working_dir):
-        os.mkdir(working_dir)
+        os.makedirs(working_dir, exist_ok=True)
     if imagery_dir and os.path.realpath(imagery_dir) in os.path.realpath(working_dir):
         raise ValueError('The working directory ({}) is a subdirectory of the imagery directory '
                          '({}).'.format(working_dir, imagery_dir))
@@ -167,7 +167,7 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
 
         # Create step working directory if it didn't already exist
         if not os.path.isdir(working_dir):
-            os.mkdir(working_dir)
+            os.makedirs(working_dir, exist_ok=True)
 
         logging.info('---- Running step: {} ----'.format(step_name))
         logging.debug(command)
