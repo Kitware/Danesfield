@@ -108,7 +108,7 @@ def main(args):
         (idx, u, v) = mesh_closest_point(point, new_mesh, closest_point)
         tx_coord = new_mesh.texture_map(idx, u, v)
         px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
-        img_pre_arr[px][py].append(rgb)
+        img_pre_arr[px][py].append(rgb.astype(np.float64))
         count += 1
         sys.stdout.write('\rPoint {}/{}'.format(count, num_points))
         sys.stdout.flush()
@@ -117,7 +117,7 @@ def main(args):
     for i in range(img_size[0]):
         for j in range(img_size[1]):
             if img_pre_arr[i][j]:
-                img_arr[i, j] = np.concatenate(img_pre_arr[i][j]).mean(axis=0)
+                img_arr[i, j] = np.array(img_pre_arr[i][j]).mean(axis=0)
 
     img_arr = img_arr/2**args.bit_depth
 
