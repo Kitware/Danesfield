@@ -23,7 +23,7 @@ from kwiver.vital.types import Mesh
 from kwiver.vital.types.point import Point3d
 from kwiver.vital.algo import UVUnwrapMesh
 from kwiver.arrows.core import mesh_triangulate
-from kwiver.arrows.core import mesh_closest_point
+from kwiver.arrows.core import mesh_closest_points
 
 from kwiver.vital.modules import load_known_modules
 
@@ -87,31 +87,30 @@ def main(args):
 
     pc_data = load_point_cloud(args.point_cloud_file)
 
-    points = (np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
-              - utm_shift)
+    points = []
+
+    for i in range(len(pc_data)):
+        point = Point3d()
+        point.value = (pc_data['X'][i] - utm_shift[0],
+                       pc_data['Y'][i] - utm_shift[1],
+                       pc_data['Z'][i] - utm_shift[2])
+        points.append(point)
+
     rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
 
     img_size = (1000, 1000, 3)
     img_pre_arr = [ [ [] for i in range(img_size[0]) ] for j in range(img_size[1]) ]
     img_arr = np.zeros(img_size, dtype=np.float64)
 
-    idx = 0
-    u = v = 0.0
-    closest_point = Point3d()
-    point = Point3d()
+    closest_points = []
+    uv_coords = mesh_closest_points(points, new_mesh, closest_points)
 
-    num_points = len(points)
-    count = 0
+    print("UV coordinates calculated")
 
-    for pt, rgb in zip(points, rgb_data):
-        point.value = pt
-        (idx, u, v) = mesh_closest_point(point, new_mesh, closest_point)
+    for (idx, u, v), rgb in zip(uv_coords, rgb_data):
         tx_coord = new_mesh.texture_map(idx, u, v)
         px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
         img_pre_arr[px][py].append(rgb.astype(np.float64))
-        count += 1
-        sys.stdout.write('\rPoint {}/{}'.format(count, num_points))
-        sys.stdout.flush()
 
     # Take the average at each pixel
     for i in range(img_size[0]):
