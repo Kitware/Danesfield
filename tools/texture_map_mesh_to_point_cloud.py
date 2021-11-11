@@ -60,8 +60,6 @@ def main(args):
     parser.add_argument("mesh_file", help="path to mesh file")
     parser.add_argument("point_cloud_file", help="path to point cloud file")
     parser.add_argument("out_mesh_file", help="path new mesh file with texture map")
-    parser.add_argument("--bit_depth", help="bit depth of the colors in "
-                        "the las file.", type=int, default=8)
     args = parser.parse_args(args)
 
     # Load kwiver modules
@@ -113,10 +111,6 @@ def main(args):
 
     faces = new_mesh.faces()
     vertices = new_mesh.vertices()
-    print(len(faces))
-    print(len(vertices))
-
-    print(dir(new_mesh))
 
     for i in range(new_mesh.num_faces()):
         x_min = y_min = 1.
@@ -149,7 +143,7 @@ def main(args):
         sys.stdout.write('\rMesh {}/{}'.format((i+1), new_mesh.num_faces()))
         sys.stdout.flush()
 
-    img_arr = img_arr/2**args.bit_depth
+    img_arr = img_arr/np.max(rgb_data)
 
     plt.imsave(Path(args.out_mesh_file).with_suffix('.png'), img_arr)
 
