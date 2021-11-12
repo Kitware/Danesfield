@@ -19,6 +19,7 @@ import pdal
 import sys
 
 from pathlib import Path
+from scipy.spatial import KDTree
 
 from kwiver.vital.types import Mesh
 from kwiver.vital.types.point import Point3d
@@ -82,8 +83,6 @@ def main(args):
 
     new_mesh = Mesh.from_obj_file(args.mesh_file)
 
-    # test = new_mesh.faces()
-
     print('mesh loaded')
 
     mesh_triangulate(new_mesh)
@@ -95,14 +94,15 @@ def main(args):
 
     print('mesh uv unwrapped')
 
-    print('loading point cloud data')
-
-    vertices = new_mesh.vertices()
-
     pc_data = load_point_cloud(args.point_cloud_file)
     points = (np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
               - utm_shift)
+
+    print('point cloud data loaded')
+
     rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
+
+    search_tree = KDTree(points)
 
     img_size = (1000, 1000, 3)
     img_dx = 1./img_size[0]
@@ -126,19 +126,24 @@ def main(args):
         indices = faces[i]
         corners = np.array([vertices[idx] for idx in indices])
 
+        pixel_points = []
+        pixel_indices = []
+
         for x in np.arange(x_min, x_max + img_dx, img_dx):
             for y in np.arange(y_min, y_max + img_dy, img_dy):
                 (u,v) = barycentric([x, y], tx_coords[0], tx_coords[1], tx_coords[2])
                 if (0. <= u <= 1.) and (0. <= v <= 1.) and (u + v <= 1.):
-                    px_pt = (u*corners[0, :] +
-                             v*corners[1, :] +
-                             (1. - u - v)*corners[2, :])
+                    pixel_points.append(u*corners[0, :] +
+                                        v*corners[1, :] +
+                                        (1. - u - v)*corners[2, :])
 
-                    closest_idx = np.linalg.norm(points - px_pt, axis=1).argmin()
+                    pixel_indices.append([int((1. - y)*img_size[1]),
+                                          int(x*img_size[0])])
 
-                    p_x = int((1. - y)*img_size[1])
-                    p_y = int(x*img_size[0])
-                    img_arr[p_x, p_y, :] = rgb_data[closest_idx]
+        closest_indices = search_tree.query(pixel_points)
+
+        for px, ci in zip(pixel_indices, closest_indices[1]):
+            img_arr[px[0], px[1], :] = rgb_data[ci]
 
         sys.stdout.write('\rMesh {}/{}'.format((i+1), new_mesh.num_faces()))
         sys.stdout.flush()
