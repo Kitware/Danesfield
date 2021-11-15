@@ -13,7 +13,7 @@ import numpy
 import os
 import pdal
 
-from danesfield import gpm_decode
+from danesfield import gpm
 
 class NumpyArrayEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -82,19 +82,19 @@ def main(args):
     rslt_json = {}
 
     if 'GPM_Master' in gpm_metadata:
-      rslt_json['GPM_Master'] = gpm_decode.load_GPM_Master(
+      rslt_json['GPM_Master'] = gpm.load_GPM_Master(
         gpm_metadata['GPM_Master'])
 
     if 'GPM_GndSpace_Direct' in gpm_metadata:
-      rslt_json['GPM_GndSpace_Direct'] = gpm_decode.load_GPM_GndSpace_Direct(
+      rslt_json['GPM_GndSpace_Direct'] = gpm.load_GPM_GndSpace_Direct(
         gpm_metadata['GPM_GndSpace_Direct'])
 
     if 'Per_Point_Lookup_Error_Data' in gpm_metadata:
-      rslt_json['Per_Point_Lookup_Error_Data'] = gpm_decode.load_Per_Point_Lookup_Error_Data(
+      rslt_json['Per_Point_Lookup_Error_Data'] = gpm.load_Per_Point_Lookup_Error_Data(
         gpm_metadata['Per_Point_Lookup_Error_Data'])
 
     if 'GPM_Unmodeled_Error_Data' in gpm_metadata:
-      rslt_json['GPM_Unmodeled_Error_Data'] = gpm_decode.load_GPM_Unmodeled_Error_Data(
+      rslt_json['GPM_Unmodeled_Error_Data'] = gpm.load_GPM_Unmodeled_Error_Data(
         gpm_metadata['GPM_Unmodeled_Error_Data'])
 
     if rslt_json:
