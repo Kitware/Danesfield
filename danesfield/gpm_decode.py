@@ -12,7 +12,8 @@ import numpy as np
 import struct
 
 def get_string(pos, data, length=32):
-  return data[pos:pos + length].decode('ascii').rstrip('\x00'), pos + length
+  return (data[pos:pos + length].decode('ascii').rstrip('\x00').strip(),
+          pos + length)
 
 def get_uint16(pos, data):
   return int.from_bytes(data[pos:pos + 2], 'little'), pos + 2
