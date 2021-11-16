@@ -51,36 +51,7 @@ def main(args):
 
     pipeline = None
 
-    if ext == '.bpf':
-      bundled_file = metadata['metadata']['readers.bpf'][0]['bundled_file']
-
-      gpm_metadata = {
-        list(el.keys())[0] : list(el.values())[0] for el in bundled_file
-      }
-
-    elif ext == '.las':
-      # Read the data with PDAL
-      pipeline = pdal.Pipeline(pdal_json.format(args.input_file))
-      pipeline.validate()
-      pipeline.execute()
-      metadata = json.loads(pipeline.metadata)
-
-      las_metadata = metadata['metadata']['readers.las'][0]
-
-      gpm_metadata = {}
-
-      for k in las_metadata:
-        if 'vlr' in k:
-          if type(las_metadata[k]) is dict:
-            if ('GPM' in las_metadata[k]['description'] or
-                'Per_Point_Lookup_Error_Data' in las_metadata[k]['description']):
-              gpm_metadata[las_metadata[k]['description']] = las_metadata[k]['data']
-
-    else:
-      print('Unknown file extension')
-      sys.exit(1)
-
-    gpm = GPM(gpm_metadata)
+    gpm = GPM(metadata['metadata'])
 
     if gpm.ap_search:
         print('MIN: ', gpm.ap_search.mins)

@@ -73,27 +73,49 @@ def get_cov_matrix(pos, data, dim=3):
     return retVal, retPos
 
 class GPM(object):
-    def __init__(self, metadata):
+    def __init__(self, file_metadata):
         """Constructor
         """
 
+        if 'readers.bpf' in file_metadata:
+            bundled_file = file_metadata['readers.bpf'][0]['bundled_file']
+
+            gpm_metadata = {
+              list(el.keys())[0] : list(el.values())[0] for el in bundled_file
+            }
+        elif 'readers.las' in file_metadata:
+            las_metadata = file_metadata['readers.las'][0]
+
+            gpm_metadata = {}
+
+            for k in las_metadata:
+                if ('vlr' in k and type(las_metadata[k]) is dict):
+                    if ('GPM' in las_metadata[k]['description'] or
+                        'Per_Point_Lookup_Error_Data' in
+                        las_metadata[k]['description']):
+                        gpm_metadata[las_metadata[k]['description']] = (
+                            las_metadata[k]['data']
+                        )
+        else:
+            gpm_metadata = {}
+
         self.metadata = {}
 
-        if 'GPM_Master' in metadata:
+        if 'GPM_Master' in gpm_metadata:
             self.metadata['GPM_Master'] = self.load_GPM_Master(
-                metadata['GPM_Master'])
+                gpm_metadata['GPM_Master'])
 
-        if 'GPM_GndSpace_Direct' in metadata:
+        if 'GPM_GndSpace_Direct' in gpm_metadata:
             self.metadata['GPM_GndSpace_Direct'] = self.load_GPM_GndSpace_Direct(
-                metadata['GPM_GndSpace_Direct'])
+                gpm_metadata['GPM_GndSpace_Direct'])
 
-        if 'Per_Point_Lookup_Error_Data' in metadata:
+        if 'Per_Point_Lookup_Error_Data' in gpm_metadata:
             self.metadata['Per_Point_Lookup_Error_Data'] = self.load_Per_Point_Lookup_Error_Data(
-                metadata['Per_Point_Lookup_Error_Data'])
+                gpm_metadata['Per_Point_Lookup_Error_Data'])
 
-        if 'GPM_Unmodeled_Error_Data' in metadata:
+        if 'GPM_Unmodeled_Error_Data' in gpm_metadata:
             self.metadata['GPM_Unmodeled_Error_Data'] = self.load_GPM_Unmodeled_Error_Data(
-                metadata['GPM_Unmodeled_Error_Data'])
+                gpm_metadata['GPM_Unmodeled_Error_Data'])
 
         if 'GPM_GndSpace_Direct' in self.metadata:
             self.ap_search = KDTree(self.metadata['GPM_GndSpace_Direct']['AP'])
