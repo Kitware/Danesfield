@@ -22,9 +22,12 @@ class NumpyArrayEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 pdal_json = u"""
-[
-  "%s"
-]"""
+    {{
+        "pipeline":
+        [
+          "{}"
+        ]
+    }}"""
 
 def main(args):
     parser = argparse.ArgumentParser()
@@ -41,10 +44,12 @@ def main(args):
     ext = os.path.splitext(args.input_file)[-1].lower()
 
     # Read the data with PDAL
-    pipeline = pdal.Pipeline(pdal_json % args.input_file)
+    pipeline = pdal.Pipeline(pdal_json.format(args.input_file))
     pipeline.validate()
     pipeline.execute()
     metadata = json.loads(pipeline.metadata)
+
+    pipeline = None
 
     if ext == '.bpf':
       bundled_file = metadata['metadata']['readers.bpf'][0]['bundled_file']
@@ -53,11 +58,9 @@ def main(args):
         list(el.keys())[0] : list(el.values())[0] for el in bundled_file
       }
 
-      pipeline = None
-
     elif ext == '.las':
       # Read the data with PDAL
-      pipeline = pdal.Pipeline(pdal_json % args.input_file)
+      pipeline = pdal.Pipeline(pdal_json.format(args.input_file))
       pipeline.validate()
       pipeline.execute()
       metadata = json.loads(pipeline.metadata)
@@ -73,13 +76,15 @@ def main(args):
                 'Per_Point_Lookup_Error_Data' in las_metadata[k]['description']):
               gpm_metadata[las_metadata[k]['description']] = las_metadata[k]['data']
 
-      pipeline = None
-
     else:
       print('Unknown file extension')
       sys.exit(1)
 
     gpm = GPM(gpm_metadata)
+
+    if gpm.ap_search:
+        print('MIN: ', gpm.ap_search.mins)
+        print('MAX: ', gpm.ap_search.maxes)
 
     if gpm.metadata:
         with open(args.out_file, 'w') as f:

@@ -11,6 +11,8 @@ import base64
 import numpy as np
 import struct
 
+from scipy.spatial import KDTree
+
 def get_string(pos, data, length=32):
     return (data[pos:pos + length].decode('ascii').rstrip('\x00').strip(),
             pos + length)
@@ -78,20 +80,25 @@ class GPM(object):
         self.metadata = {}
 
         if 'GPM_Master' in metadata:
-          self.metadata['GPM_Master'] = self.load_GPM_Master(
-            metadata['GPM_Master'])
+            self.metadata['GPM_Master'] = self.load_GPM_Master(
+                metadata['GPM_Master'])
 
         if 'GPM_GndSpace_Direct' in metadata:
-          self.metadata['GPM_GndSpace_Direct'] = self.load_GPM_GndSpace_Direct(
-            metadata['GPM_GndSpace_Direct'])
+            self.metadata['GPM_GndSpace_Direct'] = self.load_GPM_GndSpace_Direct(
+                metadata['GPM_GndSpace_Direct'])
 
         if 'Per_Point_Lookup_Error_Data' in metadata:
-          self.metadata['Per_Point_Lookup_Error_Data'] = self.load_Per_Point_Lookup_Error_Data(
-            metadata['Per_Point_Lookup_Error_Data'])
+            self.metadata['Per_Point_Lookup_Error_Data'] = self.load_Per_Point_Lookup_Error_Data(
+                metadata['Per_Point_Lookup_Error_Data'])
 
         if 'GPM_Unmodeled_Error_Data' in metadata:
-          self.metadata['GPM_Unmodeled_Error_Data'] = self.load_GPM_Unmodeled_Error_Data(
-            metadata['GPM_Unmodeled_Error_Data'])
+            self.metadata['GPM_Unmodeled_Error_Data'] = self.load_GPM_Unmodeled_Error_Data(
+                metadata['GPM_Unmodeled_Error_Data'])
+
+        if 'GPM_GndSpace_Direct' in self.metadata:
+            self.ap_search = KDTree(self.metadata['GPM_GndSpace_Direct']['AP'])
+        else:
+            self.ap_search = None
 
     def load_GPM_Master(self, data):
         ppe_bytes = base64.b64decode(data)
