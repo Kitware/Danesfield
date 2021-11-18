@@ -42,14 +42,23 @@ def set_field(obj, name, value):
     field_data.AddArray(string_array)
 
 
-def read_obj_files(number_of_buildings, lod,
-                   files, file_offset):
+UNINITIALIZED = 2147483647
+
+
+def read_obj_files(
+        number_of_buildings,
+        begin_building_index, end_building_index, lod,
+        files, file_offset):
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
     from a list of OBJ files.
     """
+    if number_of_buildings == UNINITIALIZED and begin_building_index != UNINITIALIZED and end_building_index != UNINITIALIZED:
+        building_range = range(begin_building_index, end_building_index)
+    else:
+        building_range = range(0, min(len(files), number_of_buildings))
     root = vtk.vtkMultiBlockDataSet()
-    for i in range(0, min(len(files), number_of_buildings)):
+    for i in building_range:
         reader = vtk.vtkOBJReader()
         reader.SetFileName(files[i])
         reader.Update()
@@ -64,8 +73,10 @@ def read_obj_files(number_of_buildings, lod,
     return root
 
 
-def read_city_gml_files(number_of_buildings, lod,
-                        files, file_offset):
+def read_city_gml_files(
+        number_of_buildings,
+        begin_building_index, end_building_index, lod,
+        files, file_offset):
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
@@ -74,7 +85,11 @@ def read_city_gml_files(number_of_buildings, lod,
         logging.warning("Can only process one CityGML file for now.")
     reader = vtk.vtkCityGMLReader()
     reader.SetFileName(files[0])
-    reader.SetNumberOfBuildings(number_of_buildings)
+    if number_of_buildings == UNINITIALIZED:
+        reader.SetBeginBuildingIndex(begin_building_index)
+        reader.SetEndBuildingIndex(end_building_index)
+    else:
+        reader.SetNumberOfBuildings(number_of_buildings)
     reader.SetLOD(lod)
     reader.Update()
     root = reader.GetOutput()
@@ -122,10 +137,12 @@ def get_files(input_list):
     return files
 
 
-def tiler(input_list, output, number_of_buildings,
-          buildings_per_tile, lod, input_offset,
-          dont_save_gltf, dont_save_textures, srs_name,
-          utm_zone, utm_hemisphere):
+def tiler(
+        input_list, output, number_of_buildings,
+        begin_building_index, end_building_index,
+        buildings_per_tile, lod, input_offset,
+        dont_save_gltf, dont_save_textures, content_type, crs,
+        utm_zone, utm_hemisphere):
     """
     Reads the input and converts it to 3D Tiles and saves it
     to output.
@@ -136,8 +153,11 @@ def tiler(input_list, output, number_of_buildings,
     logging.info("Parsing %d files...", len(files))
 
     file_offset = [0, 0, 0]
-    root = READER[os.path.splitext(files[0])[1]](
-        number_of_buildings, lod, files, file_offset)
+    ext = os.path.splitext(files[0])[1]
+    print(ext)
+    root = READER[ext](
+        number_of_buildings, begin_building_index,
+        end_building_index, lod, files, file_offset)
     logging.info("Done parsing files")
     file_offset = [a + b for a, b in zip(file_offset, input_offset)]
     texture_path = os.path.dirname(files[0])
@@ -146,15 +166,17 @@ def tiler(input_list, output, number_of_buildings,
     writer.SetInputDataObject(root)
     writer.SetDirectoryName(output)
     writer.SetTexturePath(texture_path)
-    writer.SetOrigin(file_offset)
+    writer.SetContentType(content_type)
+    writer.SetOffset(file_offset)
     writer.SetSaveTextures(not dont_save_textures)
     writer.SetSaveGLTF(not dont_save_gltf)
     writer.SetNumberOfBuildingsPerTile(buildings_per_tile)
-    if srs_name:
-        writer.SetSrsName(srs_name)
-    else:
-        writer.SetUTMZone(utm_zone)
-        writer.SetUTMHemisphere(utm_hemisphere)
+    if not crs:
+        crs = "+proj=utm +zone={}".format(utm_zone)
+        if utm_hemisphere == "S":
+            crs = crs + " +south"
+        crs = crs + " datum=WGS84"
+    writer.SetCRS(crs)
     writer.Write()
     logging.info("Done Write()")
 
@@ -170,6 +192,16 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
+def check_content_type(value):
+    """
+    Content type can be only 0: B3DM, 1:GLB, 2:GLTF
+    """
+    ivalue = int(value)
+    if ivalue < 0 or ivalue > 2:
+        raise argparse.ArgumentTypeError("%s is an invalid content_type" % value)
+    return ivalue
+
+
 def main(args):
     """
     Converts large 3D geospatial datasets to the 3D Tiles format.
@@ -177,33 +209,40 @@ def main(args):
     parser = argparse.ArgumentParser(
         description="Converts large 3D geospatial datasets to the 3D Tiles "
         "format.", formatter_class=SmartFormatter)
-    parser.add_argument("-b", "--buildings_per_tile", type=int,
+    parser.add_argument("-t", "--buildings_per_tile", type=int,
                         help="Maximum number of buildings per tile.",
                         default=10)
     parser.add_argument("input", nargs="+", help="Input files (obj or citygml) or directories. "
                         "We read all files of a known type from each directory "
                         "and add them to the list.")
-
+    parser.add_argument("-b", "--begin_building_index", type=int,
+                        default=UNINITIALIZED,
+                        help="Begin building index. Read [begin, end) range.")
+    parser.add_argument("-e", "--end_building_index", type=int,
+                        default=UNINITIALIZED,
+                        help="End building index. Read [begin, end) range.")
     parser.add_argument("--dont_save_gltf", action="store_true",
                         help="Create only tileset.json not the B3DM files")
-    parser.add_argument("--dont_convert_gltf", action="store_true",
-                        help="Create tileset.json and GLTFs but do not convert to GLB and B3DM.")
+    parser.add_argument("--content_type",
+                        help="Store tile content using B3DM (0), GLB(1) or GLTF(2). "
+                        "GLTF and GLB use the 3DTILES_content_gltf extension.",
+                        type=check_content_type, default=0)
     parser.add_argument("-l", "--lod", action="store_true",
                         help="Level of detail to be read (if available)",
                         default=2)
     parser.add_argument("--dont_save_textures", action="store_true",
                         help="Don't save textures even if available",)
     parser.add_argument("-n", "--number_of_buildings", type=int,
-                        default=2147483647,
+                        default=UNINITIALIZED,
                         help="Maximum number of buildings read.")
     parser.add_argument("-o", "--output", required=True,
                         help="A directory where the 3d-tiles dataset is created. ")
-    parser.add_argument("--srs_name",
-                        help="Spatial reference system or coordinate reference system (CRS)")
+    parser.add_argument("--crs",
+                        help="Coordinate reference system (CRS) or spatial reference system (SRS)")
     parser.add_argument("--utm_hemisphere",
                         help="UTM hemisphere for the OBJ file coordinates.",
                         choices=["N", "S"], default="N")
-    parser.add_argument("-t", "--translation", nargs=3, type=float,
+    parser.add_argument("--translation", nargs=3, type=float,
                         default=[0, 0, 0],
                         help="N|Translation for x,y,z. "
                         "The translation can be also read as a comment in the OBJ file\n"
@@ -219,40 +258,45 @@ def main(args):
     args = parser.parse_args(args)
 
     if ((args.utm_zone is None or args.utm_hemisphere is None) and
-            args.srs_name is None):
-        raise Exception("Error: srs_name or utm_zone/utm_hemisphere are missing.")
-    tiler(args.input, args.output, args.number_of_buildings,
-          args.buildings_per_tile, args.lod, args.translation,
-          args.dont_save_gltf, args.dont_save_textures, args.srs_name,
-          args.utm_zone, args.utm_hemisphere)
+            args.crs is None):
+        raise Exception("Error: crs or utm_zone/utm_hemisphere are missing.")
+    if args.number_of_buildings != UNINITIALIZED and args.begin_building_index != UNINITIALIZED:
+        logging.warning("Cannot use both number_of_buildings and begin_building_index, using later.")
+        args.number_of_buildings = UNINITIALIZED
+    tiler(
+        args.input, args.output, args.number_of_buildings,
+        args.begin_building_index, args.end_building_index,
+        args.buildings_per_tile, args.lod, args.translation,
+        args.dont_save_gltf, args.dont_save_textures, args.content_type, args.crs,
+        args.utm_zone, args.utm_hemisphere)
 
-    if not args.dont_convert_gltf:
+    if args.content_type < 2:  # B3DM or GLB
         logging.info("Optimizing gltf and converting to glb ...")
         gltf_files = glob(args.output + "/*/*.gltf")
         for gltf_file in gltf_files:
-            logging.info("Optimizing %s", gltf_file)
             # noq is no quantization as Cesium 1.84 does not support it.
             cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
             cmd_args.append(gltf_file)
             cmd_args.append("-o")
             cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
+            logging.info("Optimizing: %s", " ".join(cmd_args))
             run(cmd_args, check=True)
             os.remove(gltf_file)
         bin_files = glob(args.output + "/*/*.bin")
         for bin_file in bin_files:
             os.remove(bin_file)
 
-        logging.info("Converting glb to b3dm ...")
-        glb_files = glob(args.output + "/*/*.glb")
-        for glb_file in glb_files:
-            cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
-                        "glbToB3dm"]
-            cmd_args.append(glb_file)
-            cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
-            logging.info("Converting %s", glb_file)
-            run(cmd_args, check=True)
-            os.remove(glb_file)
-        logging.info("Done")
+        if args.content_type < 1:  # B3DM
+            glb_files = glob(args.output + "/*/*.glb")
+            for glb_file in glb_files:
+                cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
+                            "glbToB3dm", "-f"]
+                cmd_args.append(glb_file)
+                cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
+                logging.info("Converting: %s", " ".join(cmd_args))
+                run(cmd_args, check=True)
+                os.remove(glb_file)
+    logging.info("Done")
 
 
 if __name__ == '__main__':
