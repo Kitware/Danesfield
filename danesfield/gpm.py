@@ -72,30 +72,41 @@ def get_cov_matrix(pos, data, dim=3):
 
     return retVal, retPos
 
+def get_bpf_metadata(bundled_file):
+    return {
+      list(el.keys())[0] : list(el.values())[0] for el in bundled_file
+    }
+
+def get_las_metadata(las_metadata):
+    gpm_metadata = {}
+
+    for k in las_metadata:
+        if ('vlr' in k and type(las_metadata[k]) is dict):
+            if ('GPM' in las_metadata[k]['description'] or
+                'Per_Point_Lookup_Error_Data' in
+                las_metadata[k]['description']):
+                gpm_metadata[las_metadata[k]['description']] = (
+                    las_metadata[k]['data']
+                )
+    return gpm_metadata
+
 class GPM(object):
     def __init__(self, file_metadata):
         """Constructor
         """
 
         if 'readers.bpf' in file_metadata:
-            bundled_file = file_metadata['readers.bpf'][0]['bundled_file']
-
-            gpm_metadata = {
-              list(el.keys())[0] : list(el.values())[0] for el in bundled_file
-            }
+            gpm_metadata = get_bpf_metadata(
+                file_metadata['readers.bpf'][0]['bundled_file'])
         elif 'readers.las' in file_metadata:
-            las_metadata = file_metadata['readers.las'][0]
-
-            gpm_metadata = {}
-
-            for k in las_metadata:
-                if ('vlr' in k and type(las_metadata[k]) is dict):
-                    if ('GPM' in las_metadata[k]['description'] or
-                        'Per_Point_Lookup_Error_Data' in
-                        las_metadata[k]['description']):
-                        gpm_metadata[las_metadata[k]['description']] = (
-                            las_metadata[k]['data']
-                        )
+            gpm_metadata = get_las_metadata(file_metadata['readers.las'][0])
+            # Check for bpf metadata from conversion
+            if (not gpm_metadata and
+                'pdal_metadata' in file_metadata['readers.las'][0]):
+                bundled_file = (
+                    file_metadata['readers.las'][0]['pdal_metadata']['root']['readers.bpf'][0]['bundled_file']
+                )
+                gpm_metadata = get_bpf_metadata(bundled_file)
         else:
             gpm_metadata = {}
 
