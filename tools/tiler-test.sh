@@ -66,7 +66,7 @@ elif [ "${CITY}" = "berlin" ]; then
     dir=berlin-3d-tiles
     rm -rf $dir
     mkdir $dir
-    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -t 200 --dont_save_textures --number_of_buildings 10000 --content_type 1
+    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -t 200 --dont_save_textures --number_of_buildings 10000 --content_type 0
 elif [ "${CITY}" = "berlin-stadium" ]; then
     dir=${CITY}
     rm -rf $dir
@@ -78,12 +78,11 @@ elif [ "${CITY}" = "berlin-stadium10" ]; then
     mkdir $dir
     tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --crs EPSG:25833 -t 100 --dont_save_textures -b 2800 -e 3100 --content_type 1
 elif [ "${CITY}" = "nyc" ]; then
-    for i in {9..9}; do
-        dir=nyc${i}-3d-tiles
-        rm -rf $dir
-        mkdir $dir
-        tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures -n 1 --content_type 2
-    done
+    i=1
+    dir=nyc-3d-tiles
+    rm -rf $dir
+    mkdir $dir
+    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures --content_type 1
 elif [ "${CITY}" = "nyc10" ]; then
     dir=ny-3d-tiles
     rm -rf $dir

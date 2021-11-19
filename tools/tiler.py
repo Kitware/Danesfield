@@ -81,15 +81,14 @@ def read_city_gml_files(
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
     """
+    logging.info("Parsing: %s", files[0])
     if len(files) > 1:
         logging.warning("Can only process one CityGML file for now.")
     reader = vtk.vtkCityGMLReader()
     reader.SetFileName(files[0])
-    if number_of_buildings == UNINITIALIZED:
-        reader.SetBeginBuildingIndex(begin_building_index)
-        reader.SetEndBuildingIndex(end_building_index)
-    else:
-        reader.SetNumberOfBuildings(number_of_buildings)
+    reader.SetBeginBuildingIndex(begin_building_index)
+    reader.SetEndBuildingIndex(end_building_index)
+    reader.SetNumberOfBuildings(number_of_buildings)
     reader.SetLOD(lod)
     reader.Update()
     root = reader.GetOutput()
@@ -150,11 +149,9 @@ def tiler(
     files = get_files(input_list)
     if len(files) == 0:
         raise Exception("No valid input files")
-    logging.info("Parsing %d files...", len(files))
 
     file_offset = [0, 0, 0]
     ext = os.path.splitext(files[0])[1]
-    print(ext)
     root = READER[ext](
         number_of_buildings, begin_building_index,
         end_building_index, lod, files, file_offset)
@@ -216,7 +213,7 @@ def main(args):
                         "We read all files of a known type from each directory "
                         "and add them to the list.")
     parser.add_argument("-b", "--begin_building_index", type=int,
-                        default=UNINITIALIZED,
+                        default=0,
                         help="Begin building index. Read [begin, end) range.")
     parser.add_argument("-e", "--end_building_index", type=int,
                         default=UNINITIALIZED,
