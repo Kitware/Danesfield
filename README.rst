@@ -91,6 +91,12 @@ The Danesfield project is organized as follows:
 Run Danesfield CLI
 ==================
 
+The hardware requirements for running the Danesfield pipeline:
+
+- 12GB RAM, 16GB preferred
+- modern CPU preferably multi-core
+- modern nVidia GPU with 8GB of GPU RAM, 16GB preferred
+
 The Danesfield pipeline can be run from a command line using
 `tools/run_danesfield.py` and constructing a danesfield
 configuration file based on the example in `<input.ini>`_.
