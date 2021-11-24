@@ -143,6 +143,16 @@ where notable options are
 
 - ``--run_metrics``: run evaluation metrics; requires ground truth for DSM, DTM, etc.
 
+Minimum Harware Requirements
+----------------------------
+
+Danesfield runs a variety of processing steps, some of which take advantage of
+multiple CPU cores and GPUs to accelerate processing large data sets.
+At a minimum Danesfield requires:
+
+- 12GB RAM, 16GB preferred
+- a modern CPU preferably multi-core
+- a modern Nvidia GPU with 8GB of GPU RAM, 16GB preferred
 
 Project History
 ===============
