@@ -133,6 +133,10 @@ class GPM(object):
         else:
             self.ap_search = None
 
+    def get_covar(self, points):
+        indices = self.ap_search.query(points)
+        return self.metadata['GPM_GndSpace_Direct']['AP_COVAR'][indices[1]]
+
     def load_GPM_Master(self, data):
         ppe_bytes = base64.b64decode(data)
 
@@ -288,20 +292,20 @@ class GPM(object):
         retDict['INTERP_NUM_POSTS'], currPos = get_uint16(currPos, ppe_bytes)
         retDict['DAMPENING_PARAM'], currPos = get_double(currPos, ppe_bytes)
 
-        anchorPoints = []
-        anchorDeltas = []
-        anchorCovar = []
+        anchorPoints = np.zeros((retDict['NUM_AP_RECORDS'], 3))
+        anchorDeltas = np.zeros((retDict['NUM_AP_RECORDS'], 3))
+        anchorCovar = np.zeros((retDict['NUM_AP_RECORDS'], 3, 3))
 
-        for n in range(retDict['NUM_AP_RECORDS']):
+        for i in range(retDict['NUM_AP_RECORDS']):
             ap, currPos = get_double_vec(currPos, ppe_bytes)
-            anchorPoints.append(ap)
+            anchorPoints[i,:] = ap
 
             ap_delta, currPos = get_float_vec(currPos, ppe_bytes)
-            anchorDeltas.append(ap_delta)
+            anchorDeltas[i,:] = ap_delta
 
-        for n in range(retDict['NUM_AP_RECORDS']):
+        for i in range(retDict['NUM_AP_RECORDS']):
             cov_matrix, currPos = get_cov_matrix(currPos, ppe_bytes)
-            anchorCovar.append(cov_matrix)
+            anchorCovar[i,:,:] = cov_matrix
 
         retDict['AP'] = anchorPoints
         retDict['AP_DELTA'] = anchorDeltas
