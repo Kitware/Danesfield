@@ -12,7 +12,7 @@ tiler_debug()
 
 tiler()
 {
-    VTK_BUILD=build-cesium3dtiles
+    VTK_BUILD=build-proj_python
     PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
 }
 
