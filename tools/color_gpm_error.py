@@ -40,19 +40,11 @@ def main(args):
 
     dec_arr = arr[::10]
 
-    print(dec_arr.dtype)
-    print(dec_arr['X'].shape)
-
     points = np.stack([dec_arr['X'], dec_arr['Y'], dec_arr['Z']], axis=1)
 
     gpm = GPM(metadata['metadata'])
     error = gpm.get_covar(points)
     max_error = np.max(error)
-    print(error[:4])
-
-    print(error.shape)
-    print(dec_arr['Red'].shape)
-    print(error[:,0,0].shape)
 
     dec_arr['Red'] = 255.*error[:,0,0]/max_error
     dec_arr['Green'] = 255.*error[:,1,1]/max_error

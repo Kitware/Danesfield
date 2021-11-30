@@ -133,9 +133,35 @@ class GPM(object):
         else:
             self.ap_search = None
 
+        # Set up interpolation
+        if 'GPM_GndSpace_Direct' in self.metadata:
+            self.interpolation_type = (
+                  self.metadata['GPM_GndSpace_Direct']['INTERPOLATION_MODE']
+            )
+            if self.interpolation_type == 0:
+                self.num_interpolate_ap = 8
+            else:
+                self.num_interpolate_ap = (
+                    self.metadata['GPM_GndSpace_Direct']['INTERP_NUM_POSTS']
+                )
+                self.D = self.metadata['GPM_GndSpace_Direct']['DAMPENING_PARAM']
+
+    def get_weights(self, dist):
+        weights = np.zeros(dist.shape)
+        for i in range(dist.shape[0]):
+            for j in range(dist.shape[1]):
+                weights[i, j] = np.exp(-dist[i,j]/self.D)
+        denom = np.sum(weights, axis=1).reshape( (dist.shape[0], 1) )
+
+        return np.divide(weights, denom)
+
     def get_covar(self, points):
-        indices = self.ap_search.query(points)
-        return self.metadata['GPM_GndSpace_Direct']['AP_COVAR'][indices[1]]
+        distances, indices  = (
+            self.ap_search.query(points, k=self.num_interpolate_ap)
+        )
+        wts = self.get_weights(distances)
+        covar = self.metadata['GPM_GndSpace_Direct']['AP_COVAR'][indices]
+        return np.sum(wts.reshape(wts.shape + (1,1))*covar, axis=1)
 
     def load_GPM_Master(self, data):
         ppe_bytes = base64.b64decode(data)
