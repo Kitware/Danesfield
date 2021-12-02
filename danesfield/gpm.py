@@ -72,62 +72,57 @@ def get_cov_matrix(pos, data, dim=3):
 
     return retVal, retPos
 
-def get_bpf_metadata(bundled_file):
-    return {
-      list(el.keys())[0] : list(el.values())[0] for el in bundled_file
-    }
-
-def get_las_metadata(las_metadata):
-    gpm_metadata = {}
-
-    for k in las_metadata:
-        if ('vlr' in k and type(las_metadata[k]) is dict):
-            if ('GPM' in las_metadata[k]['description'] or
-                'Per_Point_Lookup_Error_Data' in
-                las_metadata[k]['description']):
-                gpm_metadata[las_metadata[k]['description']] = (
-                    las_metadata[k]['data']
-                )
-    return gpm_metadata
+# Recursively search json GPM metadata
+def search_json(key, json_data, matches):
+    if type(json_data) is dict:
+        for k in json_data:
+            if k == key:
+                matches.append(json_data[k])
+            elif (k.startswith('vlr_') and
+                  type(json_data[k]) is dict and
+                  json_data[k]['description'] == key):
+                matches.append(json_data[k]['data'])
+            else:
+                search_json(key, json_data[k], matches)
+    elif type(json_data) is list:
+        for l in json_data:
+            search_json(key, l, matches)
 
 class GPM(object):
     def __init__(self, file_metadata):
         """Constructor
         """
 
-        if 'readers.bpf' in file_metadata:
-            gpm_metadata = get_bpf_metadata(
-                file_metadata['readers.bpf'][0]['bundled_file'])
-        elif 'readers.las' in file_metadata:
-            gpm_metadata = get_las_metadata(file_metadata['readers.las'][0])
-            # Check for bpf metadata from conversion
-            if (not gpm_metadata and
-                'pdal_metadata' in file_metadata['readers.las'][0]):
-                bundled_file = (
-                    file_metadata['readers.las'][0]['pdal_metadata']['root']['readers.bpf'][0]['bundled_file']
-                )
-                gpm_metadata = get_bpf_metadata(bundled_file)
-        else:
-            gpm_metadata = {}
-
         self.metadata = {}
 
-        if 'GPM_Master' in gpm_metadata:
-            self.metadata['GPM_Master'] = self.load_GPM_Master(
-                gpm_metadata['GPM_Master'])
+        # Search for the possible GPM metadata
+        matches = []
+        search_json('GPM_Master', file_metadata, matches)
+        if matches:
+            self.metadata['GPM_Master'] = self.load_GPM_Master(matches[0])
 
-        if 'GPM_GndSpace_Direct' in gpm_metadata:
-            self.metadata['GPM_GndSpace_Direct'] = self.load_GPM_GndSpace_Direct(
-                gpm_metadata['GPM_GndSpace_Direct'])
+        matches = []
+        search_json('GPM_GndSpace_Direct', file_metadata, matches)
+        if matches:
+            self.metadata['GPM_GndSpace_Direct'] = (
+                  self.load_GPM_GndSpace_Direct(matches[0])
+            )
 
-        if 'Per_Point_Lookup_Error_Data' in gpm_metadata:
-            self.metadata['Per_Point_Lookup_Error_Data'] = self.load_Per_Point_Lookup_Error_Data(
-                gpm_metadata['Per_Point_Lookup_Error_Data'])
+        matches = []
+        search_json('Per_Point_Lookup_Error_Data', file_metadata, matches)
+        if matches:
+            self.metadata['Per_Point_Lookup_Error_Data'] = (
+                  self.load_Per_Point_Lookup_Error_Data(matches[0])
+            )
 
-        if 'GPM_Unmodeled_Error_Data' in gpm_metadata:
-            self.metadata['GPM_Unmodeled_Error_Data'] = self.load_GPM_Unmodeled_Error_Data(
-                gpm_metadata['GPM_Unmodeled_Error_Data'])
+        matches = []
+        search_json('GPM_Unmodeled_Error_Data', file_metadata, matches)
+        if matches:
+            self.metadata['GPM_Unmodeled_Error_Data'] = (
+                  self.load_GPM_Unmodeled_Error_Data(matches[0])
+            )
 
+        # Create the anchor point search tree
         if 'GPM_GndSpace_Direct' in self.metadata:
             self.ap_search = KDTree(self.metadata['GPM_GndSpace_Direct']['AP'])
         else:
