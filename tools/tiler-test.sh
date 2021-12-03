@@ -12,7 +12,7 @@ tiler_debug()
 
 tiler()
 {
-    VTK_BUILD=build-proj_python
+    VTK_BUILD=build-cesiumoptimizer
     PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
 }
 
@@ -82,12 +82,12 @@ elif [ "${CITY}" = "nyc" ]; then
     dir=nyc-3d-tiles
     rm -rf $dir
     mkdir $dir
-    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures --content_type 1
-elif [ "${CITY}" = "nyc10" ]; then
-    dir=ny-3d-tiles
+    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures --content_type 2 -m -n 10000
+elif [ "${CITY}" = "nyc-one" ]; then
+    dir=${CITY}
     rm -rf $dir
     mkdir $dir
-    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA10_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures -n 10000
+    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA10_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures -n 1 --content_type 2
 else
     echo "Error: Cannot find ${CITY}"
     print_parameters "$0"

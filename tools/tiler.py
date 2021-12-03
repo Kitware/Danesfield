@@ -140,7 +140,7 @@ def tiler(
         input_list, output, number_of_buildings,
         begin_building_index, end_building_index,
         buildings_per_tile, lod, input_offset,
-        dont_save_gltf, dont_save_textures, content_type, crs,
+        dont_save_tiles, dont_save_textures, merge_tile_polydata, content_type, crs,
         utm_zone, utm_hemisphere):
     """
     Reads the input and converts it to 3D Tiles and saves it
@@ -166,7 +166,8 @@ def tiler(
     writer.SetContentType(content_type)
     writer.SetOffset(file_offset)
     writer.SetSaveTextures(not dont_save_textures)
-    writer.SetSaveGLTF(not dont_save_gltf)
+    writer.SetSaveTiles(not dont_save_tiles)
+    writer.SetMergeTilePolyData(merge_tile_polydata)
     writer.SetNumberOfBuildingsPerTile(buildings_per_tile)
     if not crs:
         crs = "+proj=utm +zone={}".format(utm_zone)
@@ -218,7 +219,7 @@ def main(args):
     parser.add_argument("-e", "--end_building_index", type=int,
                         default=UNINITIALIZED,
                         help="End building index. Read [begin, end) range.")
-    parser.add_argument("--dont_save_gltf", action="store_true",
+    parser.add_argument("--dont_save_tiles", action="store_true",
                         help="Create only tileset.json not the B3DM files")
     parser.add_argument("--content_type",
                         help="Store tile content using B3DM (0), GLB(1) or GLTF(2). "
@@ -229,6 +230,8 @@ def main(args):
                         default=2)
     parser.add_argument("--dont_save_textures", action="store_true",
                         help="Don't save textures even if available",)
+    parser.add_argument("-m", "--merge_tile_polydata", action="store_true",
+                        help="Merge tile polydata in one large mesh.",)
     parser.add_argument("-n", "--number_of_buildings", type=int,
                         default=UNINITIALIZED,
                         help="Maximum number of buildings read.")
@@ -257,14 +260,15 @@ def main(args):
     if ((args.utm_zone is None or args.utm_hemisphere is None) and
             args.crs is None):
         raise Exception("Error: crs or utm_zone/utm_hemisphere are missing.")
-    if args.number_of_buildings != UNINITIALIZED and args.begin_building_index != UNINITIALIZED:
+    if args.number_of_buildings != UNINITIALIZED and args.end_building_index != UNINITIALIZED:
         logging.warning("Cannot use both number_of_buildings and begin_building_index, using later.")
         args.number_of_buildings = UNINITIALIZED
     tiler(
         args.input, args.output, args.number_of_buildings,
         args.begin_building_index, args.end_building_index,
         args.buildings_per_tile, args.lod, args.translation,
-        args.dont_save_gltf, args.dont_save_textures, args.content_type, args.crs,
+        args.dont_save_tiles, args.dont_save_textures, args.merge_tile_polydata,
+        args.content_type, args.crs,
         args.utm_zone, args.utm_hemisphere)
 
     if args.content_type < 2:  # B3DM or GLB
