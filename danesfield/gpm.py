@@ -95,6 +95,9 @@ class GPM(object):
 
         self.metadata = {}
 
+        # The number of 3DC parameters
+        self.num_3DC = 0
+
         # Search for the possible GPM metadata
         matches = []
         search_json('GPM_Master', file_metadata, matches)
@@ -140,6 +143,11 @@ class GPM(object):
                     self.metadata['GPM_GndSpace_Direct']['INTERP_NUM_POSTS']
                 )
                 self.D = self.metadata['GPM_GndSpace_Direct']['DAMPENING_PARAM']
+
+    def checkBytesProcessed(self, endPos, data, name):
+        if (endPos != len(data)):
+            print('WARNING: last byte position: ', endPos, ' does not match'
+                  ' number of bytes: ', len(data), ' for ', name)
 
     def get_weights(self, dist):
         weights = np.zeros(dist.shape)
@@ -248,6 +256,8 @@ class GPM(object):
 
         retDict['COLLECTION_RECORD'] = collections
 
+        self.checkBytesProcessed(currPos, ppe_bytes, 'GPM_Master')
+
         return retDict
 
     def load_Per_Point_Lookup_Error_Data(self, data):
@@ -266,6 +276,8 @@ class GPM(object):
             ppe.append(cov_matrix)
 
         retDict['PPE_COV_RECORD'] = ppe
+
+        self.checkBytesProcessed(currPos, ppe_bytes, 'Per_Point_Lookup_Error_Data')
 
         return retDict
 
@@ -295,18 +307,36 @@ class GPM(object):
             # Apply masks to get other 3DC parameters
             if param_flags & 0b00000001:
                 retDict['CU_DELTA_X'], currPos = get_double(currPos, ppe_bytes)
+                self.num_3DC += 1
+            else:
+                retDict['CU_DELTA_X'] = 0
             if param_flags & 0b00000010:
-                retDict['CU_DELTA_y'], currPos = get_double(currPos, ppe_bytes)
+                retDict['CU_DELTA_Y'], currPos = get_double(currPos, ppe_bytes)
+                self.num_3DC += 1
+            else:
+                retDict['CU_DELTA_Y'] = 0
             if param_flags & 0b00000100:
                 retDict['CU_DELTA_Z'], currPos = get_double(currPos, ppe_bytes)
+                self.num_3DC += 1
+            else:
+                retDict['CU_DELTA_Z'] = 0
             if param_flags & 0b00001000:
                 retDict['CU_OMEGA'], currPos = get_double(currPos, ppe_bytes)
+                self.num_3DC += 1
+            else:
+                retDict['CU_OMEGA'] = 0
             if param_flags & 0b00010000:
                 retDict['CU_PHI'], currPos = get_double(currPos, ppe_bytes)
             if param_flags & 0b00100000:
                 retDict['CU_KAPPA'], currPos = get_double(currPos, ppe_bytes)
+                self.num_3DC += 1
+            else:
+                retDict['CU_KAPPA'] = 0
             if param_flags & 0b01000000:
                 retDict['CU_DELTA_S'], currPos = get_double(currPos, ppe_bytes)
+                self.num_3DC += 1
+            else:
+                retDict['CU_DELTA_S'] = 0
 
         retDict['NUM_AP_RECORDS'], currPos = get_uint16(currPos, ppe_bytes)
         retDict['INTERPOLATION_MODE'], currPos = get_uint16(currPos, ppe_bytes)
@@ -315,7 +345,13 @@ class GPM(object):
 
         anchorPoints = np.zeros((retDict['NUM_AP_RECORDS'], 3))
         anchorDeltas = np.zeros((retDict['NUM_AP_RECORDS'], 3))
-        anchorCovar = np.zeros((retDict['NUM_AP_RECORDS'], 3, 3))
+
+        if self.num_3DC > 0:
+            covar_3DC = np.zeros((self.num_3DC, self.num_3DC))
+            covar_3DC_AP = np.zeros((self.num_3DC, retDict['NUM_AP_RECORDS'], 3))
+        covar_AP = np.zeros((retDict['NUM_AP_RECORDS'],
+                             retDict['NUM_AP_RECORDS'],
+                             3, 3))
 
         for i in range(retDict['NUM_AP_RECORDS']):
             ap, currPos = get_double_vec(currPos, ppe_bytes)
@@ -324,13 +360,36 @@ class GPM(object):
             ap_delta, currPos = get_float_vec(currPos, ppe_bytes)
             anchorDeltas[i,:] = ap_delta
 
-        for i in range(retDict['NUM_AP_RECORDS']):
-            cov_matrix, currPos = get_cov_matrix(currPos, ppe_bytes)
-            anchorCovar[i,:,:] = cov_matrix
+        for i in range(self.num_3DC):
+            for j in range(i + 1):
+                elem, currPos = get_float(currPos, ppe_bytes)
+                covar_3DC[i, j] = elem
+                covar_3DC[j, i] = elem
+
+        # Full cross covariance matrix stored in column major order
+        for cj in range(3*retDict['NUM_AP_RECORDS']):
+            c = cj//3
+            j = cj%3
+            for r in range(self.num_3DC):
+                covar_3DC_AP[r, c, j], currPos = get_float(currPos, ppe_bytes)
+
+            for ri in range(cj+1):
+                r = ri//3
+                i = ri%3
+                elem, currPos = get_float(currPos, ppe_bytes)
+                covar_AP[r, c, i, j] = elem
+                covar_AP[c, r, j, i] = elem
 
         retDict['AP'] = anchorPoints
         retDict['AP_DELTA'] = anchorDeltas
-        retDict['AP_COVAR'] = anchorCovar
+
+        if self.num_3DC > 0:
+            retDict['COVAR_3DC'] = covar_3DC
+            retDict['COVAR_3DC_AP'] = covar_3DC_AP
+
+        retDict['COVAR_AP'] = covar_AP
+
+        self.checkBytesProcessed(currPos, ppe_bytes, 'GPM_GndSpace_Direct')
 
         return retDict
 
@@ -387,5 +446,7 @@ class GPM(object):
             ue_records.append(ue_dict)
 
         retDict['UE_RECORD'] = ue_records
+
+        self.checkBytesProcessed(currPos, ppe_bytes, 'GPM_Unmodeled_Error_Data')
 
         return retDict
