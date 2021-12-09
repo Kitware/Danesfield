@@ -163,8 +163,10 @@ class GPM(object):
             self.ap_search.query(points, k=self.num_interpolate_ap)
         )
         wts = self.get_weights(distances)
-        covar = self.metadata['GPM_GndSpace_Direct']['AP_COVAR'][indices]
-        return np.sum(wts.reshape(wts.shape + (1,1))*covar, axis=1)
+        covar = np.diagonal(
+            self.metadata['GPM_GndSpace_Direct']['COVAR_AP']).transpose()
+        ap_covar = covar[indices]
+        return np.sum(wts.reshape(wts.shape + (1,1))*ap_covar, axis=1)
 
     def load_GPM_Master(self, data):
         ppe_bytes = base64.b64decode(data)

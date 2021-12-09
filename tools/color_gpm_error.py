@@ -43,12 +43,16 @@ def main(args):
     points = np.stack([dec_arr['X'], dec_arr['Y'], dec_arr['Z']], axis=1)
 
     gpm = GPM(metadata['metadata'])
-    error = gpm.get_covar(points)
-    max_error = np.max(error)
+    error = gpm.get_covar(points).diagonal(axis1=1, axis2=2)
+    max_error = np.max(error[:,2])
+    min_error = np.min(error[:,2])
+    error_norm = max_error - min_error
 
-    dec_arr['Red'] = 255.*error[:,0,0]/max_error
-    dec_arr['Green'] = 255.*error[:,1,1]/max_error
-    dec_arr['Blue'] = 255.*error[:,2,2]/max_error
+    to_color = lambda err : (2**15-1)*(err-min_error)/error_norm + 2**15
+
+    dec_arr['Red'] = to_color(error[:,2]).astype(np.uint16)
+    dec_arr['Green'] = to_color(error[:,2]).astype(np.uint16)
+    dec_arr['Blue'] = to_color(error[:,2]).astype(np.uint16)
 
     pdal_output = {
         'pipeline': [
