@@ -27,7 +27,7 @@ dependencies:
 - gaia
 - pyproj
 - scipy
-- vtk=v8.2.*
+- vtk=v9.1.*
 - jsonschema
 - geojson
 - flake8
