@@ -43,16 +43,34 @@ def main(args):
     points = np.stack([dec_arr['X'], dec_arr['Y'], dec_arr['Z']], axis=1)
 
     gpm = GPM(metadata['metadata'])
+
+    if 'PPE_LUT_Index' in dec_arr.dtype.names:
+        ppe = gpm.get_per_point_error(points,
+                                      dec_arr['PPE_LUT_Index'].astype(np.int32))
+        ppe_error = ppe.diagonal(axis1=1, axis2=2)
+        print('SHAPE ', ppe_error.shape)
+
     error = gpm.get_covar(points).diagonal(axis1=1, axis2=2)
-    max_error = np.max(error[:,2])
-    min_error = np.min(error[:,2])
+
+    if 'PPE_LUT_Index' in dec_arr.dtype.names:
+        total_error = ppe_error[:,2] + error[:,2]
+    else:
+        total_error = error[:,2]
+
+    max_error = np.max(total_error)
+    min_error = np.min(total_error)
     error_norm = max_error - min_error
+
+    print('ERROR: ', min_error, max_error)
+
+    if error_norm == 0.0:
+        exit()
 
     to_color = lambda err : (2**15-1)*(err-min_error)/error_norm + 2**15
 
     dec_arr['Red'] = to_color(error[:,2]).astype(np.uint16)
-    dec_arr['Green'] = to_color(error[:,2]).astype(np.uint16)
-    dec_arr['Blue'] = to_color(error[:,2]).astype(np.uint16)
+    # dec_arr['Green'] = to_color(error[:,2]).astype(np.uint16)
+    dec_arr['Blue'] = 255 - to_color(error[:,2]).astype(np.uint16)
 
     pdal_output = {
         'pipeline': [

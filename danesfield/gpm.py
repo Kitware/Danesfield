@@ -168,6 +168,19 @@ class GPM(object):
         ap_covar = covar[indices]
         return np.sum(wts.reshape(wts.shape + (1,1))*ap_covar, axis=1)
 
+    def get_per_point_error(self, points, indices):
+        # Nearest neighbor interpolation
+        distances, ap_indices = (
+            self.ap_search.query(points, k=1)
+        )
+        covar = (
+            self.metadata['Per_Point_Lookup_Error_Data']['PPE_COV_RECORD']
+        )
+        ap_test = set()
+        for ap_idx in ap_indices:
+            ap_test.add(ap_idx)
+        return covar[indices[ap_indices]]
+
     def load_GPM_Master(self, data):
         ppe_bytes = base64.b64decode(data)
 
@@ -272,10 +285,10 @@ class GPM(object):
         retDict['NUM_PPE_COV_RECORDS'], currPos = get_uint16(currPos, ppe_bytes)
         retDict['PPE_FIELD_NAME'], currPos = get_string(currPos, ppe_bytes)
 
-        ppe = []
-        for n in range(retDict['NUM_PPE_COV_RECORDS']):
+        ppe = np.zeros((retDict['NUM_PPE_COV_RECORDS'], 3, 3))
+        for i in range(retDict['NUM_PPE_COV_RECORDS']):
             cov_matrix, currPos = get_cov_matrix(currPos, ppe_bytes)
-            ppe.append(cov_matrix)
+            ppe[i, :, :] = cov_matrix
 
         retDict['PPE_COV_RECORD'] = ppe
 
