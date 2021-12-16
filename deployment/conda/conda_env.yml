@@ -16,6 +16,7 @@ channels:
 - kitware-danesfield-pt
 - kitware-danesfield-cf
 - kitware-danesfield-df
+- conda-forge
 
 dependencies:
 - pubgeo-core3d-metrics

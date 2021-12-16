@@ -64,12 +64,9 @@ RUN apt-get update && \
 #     IsADirectoryError(21, 'Is a directory')
 #
 ENV CONDA_EXECUTABLE /opt/conda/bin/conda
-RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh && \
+RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    rm ~/miniconda.sh && \
-    ${CONDA_EXECUTABLE} update -n base conda && \
-    ${CONDA_EXECUTABLE} clean -tipsy && \
-    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh
+    rm ~/miniconda.sh
 
 # Copy environment definition first so that Conda environment isn't recreated
 # unnecessarily when other source files change.
