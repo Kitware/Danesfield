@@ -11,6 +11,7 @@ import json
 import logging
 import numpy
 import os
+from pathlib import Path
 import pdal
 
 from danesfield.gpm import GPM
@@ -36,15 +37,24 @@ def main(args):
         type=str,
         help='Input point cloud file. Can be LAS or BPF format.')
     parser.add_argument(
-        'out_file',
+        '--output_file',
         type=str,
         help='Output file for GPM data (json format).')
     args = parser.parse_args(args)
 
-    ext = os.path.splitext(args.input_file)[-1].lower()
+    input_file = Path(args.input_file)
+
+    if args.output_file:
+        output_file = Path(args.output_file)
+    else:
+        output_file = Path(args.input_file).with_suffix(".json")
+
+    if not os.path.exists(input_file):
+        print(input_file, 'does not exists.')
+        exit()
 
     # Read the data with PDAL
-    pipeline = pdal.Pipeline(pdal_json.format(args.input_file))
+    pipeline = pdal.Pipeline(pdal_json.format(input_file))
     pipeline.validate()
     pipeline.execute()
     metadata = json.loads(pipeline.metadata)
@@ -53,13 +63,11 @@ def main(args):
 
     gpm = GPM(metadata['metadata'])
 
-    if gpm.ap_search:
-        print('MIN: ', gpm.ap_search.mins)
-        print('MAX: ', gpm.ap_search.maxes)
-
     if gpm.metadata:
-        with open(args.out_file, 'w') as f:
+        with open(output_file, 'w') as f:
             json.dump(gpm.metadata, f, cls=NumpyArrayEncoder)
+    else:
+        print('No GPM metadata found.')
 
 if __name__ == '__main__':
     import sys

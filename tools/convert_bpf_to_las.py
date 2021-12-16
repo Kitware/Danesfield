@@ -30,7 +30,7 @@ def main(args):
     args = parser.parse_args(args)
 
     if args.output_file:
-        output_file = Path(args.output)
+        output_file = Path(args.output_file)
     else:
         output_file = Path(args.input_file).with_suffix(".las")
 
