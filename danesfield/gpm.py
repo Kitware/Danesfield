@@ -127,11 +127,11 @@ class GPM(object):
 
         # Create the anchor point search tree
         if 'GPM_GndSpace_Direct' in self.metadata:
-            self.ap_search = KDTree(self.metadata['GPM_GndSpace_Direct']['AP'])
+            self.ap_tree = KDTree(self.metadata['GPM_GndSpace_Direct']['AP'])
         else:
-            self.ap_search = None
+            self.ap_tree = None
 
-        # Set up interpolation
+        # Set up anchor point interpolation
         if 'GPM_GndSpace_Direct' in self.metadata:
             self.interpolation_type = (
                   self.metadata['GPM_GndSpace_Direct']['INTERPOLATION_MODE']
@@ -143,6 +143,13 @@ class GPM(object):
                     self.metadata['GPM_GndSpace_Direct']['INTERP_NUM_POSTS']
                 )
                 self.D = self.metadata['GPM_GndSpace_Direct']['DAMPENING_PARAM']
+
+        # Set up unmodeled error search trees
+        if 'GPM_Unmodeled_Error_Data' in self.metadata:
+            self.ue_trees = []
+            ue_metadata = self.metadata['GPM_Unmodeled_Error_Data']
+            for i in range(ue_metadata['NUM_UE_RECORDS']):
+                self.ue_trees.append(KDTree(ue_metadata['UE_RECORD'][i]['UE_PTS']))
 
     def checkBytesProcessed(self, endPos, data, name):
         if (endPos != len(data)):
@@ -160,7 +167,7 @@ class GPM(object):
 
     def get_covar(self, points):
         distances, indices  = (
-            self.ap_search.query(points, k=self.num_interpolate_ap)
+            self.ap_tree.query(points, k=self.num_interpolate_ap)
         )
         wts = self.get_weights(distances)
         covar = np.diagonal(
@@ -171,7 +178,7 @@ class GPM(object):
     def get_per_point_error(self, points, indices):
         # Nearest neighbor interpolation
         distances, ap_indices = (
-            self.ap_search.query(points, k=1)
+            self.ap_tree.query(points, k=1)
         )
         covar = (
             self.metadata['Per_Point_Lookup_Error_Data']['PPE_COV_RECORD']
@@ -180,6 +187,16 @@ class GPM(object):
         for ap_idx in ap_indices:
             ap_test.add(ap_idx)
         return covar[indices[ap_indices]]
+
+    def get_unmodeled_error(self, points):
+        # Nearest neighbor interpolation
+        distances, ue_indices = (
+            self.ue_trees[0].query(points, k=1)
+        )
+        covar = (
+            self.metadata['GPM_Unmodeled_Error_Data']['UE_RECORD'][0]['UE_COV']
+        )
+        return covar[ue_indices]
 
     def load_GPM_Master(self, data):
         ppe_bytes = base64.b64decode(data)
@@ -440,23 +457,22 @@ class GPM(object):
             ue_dict['PARAM_TAU_W'], currPos = get_float(currPos, ppe_bytes)
             ue_dict['NUM_UE_POSTS'], currPos = get_uint16(currPos, ppe_bytes)
 
-            posts = []
+            uePoints = np.zeros((ue_dict['NUM_UE_POSTS'], 3))
+            ueCovar = np.zeros((ue_dict['NUM_UE_POSTS'], 3, 3))
             for it in range(ue_dict['NUM_UE_POSTS']):
-                post_dict = {}
-                post_dict['UE_COV_POST_X'], currPos = get_double(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_Y'], currPos = get_double(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_Z'], currPos = get_double(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_VARX'], currPos = get_float(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_VARY'], currPos = get_float(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_VARZ'], currPos = get_float(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_VARXY'], currPos = get_float(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_VARXZ'], currPos = get_float(currPos, ppe_bytes)
-                post_dict['UE_COV_POST_VARYZ'], currPos = get_float(currPos, ppe_bytes)
+                for j in range(3):
+                    ptVal, currPos = get_double(currPos, ppe_bytes)
+                    uePoints[it, j] = ptVal
+                for j in range(3):
+                    covarDiag, currPos = get_float(currPos, ppe_bytes)
+                    ueCovar[it, j, j] = covarDiag
+                covarOffdiag, currPos = get_float_vec(currPos, ppe_bytes)
+                ueCovar[it, 0, 1] = ueCovar[it, 1, 0] = covarOffdiag[0]
+                ueCovar[it, 0, 2] = ueCovar[it, 2, 0] = covarOffdiag[1]
+                ueCovar[it, 1, 2] = ueCovar[it, 2, 1] = covarOffdiag[2]
 
-                posts.append(post_dict)
-
-            if posts:
-                ue_dict['UE_COV_POST'] = post_dict
+            ue_dict['UE_PTS'] = uePoints
+            ue_dict['UE_COV'] = ueCovar
 
             ue_records.append(ue_dict)
 
