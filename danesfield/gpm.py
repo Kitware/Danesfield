@@ -125,6 +125,9 @@ class GPM(object):
                   self.load_GPM_Unmodeled_Error_Data(matches[0])
             )
 
+        if not self.metadata:
+            print('WARNING: No GPM metadata found.')
+
         # Create the anchor point search tree
         if 'GPM_GndSpace_Direct' in self.metadata:
             self.ap_tree = KDTree(self.metadata['GPM_GndSpace_Direct']['AP'])
@@ -151,6 +154,11 @@ class GPM(object):
             for i in range(ue_metadata['NUM_UE_RECORDS']):
                 self.ue_trees.append(KDTree(ue_metadata['UE_RECORD'][i]['UE_PTS']))
 
+    # Set up PPE lookup if that data is available
+    def setupPPELookup(self, points, indices):
+        self.ppe_tree = KDTree(points)
+        self.ppe_indices = indices
+
     def checkBytesProcessed(self, endPos, data, name):
         if (endPos != len(data)):
             print('WARNING: last byte position: ', endPos, ' does not match'
@@ -175,18 +183,15 @@ class GPM(object):
         ap_covar = covar[indices]
         return np.sum(wts.reshape(wts.shape + (1,1))*ap_covar, axis=1)
 
-    def get_per_point_error(self, points, indices):
+    def get_per_point_error(self, points):
         # Nearest neighbor interpolation
         distances, ap_indices = (
-            self.ap_tree.query(points, k=1)
+            self.ppe_tree.query(points, k=1)
         )
         covar = (
             self.metadata['Per_Point_Lookup_Error_Data']['PPE_COV_RECORD']
         )
-        ap_test = set()
-        for ap_idx in ap_indices:
-            ap_test.add(ap_idx)
-        return covar[indices[ap_indices]]
+        return covar[self.ppe_indices[ap_indices]]
 
     def get_unmodeled_error(self, points):
         # Nearest neighbor interpolation
