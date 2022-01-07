@@ -8,6 +8,7 @@
 """
 
 import base64
+import json
 import numpy as np
 import struct
 
@@ -89,7 +90,7 @@ def search_json(key, json_data, matches):
             search_json(key, l, matches)
 
 class GPM(object):
-    def __init__(self, file_metadata):
+    def __init__(self, metadata):
         """Constructor
         """
 
@@ -98,32 +99,12 @@ class GPM(object):
         # The number of 3DC parameters
         self.num_3DC = 0
 
-        # Search for the possible GPM metadata
-        matches = []
-        search_json('GPM_Master', file_metadata, matches)
-        if matches:
-            self.metadata['GPM_Master'] = self.load_GPM_Master(matches[0])
-
-        matches = []
-        search_json('GPM_GndSpace_Direct', file_metadata, matches)
-        if matches:
-            self.metadata['GPM_GndSpace_Direct'] = (
-                  self.load_GPM_GndSpace_Direct(matches[0])
-            )
-
-        matches = []
-        search_json('Per_Point_Lookup_Error_Data', file_metadata, matches)
-        if matches:
-            self.metadata['Per_Point_Lookup_Error_Data'] = (
-                  self.load_Per_Point_Lookup_Error_Data(matches[0])
-            )
-
-        matches = []
-        search_json('GPM_Unmodeled_Error_Data', file_metadata, matches)
-        if matches:
-            self.metadata['GPM_Unmodeled_Error_Data'] = (
-                  self.load_GPM_Unmodeled_Error_Data(matches[0])
-            )
+        # Check if metadata is from pdal
+        if 'metadata' in metadata:
+            self.loadFromPdal(metadata['metadata'])
+        # If not assume we are loading from an export
+        else:
+            self.loadFromExport(metadata)
 
         if not self.metadata:
             print('WARNING: No GPM metadata found.')
@@ -153,6 +134,41 @@ class GPM(object):
             ue_metadata = self.metadata['GPM_Unmodeled_Error_Data']
             for i in range(ue_metadata['NUM_UE_RECORDS']):
                 self.ue_trees.append(KDTree(ue_metadata['UE_RECORD'][i]['UE_PTS']))
+
+    # Populate GPM metadata from pdal metadata
+    def loadFromPdal(self, metadata):
+        # Search for the possible GPM metadata
+        matches = []
+        search_json('GPM_Master', metadata, matches)
+        if matches:
+            self.metadata['GPM_Master'] = self.load_GPM_Master(matches[0])
+
+        matches = []
+        search_json('GPM_GndSpace_Direct', metadata, matches)
+        if matches:
+            self.metadata['GPM_GndSpace_Direct'] = (
+                  self.load_GPM_GndSpace_Direct(matches[0])
+            )
+
+        matches = []
+        search_json('Per_Point_Lookup_Error_Data', metadata, matches)
+        if matches:
+            self.metadata['Per_Point_Lookup_Error_Data'] = (
+                  self.load_Per_Point_Lookup_Error_Data(matches[0])
+            )
+
+        matches = []
+        search_json('GPM_Unmodeled_Error_Data', metadata, matches)
+        if matches:
+            self.metadata['GPM_Unmodeled_Error_Data'] = (
+                  self.load_GPM_Unmodeled_Error_Data(matches[0])
+            )
+
+    def loadFromExport(self, metadata):
+        for k in metadata:
+            if k in {'GPM_Master', 'GPM_GndSpace_Direct',
+                     'Per_Point_Lookup_Error_Data', 'GPM_Unmodeled_Error_Data'}:
+                self.metadata[k] = metadata[k]
 
     # Set up PPE lookup if that data is available
     def setupPPELookup(self, points, indices):

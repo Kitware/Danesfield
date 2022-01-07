@@ -61,13 +61,11 @@ def main(args):
 
     pipeline = None
 
-    gpm = GPM(metadata['metadata'])
+    gpm = GPM(metadata)
 
     if gpm.metadata:
         with open(output_file, 'w') as f:
             json.dump(gpm.metadata, f, cls=NumpyArrayEncoder)
-    else:
-        print('No GPM metadata found.')
 
 if __name__ == '__main__':
     import sys
