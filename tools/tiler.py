@@ -204,6 +204,17 @@ def main(args):
     """
     Converts large 3D geospatial datasets to the 3D Tiles format.
     """
+    import os
+    # conda adds PROJ_LIB if proj is part of installed packages but it points
+    # to the conda proj not to the VTK proj.
+    projLib = os.environ["PROJ_LIB"]
+    if (projLib):
+        projLibDir = os.path.dirname(projLib)
+        projLibFile = os.path.basename(projLib)
+        version = vtk.vtkVersion()
+        os.environ["PROJ_LIB"] = "{}/vtk-{}.{}/{}".format(
+            projLibDir, version.GetVTKMajorVersion(), version.GetVTKMinorVersion(),
+            projLibFile)
     parser = argparse.ArgumentParser(
         description="Converts large 3D geospatial datasets to the 3D Tiles "
         "format.", formatter_class=SmartFormatter)
