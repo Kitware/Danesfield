@@ -65,6 +65,9 @@ def read_obj_files(
         if i == 0:
             gdal_utils.read_offset(files[i], file_offset)
         polydata = reader.GetOutput()
+        if (polydata.GetNumberOfPoints() == 0):
+            logging.warning("Empty OBJ file: {}".format(files[i]))
+            continue
         texture_file = get_obj_texture_file_name(files[i])
         set_field(polydata, "texture_uri", texture_file)
         building = vtk.vtkMultiBlockDataSet()
@@ -205,14 +208,14 @@ def main(args):
     Converts large 3D geospatial datasets to the 3D Tiles format.
     """
     import os
-    # conda adds PROJ_LIB if proj is part of installed packages but it points
-    # to the conda proj not to the VTK proj.
-    projLib = os.environ["PROJ_LIB"]
+    # conda adds PROJ_LIB if proj is part of installed packages which points
+    # to the conda proj. Construct VTK_PROJ_LIB to point to the VTK proj.
+    projLib = os.environ.get("PROJ_LIB")
     if (projLib):
         projLibDir = os.path.dirname(projLib)
         projLibFile = os.path.basename(projLib)
         version = vtk.vtkVersion()
-        os.environ["PROJ_LIB"] = "{}/vtk-{}.{}/{}".format(
+        os.environ["VTK_PROJ_LIB"] = "{}/vtk-{}.{}/{}".format(
             projLibDir, version.GetVTKMajorVersion(), version.GetVTKMinorVersion(),
             projLibFile)
     parser = argparse.ArgumentParser(
