@@ -290,7 +290,6 @@ def main(args):
         camera.SetPosition(position)
 
         valuePass = vtk.vtkValuePass()
-        valuePass.SetRenderingMode(vtk.vtkValuePass.FLOATING_POINT)
         # use the default scalar for point data
         valuePass.SetInputComponentToProcess(0)
         valuePass.SetInputArrayToProcess(vtk.VTK_SCALAR_MODE_USE_POINT_FIELD_DATA,
