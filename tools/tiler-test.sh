@@ -13,7 +13,8 @@ tiler_debug()
 tiler()
 {
     VTK_BUILD=build-cesiumoptimizer
-    PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
+    #PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
+    PYTHONPATH=. /home/danlipsa/miniconda3/envs/core3d-dev/bin/vtkpython tools/tiler.py "$@"
 }
 
 print_parameters ()
