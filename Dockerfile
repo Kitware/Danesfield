@@ -64,7 +64,7 @@ RUN apt-get update && \
 #     IsADirectoryError(21, 'Is a directory')
 #
 ENV CONDA_EXECUTABLE /opt/conda/bin/conda
-RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh
 
