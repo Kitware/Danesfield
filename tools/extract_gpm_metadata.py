@@ -7,20 +7,16 @@
 ###############################################################################
 
 import argparse
+import base64
 import json
 import logging
-import numpy
+import numpy as np
 import os
 from pathlib import Path
 import pdal
 
 from danesfield.gpm import GPM
-
-class NumpyArrayEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, numpy.ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
+from danesfield.gpm_decode64 import NumpyArrayEncoder
 
 pdal_json = u"""
     {{
