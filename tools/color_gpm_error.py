@@ -17,14 +17,23 @@ import pdal
 import sys
 
 from danesfield.gpm import GPM
-
+from danesfield.gpm_decode64 import json_numpy_array_hook
 from pathlib import Path
+from scipy import stats
 
 def main(args):
     parser = argparse.ArgumentParser(
         description="Colorize the GPM error of a point cloud.")
     parser.add_argument("input_file", help="path to input file")
     parser.add_argument("output_file", help="path to output file")
+    parser.add_argument("--metadata_file", help="path for file with"
+                        " GPM metadata.")
+    parser.add_argument("--included_errors", help="comma separated booleans"
+                        " for the three error types: standard, ppe, and"
+                        " unmodeled. For example '1,0,1' would include the"
+                        " standard and unmodeled errors")
+    parser.add_argument("--decimation", help="Only use every nth point.",
+                        type=int, default=10)
     args = parser.parse_args(args)
 
     pdal_input = {
@@ -38,39 +47,46 @@ def main(args):
     metadata = json.loads(pipeline.metadata)
     arr = pipeline.arrays[0]
 
-    dec_arr = arr[::10]
+    dec_arr = arr[::args.decimation]
 
     points = np.stack([dec_arr['X'], dec_arr['Y'], dec_arr['Z']], axis=1)
 
-    gpm = GPM(metadata['metadata'])
-
-    if 'PPE_LUT_Index' in dec_arr.dtype.names:
-        ppe = gpm.get_per_point_error(points,
-                                      dec_arr['PPE_LUT_Index'].astype(np.int32))
-        ppe_error = ppe.diagonal(axis1=1, axis2=2)
-        print('SHAPE ', ppe_error.shape)
-
-    error = gpm.get_covar(points).diagonal(axis1=1, axis2=2)
-
-    if 'PPE_LUT_Index' in dec_arr.dtype.names:
-        total_error = ppe_error[:,2] + error[:,2]
+    if args.metadata_file:
+        with open(args.metadata_file) as mf:
+            gpm = GPM(json.load(mf, object_hook=json_numpy_array_hook))
     else:
-        total_error = error[:,2]
+        gpm = GPM(metadata['metadata'])
 
-    max_error = np.max(total_error)
-    min_error = np.min(total_error)
-    error_norm = max_error - min_error
+    if 'PPE_LUT_Index' in dec_arr.dtype.names:
+        gpm.setupPPELookup(points, dec_arr['PPE_LUT_Index'])
 
-    print('ERROR: ', min_error, max_error)
+    error = np.zeros(points.shape)
 
-    if error_norm == 0.0:
-        exit()
+    # Determine which error to include
+    if args.included_errors:
+        inc_err = [(True if int(e) == 1 else False) for
+                   e in args.included_errors.split(',')]
+    else:
+        inc_err = [True, False, False]
 
-    to_color = lambda err : (2**15-1)*(err-min_error)/error_norm + 2**15
+    if inc_err[0]:
+        error += gpm.get_covar(points).diagonal(axis1=1, axis2=2)
+    if inc_err[1] and 'PPE_LUT_Index' in dec_arr.dtype.names:
+        error += gpm.get_per_point_error(points).diagonal(axis1=1, axis2=2)
+    if inc_err[2]:
+        error += gpm.get_unmodeled_error(points).diagonal(axis1=1, axis2=2)
 
-    dec_arr['Red'] = to_color(error[:,2]).astype(np.uint16)
-    # dec_arr['Green'] = to_color(error[:,2]).astype(np.uint16)
-    dec_arr['Blue'] = 255 - to_color(error[:,2]).astype(np.uint16)
+    error_stats = stats.describe(error)
+    print(error_stats)
+    min_error = error_stats.minmax[0]
+    error_norm = error_stats.minmax[1] - error_stats.minmax[0]
+
+    colors = (2**15-1)*(error-min_error)/error_norm + 2**15
+
+
+    dec_arr['Red'] = colors[:,0].astype(np.uint16)
+    dec_arr['Green'] = colors[:,1].astype(np.uint16)
+    dec_arr['Blue'] = colors[:,2].astype(np.uint16)
 
     pdal_output = {
         'pipeline': [
