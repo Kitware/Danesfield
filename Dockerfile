@@ -66,6 +66,7 @@ RUN apt-get update && \
 ENV CONDA_EXECUTABLE /opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    ${CONDA_EXECUTABLE} clean -tipsy && \
     rm ~/miniconda.sh
 
 # Copy environment definition first so that Conda environment isn't recreated
