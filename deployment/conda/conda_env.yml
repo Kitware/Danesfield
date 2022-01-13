@@ -12,22 +12,29 @@
 name: core3d-dev
 
 channels:
-- kitware-danesfield
-- kitware-danesfield-pt
-- kitware-danesfield-cf
-- kitware-danesfield-df
+  - kitware-danesfield-build
+  - conda-forge/label/cf201901
+  - defaults
+  - pytorch
+
 
 dependencies:
+- vtk
+- liblas
+- flann
+- pcl
+- python-pcl
+- texture-atlas
+- core3d-purdue
+- core3d-tf_ops
+- pubgeo-tools
 - pubgeo-core3d-metrics
 - gdal
 - libgdal
 - pdal
 - python-pdal
-- texture-atlas
-- gaia
 - pyproj
 - scipy
-- vtk=v8.2.*
 - jsonschema
 - geojson
 - flake8
@@ -40,14 +47,9 @@ dependencies:
 - shapely
 - scikit-learn
 - scikit-image
-- liblas
-- flann
-- python-pcl
-- pcl
 - cgal
 - xorg-libsm
 - xorg-libX11
-- core3d-purdue
 - pip
 - pip:
   - ubelt
@@ -58,4 +60,3 @@ dependencies:
 - matplotlib
 - requests
 - opencv
-- core3d-tf_ops

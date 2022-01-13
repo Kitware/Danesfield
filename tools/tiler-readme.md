@@ -2,16 +2,28 @@
 
 # Install
 - Install nodejs, npm and proj-bin packages on Ubuntu 20.04
-- ```
+- Install 3d-tiles-validator for b3dm conversion
+```
 cd ~/external
 git clone https://github.com/CesiumGS/3d-tiles-validator.git
 cd 3d-tiles-validator/tools
 npm install```. Help at: <https://github.com/AnalyticalGraphicsInc/3d-tiles-tools/tree/master/tools>
-- ```
+```
+- Install meshoptimizer for gltf optimization and conversion to glb
+```
 cd ~/external
-git clone https://github.com/CesiumGS/gltf-pipeline.git
-cd gltf-pipeline
-npm install```. Help at: <https://github.com/CesiumGS/gltf-pipeline>
+git clone https://github.com/zeux/meshoptimizer.git src
+mkdir meshoptimizer
+cd meshoptimizer
+mv ../src .
+cd src
+git checkout v0.16
+cd ..
+mkdir build
+cd build
+cmake -DMESHOPT_BUILD_GLTFPACK:BOOL=ON ../src
+make -j
+```
 - Clone <https://github.com/CesiumGS/3d-tiles-samples>. and then `npm install.` (only if you want to see datasets in Cesium)
 
 # Convert data to 3D Tiles

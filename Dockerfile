@@ -42,6 +42,7 @@ RUN apt-get update && \
   make \
   git \
   bzip2 \
+  cmake \
   ca-certificates \
   curl \
   libgl1-mesa-glx \
@@ -65,10 +66,8 @@ RUN apt-get update && \
 ENV CONDA_EXECUTABLE /opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    rm ~/miniconda.sh && \
-    ${CONDA_EXECUTABLE} update -n base conda && \
     ${CONDA_EXECUTABLE} clean -tipsy && \
-    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh
+    rm ~/miniconda.sh
 
 # Copy environment definition first so that Conda environment isn't recreated
 # unnecessarily when other source files change.
@@ -137,11 +136,18 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validato
      cd 3d-tiles-validator/tools && \
      /usr/local/bin/npm install"]
 
-# Install gltf-pipeline for converting gltf to glb
-RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/gltf-pipeline.git && \
-     cd gltf-pipeline && \
-     /usr/local/bin/npm install"]
-
+# Install meshoptimizer for optimizing the gltf and converting to glb
+RUN ["/bin/bash", "-c", "git clone https://github.com/zeux/meshoptimizer.git src && \
+     mkdir meshoptimizer && \
+     cd meshoptimizer && \
+     mv ../src . && \
+     cd src && \
+     git checkout v0.16 && \
+     cd .. && \
+     mkdir build && \
+     cd build && \
+     cmake -DMESHOPT_BUILD_GLTFPACK:BOOL=ON ../src && \
+     make -j"]
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]

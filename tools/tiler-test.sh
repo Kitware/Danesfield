@@ -1,31 +1,31 @@
 #!/bin/bash
 
+tiler_profile()
+{
+    PYTHONPATH=. valgrind --tool=callgrind --dump-instr=yes --simulate-cache=yes --collect-jumps=yes ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
+}
+
+tiler_debug()
+{
+    PYTHONPATH=. gdb --args ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
+}
+
 tiler()
 {
-    PYTHONPATH=. ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
+    VTK_BUILD=build-cesiumoptimizer
+    #PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
+    PYTHONPATH=. /home/danlipsa/miniconda3/envs/core3d-dev/bin/vtkpython tools/tiler.py "$@"
 }
 
 print_parameters ()
 {
-    echo "$0 -c[|--city] jacksonville|berlin|nyc -k[--keep-intermediate-files]"
-    echo "   -g[--gltf-conversions-only]"
+    echo "$0 -c[|--city] jacksonville|berlin|nyc"
     echo "-c <city>: selects the city mesh to convert to 3D Tiles"
-    echo "-k       : keeps intermediate files such as GTLF and GLB"
-    echo "-g       : run only conversions from GLTF to GLB and B3DM"
 }
 
 PARAMS=""
 while (( "$#" )); do
   case "$1" in
-    -k|--keep-intermediate-files)
-      KEEP=0 # true
-      shift
-      ;;
-    -g|--gltf-conversions-only)
-      GLTF_ONLY=0 # true
-      KEEP=0 # true
-      shift
-      ;;
     -c|--city)
       if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
         CITY=$2
@@ -54,37 +54,43 @@ cd ~/projects/danesfield/danesfield || exit
 
 if [ "${CITY}" = "jacksonville" ]; then
     dir=jacksonville-3d-tiles
-    if [ ! ${GLTF_ONLY} ]; then
-        rm -rf ${dir}
-        mkdir ${dir}
-        tiler ../../../data/CORE3D/Jacksonville/building_*building*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -b 16
-    fi
-elif [ "${CITY}" = "test-jacksonville" ]; then
-    dir=jacksonville-3d-tiles
-    if [ ! ${GLTF_ONLY} ]; then
-        rm -rf ${dir}
-        mkdir ${dir}
-        tiler ../../../data/CORE3D/Jacksonville/triangle.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -b 2 --dont_save_textures
-    fi
+    rm -rf ${dir}
+    mkdir ${dir}
+    # tiler ../../../data/CORE3D/Jacksonville/building_15_building_22.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 100
+    tiler ../../../data/CORE3D/Jacksonville/building_*_building_*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 100
+elif [ "${CITY}" = "jacksonville-triangle" ]; then
+    dir=jacksonville-triangle
+    rm -rf ${dir}
+    mkdir ${dir}
+    tiler ../../../data/CORE3D/Jacksonville/triangle.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 2 --dont_save_textures --content_type 2
 elif [ "${CITY}" = "berlin" ]; then
     dir=berlin-3d-tiles
-    if [ ! ${GLTF_ONLY} ]; then
-        rm -rf $dir
-        mkdir $dir
-        tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -b 16 --dont_save_textures --number_of_buildings 17
-    fi
-elif [ "${CITY}" = "test-berlin" ]; then
-    dir=berlin-3d-tiles
-    if [ ! ${GLTF_ONLY} ]; then
-        rm -rf $dir
-        mkdir $dir
-        tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/triangle-berlin.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -b 100 --dont_save_textures --number_of_buildings 1
-    fi
-elif [ "${CITY}" = "nyc" ]; then
-    dir=ny-3d-tiles
     rm -rf $dir
     mkdir $dir
+    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -t 200 --dont_save_textures --number_of_buildings 10000 --content_type 0
+elif [ "${CITY}" = "berlin-stadium" ]; then
+    dir=${CITY}
+    rm -rf $dir
+    mkdir $dir
+    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml-stadium.gml -o ${dir} --crs EPSG:25833 -t 100 --dont_save_textures --number_of_buildings 1
+elif [ "${CITY}" = "berlin-stadium10" ]; then
+    dir=${CITY}
+    rm -rf $dir
+    mkdir $dir
+    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --crs EPSG:25833 -t 100 --dont_save_textures -b 2800 -e 3100 --content_type 1
+elif [ "${CITY}" = "nyc" ]; then
+    i=1
+    dir=nyc-3d-tiles
+    rm -rf $dir
+    mkdir $dir
+    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures --content_type 2 -m -n 10000
+elif [ "${CITY}" = "nyc-one" ]; then
+    dir=${CITY}
+    rm -rf $dir
+    mkdir $dir
+    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA10_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures -n 1 --content_type 2
 else
+    echo "Error: Cannot find ${CITY}"
     print_parameters "$0"
     exit 1
 fi
