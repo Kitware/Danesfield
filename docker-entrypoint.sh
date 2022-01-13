@@ -1,6 +1,9 @@
 #!/bin/bash
 set -eo pipefail
 
+# logging
+echo "Execute docker-entrypoint.sh"
+
 # Make 'conda' command available to shell environment
 source /opt/conda/etc/profile.d/conda.sh
 
@@ -13,4 +16,4 @@ Xvfb :1 -screen 0 1024x768x16 -nolisten tcp > xvfb.log &
 export DISPLAY=:1.0
 
 # Run specified command
-exec "$@"
+eval "$@"
