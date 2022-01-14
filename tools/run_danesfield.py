@@ -252,9 +252,9 @@ def main(args):
         vissat_workdir = data['work_dir']
         utm = str(data['bounding_box']['zone_number']) + data['bounding_box']['hemisphere']
         cmd_args = py_cmd(relative_tool_path('generate_point_cloud.py'))
-        cmd_args += ['--config_file', aoi_config, 
-                     '--work_dir', vissat_workdir, 
-                     '--point_cloud', p3d_file, 
+        cmd_args += ['--config_file', aoi_config,
+                     '--work_dir', vissat_workdir,
+                     '--point_cloud', p3d_file,
                      '--utm', utm]
         run_step(vissat_workdir, 'VisSat', cmd_args)
 
@@ -298,7 +298,7 @@ def main(args):
 
     generate_dsm_outdir = os.path.join(working_dir, 'generate-dsm')
     dsm_file = os.path.join(generate_dsm_outdir, aoi_name + '_P3D_DSM.tif')
-    
+
     cmd_args = py_cmd(relative_tool_path('generate_dsm.py'))
     cmd_args += [dsm_file, '-s', p3d_file]
     cmd_args += ['--gsd', str(gsd)]
@@ -339,7 +339,7 @@ def main(args):
             # Orthorectify the msi images
             msi_ntf_fpath = files['msi']['image']
             msi_fname = os.path.splitext(os.path.split(msi_ntf_fpath)[1])[0]
-            msi_ortho_img_fpath = os.path.join(orthorectify_outdir, 
+            msi_ortho_img_fpath = os.path.join(orthorectify_outdir,
                                                '{}_ortho.tif'.format(msi_fname))
             cmd_args = py_cmd(relative_tool_path('orthorectify.py'))
             cmd_args += [msi_ntf_fpath, dsm_file, msi_ortho_img_fpath, '--dtm', dtm_file]
@@ -481,7 +481,7 @@ def main(args):
         crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
         for collection_id, files in collection_id_to_files.items():
             cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
-            cmd_args += [dsm_file, crop_and_pansharpen_outdir, '--pan', 
+            cmd_args += [dsm_file, crop_and_pansharpen_outdir, '--pan',
                          files['pan']['image']]
             rpc_fpath = files['pan'].get('rpc', None)
             if (rpc_fpath):
@@ -504,7 +504,7 @@ def main(args):
         orig_meshes = [e for e in orig_meshes if e.find(occlusion_mesh) < 0]
 
         cmd_args = py_cmd(relative_tool_path('texture_mapping.py'))
-        cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh, 
+        cmd_args += [dsm_file, dtm_file, texture_mapping_outdir, occlusion_mesh,
                      '--crops']
         cmd_args.extend(images_to_use)
         cmd_args.append('--buildings')
@@ -584,13 +584,13 @@ def main(args):
             '--dtm', dtm_file]
         if args.image:
             # Expected file path for material classification output MTL file
-            output_mtl = os.path.join(material_classifier_outdir, 
+            output_mtl = os.path.join(material_classifier_outdir,
                                       '{}_MTL.tif'.format(aoi_name))
             cmd_args.extend(['--mtl', output_mtl])
 
         run_step(run_metrics_outdir,
                 'run-metrics',
-                cmd_args)   
+                cmd_args)
 
 
 if __name__ == '__main__':
