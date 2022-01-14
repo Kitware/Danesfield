@@ -29,7 +29,7 @@ from kwiver.vital.types import Mesh
 from kwiver.vital.types.point import Point3d
 from kwiver.vital.algo import UVUnwrapMesh
 from kwiver.arrows.core import mesh_triangulate
-from kwiver.arrows.core import mesh_closest_point
+from kwiver.arrows.core import mesh_closest_points
 
 from kwiver.vital.modules import load_known_modules
 
@@ -80,11 +80,11 @@ def barycentric(r, p1, p2, p3):
     return ( ((p2[1]-p3[1])*(r[0]-p3[0]) + (p3[0]-p2[0])*(r[1]-p3[1]))/denom,
              ((p3[1]-p1[1])*(r[0]-p3[0]) + (p1[0]-p3[0])*(r[1]-p3[1]))/denom )
 
-# Get the area of a triangle with Heron's formula
+# Get the square of the area of a triangle with Heron's formula
 def tri_area(tri):
     lens = np.array([np.linalg.norm(tri[i]-tri[(i+1)%3]) for i in range(3)])
     s = 0.5*np.sum(lens)
-    return np.sqrt(s*(s-lens[0])*(s-lens[1])*(s-lens[2]))
+    return s*(s-lens[0])*(s-lens[1])*(s-lens[2])
 
 # Create a texture map image by finding the nearest point to a pixel and using
 # its value to set the color.
@@ -114,7 +114,7 @@ def texture_sample(img, mesh, points, pc_data):
 
         indices = faces[i]
         corners = np.array([vertices[idx] for idx in indices])
-        if tri_area(corners) == 0. or np.isnan([x_min, x_max, y_min, y_max]).any():
+        if tri_area(corners) <= 0. or np.isnan([x_min, x_max, y_min, y_max]).any():
             continue
 
         pixel_points = []
@@ -136,6 +136,29 @@ def texture_sample(img, mesh, points, pc_data):
         for px, ci in zip(pixel_indices, closest_indices[1]):
             img[px[0], px[1], :] = pc_data[ci]
 
+# Create a texture map image by taking every point in the point cloud and
+# mapping it to the nearest point on the mesh.
+@timer_func
+def texture_splat(img, mesh, points, pc_data):
+
+    closest_points = []
+    uv_coords = mesh_closest_points(points, mesh, closest_points)
+
+    print("UV coordinates calculated")
+
+    img_size = img.shape
+    img_pre_arr = [ [ [] for i in range(img_size[0]) ] for j in range(img_size[1]) ]
+
+    for (idx, u, v), rgb in zip(uv_coords, pc_data):
+        tx_coord = mesh.texture_map(idx, u, v)
+        px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
+        img_pre_arr[px][py].append(rgb.astype(np.float64))
+
+    # Take the average at each pixel
+    for i in range(img_size[0]):
+        for j in range(img_size[1]):
+            if img_pre_arr[i][j]:
+                img[i, j] = np.array(img_pre_arr[i][j]).mean(axis=0)
 
 def main(args):
     parser = argparse.ArgumentParser(
@@ -145,6 +168,8 @@ def main(args):
     parser.add_argument("point_cloud_file", help="path to point cloud file")
     parser.add_argument("--output_dir", help="directory to save the results. "
                         "Defaults to mesh_dir")
+    parser.add_argument("--mode", help="toggle between 'sample' and 'splat'. "
+                        "Defaults to sample.")
     args = parser.parse_args(args)
 
     # Load kwiver modules
@@ -196,7 +221,15 @@ def main(args):
         rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
         rgb_data = rgb_data/np.max(rgb_data)
 
-        texture_sample(img_arr, new_mesh, points, rgb_data)
+        if args.mode == 'splat':
+            kw_points = []
+            for p in points:
+                kw_point = Point3d()
+                kw_point.value = p
+                kw_points.append(kw_point)
+            texture_splat(img_arr, new_mesh, kw_points, rgb_data)
+        else:
+            texture_sample(img_arr, new_mesh, points, rgb_data)
 
         new_name = output_dir / (mf.stem + '_tex')
 
