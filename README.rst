@@ -114,7 +114,7 @@ To execute a pipeline with a point cloud, run
 
 .. code-block::
 
-   docker run --rm --gpus all -it -v ~/projects/danesfield:/root/danesfield core3d/danesfield 'LOGLEVEL=DEBUG /danesfield/tools/run_danesfield.py /root/danesfield/run_danesfield/wrk/input.ini'
+   docker run --rm --gpus all -it -v ~/projects/danesfield:/root/danesfield core3d/danesfield 'LOGLEVEL=DEBUG python /danesfield/tools/run_danesfield.py /root/danesfield/run_danesfield/wrk/input.ini'
 
 
 Note: `<input.ini>`_ should contain a valid point cloud path via ``p3d_fpath``.

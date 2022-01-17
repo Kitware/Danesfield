@@ -12,7 +12,7 @@
 name: core3d-dev
 
 channels:
-  - kitware-danesfield-build
+  - kitware-danesfield
   - conda-forge/label/cf201901
   - defaults
   - pytorch
