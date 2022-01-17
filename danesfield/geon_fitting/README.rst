@@ -8,7 +8,7 @@ https://data.kitware.com/#collection/5fa1b59350a41e3d192de2d5/folder/5fa1b6c850a
 
 Compile:
 
-The shared object files needed for this tool are provided by the `core3d-tf_ops` conda package from kitware-danesfield-build.  However, if you still wish to compile the necessary files ..
+The shared object files needed for this tool are provided by the `core3d-tf_ops` conda package from kitware-danesfield.  However, if you still wish to compile the necessary files ..
 
 Change the path in the script first before you compiling the file.
 
