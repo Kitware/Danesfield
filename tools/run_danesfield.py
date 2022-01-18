@@ -605,6 +605,6 @@ def main(args):
 
 if __name__ == '__main__':
     loglevel = os.environ.get('LOGLEVEL', 'INFO').upper()
-    logging.basicConfig(level=loglevel)
+    logging.basicConfig(format='%(asctime)s %(message)s', level=loglevel)
 
     main(sys.argv[1:])
