@@ -416,35 +416,45 @@ def main(args):
              'segment-by-height',
              cmd_args)
 
-    #############################################
-    # Material Segmentation
-    #############################################
+    # pythorch is broken with missing symbol.
+    # That is not that surprising, given that we use three repos for
+    # binary packages: conda-forge, defaults and pytorch. In this case
+    # pytorch was the problem. I think the way to solve this is to
+    # move away from one environment supporting everything - with
+    # three different repos providing binary packages. We'll have to
+    # create a bash script to drive parts of run_danesfield that run
+    # in different conda environments and activate / deactivate the
+    # right environment as needed.
 
-    if args.image:
-        material_classifier_outdir = os.path.join(working_dir, 'material-classification')
-        cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
-        cmd_args += ['--image_paths']
-        # We build these up separately because they have to be 1-to-1 on the command line
-        # and dictionaries are unordered
-        img_paths = []
-        info_paths = []
-        for collection_id, files in collection_id_to_files.items():
-            img_paths.append(files['msi']['ortho_img_fpath'])
-            info_paths.append(files['msi']['info'])
-        cmd_args.extend(img_paths)
-        cmd_args.append('--info_paths')
-        cmd_args.extend(info_paths)
-        cmd_args.extend(['--output_dir', material_classifier_outdir,
-                         '--model_path', config['material']['model_fpath'],
-                         '--outfile_prefix', aoi_name])
-        if config.has_option('material', 'batch_size'):
-            cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
-        if config['material'].getboolean('cuda'):
-                cmd_args.append('--cuda')
+    # #############################################
+    # # Material Segmentation
+    # #############################################
 
-        run_step(material_classifier_outdir,
-                 'material-classification',
-                 cmd_args)
+    # if args.image:
+    #     material_classifier_outdir = os.path.join(working_dir, 'material-classification')
+    #     cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
+    #     cmd_args += ['--image_paths']
+    #     # We build these up separately because they have to be 1-to-1 on the command line
+    #     # and dictionaries are unordered
+    #     img_paths = []
+    #     info_paths = []
+    #     for collection_id, files in collection_id_to_files.items():
+    #         img_paths.append(files['msi']['ortho_img_fpath'])
+    #         info_paths.append(files['msi']['info'])
+    #     cmd_args.extend(img_paths)
+    #     cmd_args.append('--info_paths')
+    #     cmd_args.extend(info_paths)
+    #     cmd_args.extend(['--output_dir', material_classifier_outdir,
+    #                      '--model_path', config['material']['model_fpath'],
+    #                      '--outfile_prefix', aoi_name])
+    #     if config.has_option('material', 'batch_size'):
+    #         cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
+    #     if config['material'].getboolean('cuda'):
+    #             cmd_args.append('--cuda')
+
+    #     run_step(material_classifier_outdir,
+    #              'material-classification',
+    #              cmd_args)
 
     #############################################
     # Roof Geon Extraction & PointNet Geon Extraction
@@ -595,6 +605,6 @@ def main(args):
 
 if __name__ == '__main__':
     loglevel = os.environ.get('LOGLEVEL', 'INFO').upper()
-    logging.basicConfig(level=loglevel)
+    logging.basicConfig(format='%(asctime)s %(message)s', level=loglevel)
 
     main(sys.argv[1:])
