@@ -93,6 +93,8 @@ class pointCloudTextureMapper(object):
         # Size of texture image
         self.img_size = (500, 500, 3)
 
+        self.points = points
+
         # KDTree for efficient searches of closest point
         self.search_tree = KDTree(points)
 
@@ -140,9 +142,9 @@ class pointCloudTextureMapper(object):
                 for y in np.arange(y_min, y_max + img_dy, img_dy):
                     (u,v) = barycentric([x, y], tx_coords[0], tx_coords[1], tx_coords[2])
                     if (0. <= u <= 1.) and (0. <= v <= 1.) and (u + v <= 1.):
-                        pixel_points.append(u*corners[0, :] +
+                        pixel_points.append((1. - u - v)*corners[0, :] +
                                             v*corners[1, :] +
-                                            (1. - u - v)*corners[2, :])
+                                            u*corners[2, :])
 
                         pixel_indices.append([int((1. - y)*img_size[1]),
                                               int(x*img_size[0])])
@@ -160,12 +162,10 @@ class pointCloudTextureMapper(object):
         closest_points = []
         uv_coords = mesh_closest_points(points, mesh, closest_points)
 
-        print("UV coordinates calculated")
-
         img_size = img.shape
         img_pre_arr = [ [ [] for i in range(img_size[0]) ] for j in range(img_size[1]) ]
 
-        for (idx, u, v), rgb in zip(uv_coords, data):
+        for (idx, u, v), rgb in zip(uv_coords, self.data):
             tx_coord = mesh.texture_map(idx, u, v)
             px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
             img_pre_arr[px][py].append(rgb.astype(np.float64))
@@ -257,7 +257,7 @@ def main(args):
     rgb_data = rgb_data/np.max(rgb_data)
     # rgb_data = rgb_data/2048.
 
-    texMapper = pointCloudTextureMapper(points, rgb_data, output_dir, 'sample')
+    texMapper = pointCloudTextureMapper(points, rgb_data, output_dir, args.mode)
 
     for mf in mesh_files:
         texMapper.process_mesh(mf)
