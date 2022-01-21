@@ -86,79 +86,126 @@ def tri_area(tri):
     s = 0.5*np.sum(lens)
     return s*(s-lens[0])*(s-lens[1])*(s-lens[2])
 
-# Create a texture map image by finding the nearest point to a pixel and using
-# its value to set the color.
-@timer_func
-def texture_sample(img, mesh, points, pc_data):
+# Class to support texture mapping point cloud data to meshes
+class pointCloudTextureMapper(object):
+    def __init__(self, points, data, output_dir, mode):
 
-    # KDTree for efficient searches of closest point
-    search_tree = KDTree(points)
+        # Size of texture image
+        self.img_size = (500, 500, 3)
 
-    faces = mesh.faces()
-    vertices = mesh.vertices()
+        # KDTree for efficient searches of closest point
+        self.search_tree = KDTree(points)
 
-    img_size = img.shape
-    img_dx = 1./img_size[0]
-    img_dy = 1./img_size[1]
+        # Data to be mapped to meshes
+        self.data = data
 
-    for i in range(mesh.num_faces()):
-        x_min = y_min = 1.
-        x_max = y_max = 0.
-        tx_coords = [mesh.texture_map(i, u, v)
-                     for (u,v) in [(0,1), (1,0), (0,0)]]
-        for tmp_crds in tx_coords:
-            x_min = min(tmp_crds[0], x_min)
-            y_min = min(tmp_crds[1], y_min)
-            x_max = max(tmp_crds[0], x_max)
-            y_max = max(tmp_crds[1], y_max)
+        # Location to save data
+        self.output_dir = output_dir
 
-        indices = faces[i]
-        corners = np.array([vertices[idx] for idx in indices])
-        if tri_area(corners) <= 0. or np.isnan([x_min, x_max, y_min, y_max]).any():
-            continue
+        # Splat or sample mode
+        self.mode = mode
 
-        pixel_points = []
-        pixel_indices = []
+    # Create a texture map image by finding the nearest point to a pixel and using
+    # its value to set the color.
+    @timer_func
+    def texture_sample(self, img, mesh):
 
-        for x in np.arange(x_min, x_max + img_dx, img_dx):
-            for y in np.arange(y_min, y_max + img_dy, img_dy):
-                (u,v) = barycentric([x, y], tx_coords[0], tx_coords[1], tx_coords[2])
-                if (0. <= u <= 1.) and (0. <= v <= 1.) and (u + v <= 1.):
-                    pixel_points.append(u*corners[0, :] +
-                                        v*corners[1, :] +
-                                        (1. - u - v)*corners[2, :])
+        faces = mesh.faces()
+        vertices = mesh.vertices()
 
-                    pixel_indices.append([int((1. - y)*img_size[1]),
-                                          int(x*img_size[0])])
+        img_size = img.shape
+        img_dx = 1./img_size[0]
+        img_dy = 1./img_size[1]
 
-        closest_indices = search_tree.query(pixel_points)
+        for i in range(mesh.num_faces()):
+            x_min = y_min = 1.
+            x_max = y_max = 0.
+            tx_coords = [mesh.texture_map(i, u, v)
+                         for (u,v) in [(0,1), (1,0), (0,0)]]
+            for tmp_crds in tx_coords:
+                x_min = min(tmp_crds[0], x_min)
+                y_min = min(tmp_crds[1], y_min)
+                x_max = max(tmp_crds[0], x_max)
+                y_max = max(tmp_crds[1], y_max)
 
-        for px, ci in zip(pixel_indices, closest_indices[1]):
-            img[px[0], px[1], :] = pc_data[ci]
+            indices = faces[i]
+            corners = np.array([vertices[idx] for idx in indices])
+            if tri_area(corners) <= 0. or np.isnan([x_min, x_max, y_min, y_max]).any():
+                continue
 
-# Create a texture map image by taking every point in the point cloud and
-# mapping it to the nearest point on the mesh.
-@timer_func
-def texture_splat(img, mesh, points, pc_data):
+            pixel_points = []
+            pixel_indices = []
 
-    closest_points = []
-    uv_coords = mesh_closest_points(points, mesh, closest_points)
+            for x in np.arange(x_min, x_max + img_dx, img_dx):
+                for y in np.arange(y_min, y_max + img_dy, img_dy):
+                    (u,v) = barycentric([x, y], tx_coords[0], tx_coords[1], tx_coords[2])
+                    if (0. <= u <= 1.) and (0. <= v <= 1.) and (u + v <= 1.):
+                        pixel_points.append(u*corners[0, :] +
+                                            v*corners[1, :] +
+                                            (1. - u - v)*corners[2, :])
 
-    print("UV coordinates calculated")
+                        pixel_indices.append([int((1. - y)*img_size[1]),
+                                              int(x*img_size[0])])
 
-    img_size = img.shape
-    img_pre_arr = [ [ [] for i in range(img_size[0]) ] for j in range(img_size[1]) ]
+            closest_indices = self.search_tree.query(pixel_points)
 
-    for (idx, u, v), rgb in zip(uv_coords, pc_data):
-        tx_coord = mesh.texture_map(idx, u, v)
-        px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
-        img_pre_arr[px][py].append(rgb.astype(np.float64))
+            for px, ci in zip(pixel_indices, closest_indices[1]):
+                img[px[0], px[1], :] = self.data[ci]
 
-    # Take the average at each pixel
-    for i in range(img_size[0]):
-        for j in range(img_size[1]):
-            if img_pre_arr[i][j]:
-                img[i, j] = np.array(img_pre_arr[i][j]).mean(axis=0)
+    # Create a texture map image by taking every point in the point cloud and
+    # mapping it to the nearest point on the mesh.
+    @timer_func
+    def texture_splat(self, img, mesh, points):
+
+        closest_points = []
+        uv_coords = mesh_closest_points(points, mesh, closest_points)
+
+        print("UV coordinates calculated")
+
+        img_size = img.shape
+        img_pre_arr = [ [ [] for i in range(img_size[0]) ] for j in range(img_size[1]) ]
+
+        for (idx, u, v), rgb in zip(uv_coords, data):
+            tx_coord = mesh.texture_map(idx, u, v)
+            px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
+            img_pre_arr[px][py].append(rgb.astype(np.float64))
+
+        # Take the average at each pixel
+        for i in range(img_size[0]):
+            for j in range(img_size[1]):
+                if img_pre_arr[i][j]:
+                    img[i, j] = np.array(img_pre_arr[i][j]).mean(axis=0)
+
+    def process_mesh(self, meshfile):
+        print('Processing mesh ', meshfile)
+        new_mesh = Mesh.from_obj_file(str(meshfile))
+
+        mesh_triangulate(new_mesh)
+        uv_unwrap_mesh = UVUnwrapMesh.create('core')
+        uv_unwrap_mesh.unwrap(new_mesh)
+
+        # Create the texture image
+        img_arr = np.zeros(self.img_size, dtype=np.float32)
+
+        if self.mode == 'splat':
+            kw_points = []
+            for p in self.points:
+                kw_point = Point3d()
+                kw_point.value = p
+                kw_points.append(kw_point)
+            self.texture_splat(img_arr, new_mesh, kw_points)
+        else:
+            self.texture_sample(img_arr, new_mesh)
+
+        new_name = self.output_dir / meshfile.stem
+
+        plt.imsave(new_name.with_suffix('.png'), img_arr)
+
+        with open(new_name.with_suffix('.mtl'), 'w') as f:
+            f.write(mtl_template.format(new_name.with_suffix('.png').name))
+
+        new_mesh.set_tex_source(new_name.with_suffix('.mtl').name)
+        Mesh.to_obj_file(str(new_name.with_suffix('.obj')), new_mesh)
 
 def main(args):
     parser = argparse.ArgumentParser(
@@ -205,41 +252,15 @@ def main(args):
     points = (np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
               - utm_shift)
 
+    # Currently just transfer point color to mesh
+    rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
+    rgb_data = rgb_data/np.max(rgb_data)
+    # rgb_data = rgb_data/2048.
+
+    texMapper = pointCloudTextureMapper(points, rgb_data, output_dir, 'sample')
+
     for mf in mesh_files:
-        print('Processing mesh ', mf)
-        new_mesh = Mesh.from_obj_file(str(mf))
-
-        mesh_triangulate(new_mesh)
-        uv_unwrap_mesh = UVUnwrapMesh.create('core')
-        uv_unwrap_mesh.unwrap(new_mesh)
-
-        # Create the texture image
-        img_size = (500, 500, 3)
-        img_arr = np.zeros(img_size, dtype=np.float64)
-
-        # Currently just transfer point color to mesh
-        rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
-        rgb_data = rgb_data/np.max(rgb_data)
-
-        if args.mode == 'splat':
-            kw_points = []
-            for p in points:
-                kw_point = Point3d()
-                kw_point.value = p
-                kw_points.append(kw_point)
-            texture_splat(img_arr, new_mesh, kw_points, rgb_data)
-        else:
-            texture_sample(img_arr, new_mesh, points, rgb_data)
-
-        new_name = output_dir / (mf.stem + '_tex')
-
-        plt.imsave(new_name.with_suffix('.png'), img_arr)
-
-        with open(new_name.with_suffix('.mtl'), 'w') as f:
-            f.write(mtl_template.format(new_name.with_suffix('.png').name))
-
-        new_mesh.set_tex_source(new_name.with_suffix('.mtl').name)
-        Mesh.to_obj_file(str(new_name.with_suffix('.obj')), new_mesh)
+        texMapper.process_mesh(mf)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
