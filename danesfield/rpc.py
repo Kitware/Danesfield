@@ -27,10 +27,10 @@ class RPCModel(object):
         self.coeff = numpy.zeros((4, 20), dtype=dtype)
         self.coeff[0, 1] = 1
         self.coeff[2, 2] = 1
-        self.world_offset = numpy.zeros((1, 3), dtype=dtype)
-        self.world_scale = numpy.ones((1, 3), dtype=dtype)
-        self.image_offset = numpy.zeros((1, 2), dtype=dtype)
-        self.image_scale = numpy.ones((1, 2), dtype=dtype)
+        self.world_offset = numpy.zeros((3,), dtype=dtype)
+        self.world_scale = numpy.ones((3,), dtype=dtype)
+        self.image_offset = numpy.zeros((2,), dtype=dtype)
+        self.image_scale = numpy.ones((2,), dtype=dtype)
 
     def compute_partial_deriv_coeffs(self):
         """Compute the coefficients of the partial derivatives of the
