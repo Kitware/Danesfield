@@ -182,40 +182,6 @@ def project2plane(points_3d, centroid, n, x=None):
     return points_2d, e1, e2
 
 
-def project2plane(points_3d, centroid, n, x=None):
-    if x is None:
-        e2x = 1.0
-        e2y = 0.0
-        e2z = (-1.0 * e2x * n[0]) / n[2]
-        e2 = np.asarray([e2x, e2y, e2z], dtype=np.float32)
-        e2 = e2 / np.linalg.norm(e2)
-
-        e1x = 1.0
-        e1z = -1.0 / e2z
-        e1y = -1.0 * (n[0] + e1z * n[2]) / n[1]
-        e1 = np.asarray([e1x, e1y, e1z], dtype=np.float32)
-        e1 = e1 / np.linalg.norm(e1)
-    else:
-        e2 = x
-        e2x, e2y, e2z = e2
-
-        e1x = 1.0
-        e1y = (e2z * n[0] - e2x * n[2]) / (n[2] * e2y - e2z * n[1])
-        e1z = -1.0 * (e1y * n[1] + n[0]) / n[2]
-        e1 = np.asarray([e1x, e1y, e1z], dtype=np.float32)
-        e1 = e1 / np.linalg.norm(e1)
-    # print e1, e2, n, np.dot(e1,e2), np.dot(e1,n), np.dot(e2,n)
-    assert (np.dot(e1, e2) < 1e-3 and np.dot(e1, n) < 1e-3 and np.dot(e2, n) < 1e-3), \
-        "e1,e2 and n not orthonormal!"
-    t_1 = np.matmul(points_3d - centroid, e1)
-    t_2 = np.matmul(points_3d - centroid, e2)
-    points_2d = np.concatenate(
-        [np.expand_dims(t_1, axis=1), np.expand_dims(t_2, axis=1)], axis=1)
-    # print points_2d.shape
-    # points_2d has been move to centroid and e1, e2 as axes
-    return points_2d, e1, e2
-
-
 '''
  fit_type include poly2 and ellipse
  ellipse return: ellipse_center, ellipse_width, ellipse_height, ellipse_phi
