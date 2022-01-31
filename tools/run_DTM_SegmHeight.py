@@ -110,7 +110,7 @@ def py_cmd(tool_path):
     return ['python', '-u', tool_path]
 
 
-def run_step(working_dir, step_name, command, abort_on_error=True, check_complete=True):
+def run_step(working_dir, step_name, command, abort_on_error=True, skip_complete=False):
     '''
     Runs a command if it has not already been run successfully.  Log
     and exit status files are written to `working_dir`.  This script
@@ -143,9 +143,9 @@ def run_step(working_dir, step_name, command, abort_on_error=True, check_complet
     step_returncode_fpath_prefix = os.path.join(working_dir,
                                                 '{}.exitstatus'.format(step_name))
 
-    # Check that we haven't already succcessfully completed this step
+    # Check that we haven't already successfully completed this step
     # (as indicated by an exit status of 0)
-    if check_complete and os.path.isfile('{}.0'.format(step_returncode_fpath_prefix)):
+    if (not skip_complete) and os.path.isfile('{}.0'.format(step_returncode_fpath_prefix)):
         return 0
     else:
         # If we haven't run the step, or a previous run failed, remove
@@ -214,7 +214,7 @@ def main(args):
     run_step(fit_dtm_outdir,
              'fit-dtm',
              cmd_args,
-             check_complete = not args.skip_complete)
+             skip_complete=args.skip_complete)
 
 ### segment-by-height
     seg_by_height_outdir = os.path.join(working_dir, 'segment-by-height')
@@ -226,7 +226,7 @@ def main(args):
     run_step(seg_by_height_outdir,
              'segment-by-height',
              cmd_args,
-             check_complete = not args.skip_complete)
+             skip_complete=args.skip_complete)
 
 
 if __name__ == '__main__':

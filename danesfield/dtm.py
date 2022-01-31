@@ -62,7 +62,7 @@ class DTMEstimator(object):
         Recursive function to apply multi-scale DTM fitting
         """
         # if the image is still larger than 100 pixels, downsample
-        if numpy.min(dtm.shape) > 100:
+        if numpy.min(dtm.shape) > 100: # TODO: param/config
             # downsample both the DTM and DSM
             sm_dtm = self.downsample(dtm)
             sm_dsm = self.downsample(dsm)
@@ -107,8 +107,6 @@ class DTMEstimator(object):
         """
         Fit a Digital Terrain Model (DTM) to the provided Digital Surface Model (DSM)
         """
-        # initialize DTM to a deep copy of the DSM
-        dtm = dsm.copy()
         # get the range of valid height values (skipping no-data values)
         valid_data = dsm[dsm != self.nodata_val]
         minv = numpy.min(valid_data)
