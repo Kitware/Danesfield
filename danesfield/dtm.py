@@ -75,14 +75,16 @@ class DTMEstimator(object):
             step = step / (2 * 2 ** (max_level - level))
             # Decrease the number of iterations as well
             num_iter = max(1, int(self.num_outer_iter / (2 ** (max_level - level))))
+            # TODO increase tension
+            # num_inner_iter *= 2
             # Apply iterations of cloth draping simulation to smooth out the result
-            return self.drape_cloth(dtm, dsm, step, num_iter), max_level
+            return self.drape_cloth(dtm, dsm, step, num_iter, num_inner_iter), max_level
 
         print("reached min size {}".format(dtm.shape))
         # Apply cloth draping at the coarsest level (base case)
-        return self.drape_cloth(dtm, dsm, step, self.num_outer_iter), level
+        return self.drape_cloth(dtm, dsm, step, self.num_outer_iter, self.num_inner_iter), level
 
-    def drape_cloth(self, dtm, dsm, step=1, num_outer_iter=10):
+    def drape_cloth(self, dtm, dsm, step=1, num_outer_iter=10, num_inner_iter=1):
         """
         Compute inverted 2.5D cloth draping simulation iterations
         """
@@ -92,7 +94,7 @@ class DTMEstimator(object):
             # raise the DTM by step (inverted gravity)
             valid = dsm != self.nodata_val
             dtm[valid] += step
-            for i in range(self.num_inner_iter):
+            for i in range(num_inner_iter):
                 # handle DSM intersections, snap back to below DSM
                 numpy.minimum(dtm, dsm, out=dtm, where=valid)
                 # apply spring tension forces (blur the DTM)
