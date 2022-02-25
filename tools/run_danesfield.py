@@ -256,7 +256,7 @@ def main(args):
                         help='run pipeline with visible NDVI computation using RGB-colored point cloud')
     parser.add_argument('-t:a', '--tension_adapt', action='store_true',
                         help='adapt tension to each level?')
-    parser.add_argument('--tension', metavar='T', type=int, default=10,
+    parser.add_argument('-t', '--tension', metavar='T', type=int, default=10,
                         help='Number of inner smoothing iterations for DTM, '
                              'greater values increase surface tension; default=%(default)s')
     args = parser.parse_args(args)
