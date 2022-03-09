@@ -374,7 +374,7 @@ def main(args):
                         cmd_args)
 
     # #############################################
-    # # Fit Dtm to the DSM
+    # # Fit DTM to the DSM
     # #############################################
 
     fit_dtm_outdir = os.path.join(working_dir, 'fit-dtm')
@@ -388,14 +388,18 @@ def main(args):
              cmd_args)
 
     #############################################
-    # Orthorectify images
+    # Segment vegetation.
     #############################################
-    # For each MSI source image call orthorectify.py
-    # needs to use the DSM, DTM from above and Raytheon RPC file,
-    # which is a by-product of P3D.
 
     ndvi_output_fpath = ""
     if args.image:
+        #############################################
+        # Orthorectify images
+        #############################################
+        # For each MSI source image call orthorectify.py
+        # needs to use the DSM, DTM from above and Raytheon RPC file,
+        # which is a by-product of P3D.
+
         orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
         for collection_id, files in collection_id_to_files.items():
             # Orthorectify the msi images
@@ -433,6 +437,22 @@ def main(args):
                      collection_id_to_files.values() if
                      'msi' in files and 'ortho_img_fpath' in files['msi']]
         cmd_args.append(ndvi_output_fpath)
+
+        run_step(ndvi_outdir,
+                 'compute-ndvi',
+                 cmd_args)
+
+    else:
+        #############################################
+        # Compute vNDVI
+        #############################################
+        # Compute the vNDVI from the RGB colored point cloud
+        # for use during segmentation
+
+        ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
+        ndvi_output_fpath = os.path.join(ndvi_outdir, 'ndvi.tif')
+        cmd_args = py_cmd(relative_tool_path('compute_vndvi.py'))
+        cmd_args += [p3d_file, ndvi_output_fpath]
 
         run_step(ndvi_outdir,
                  'compute-ndvi',
