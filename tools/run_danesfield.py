@@ -277,7 +277,7 @@ def main(args):
     #############################################
     # Run P3D point cloud generation
     #############################################
-    # This script assumes we already have a pointcloud generated from
+    # This script assumes we already have a point cloud generated from
     # Raytheon's P3D.  See the README for information regarding P3D.
 
     p3d_file = config['paths']['p3d_fpath']
