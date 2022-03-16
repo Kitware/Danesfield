@@ -97,7 +97,8 @@ def main(argv):
         }
       ]
     }'''
-    def genBand(band, FN):
+    def genBand(band):
+        FN = band[0]
         pipeline = jsonTemplate % (all_sources,
                                    minX, maxX, minY, maxY,
                                    args.gsd, band,
@@ -115,9 +116,9 @@ def main(argv):
             print(response.stdout)
             raise RuntimeError(f'PDAL failed with error code {response.returncode}')
 
-    genBand('Red', 'R')
-    genBand('Green', 'G')
-    genBand('Blue', 'B')
+    genBand('Red')
+    genBand('Green')
+    genBand('Blue')
 
 
 if __name__ == '__main__':

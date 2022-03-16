@@ -251,6 +251,8 @@ def main(args):
                         help='run pipeline with image data as the source; default uses a point cloud')
     parser.add_argument('--roads', action='store_true',
                         help='get roads from open street maps; default extracts no roads')
+    parser.add_argument('--vNDVI', action='store_true',
+                        help='run pipeline with visible NDVI computation using RGB-colored point cloud')
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -390,8 +392,8 @@ def main(args):
     #############################################
     # Segment vegetation.
     #############################################
-
     ndvi_output_fpath = ""
+    NDVI = False
     if args.image:
         #############################################
         # Orthorectify images
@@ -441,9 +443,8 @@ def main(args):
         NDVI = run_step(ndvi_outdir,
                  'compute-ndvi',
                  cmd_args)==0
-        
 
-    else:
+    elif args.vNDVI:
         #############################################
         # Compute vNDVI
         #############################################
