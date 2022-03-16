@@ -28,6 +28,7 @@ def getMinMax(json_string):
 
 
 def main(argv):
+    print(f'RGB argv={argv}')
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-s', '--source_points', nargs='+', help='source points file[s]')
@@ -85,62 +86,38 @@ def main(argv):
         },
         {
           "type": "writers.gdal",
-          "dimension": "Red",
           "resolution": %s,
+          "dimension": "%s",
           "data_type": "float",
           "output_type": "mean",
           "window_size": "20",
           "bounds": "([%s, %s], [%s, %s])",
-          "filename": "%s/R.tif",
-          "gdalopts": "COMPRESS=DEFLATE"
-        },
-        {
-          "type": "writers.gdal",
-          "dimension": "Green",
-          "resolution": %s,
-          "data_type": "float",
-          "output_type": "mean",
-          "window_size": "20",
-          "bounds": "([%s, %s], [%s, %s])",
-          "filename": "%s/G.tif",
-          "gdalopts": "COMPRESS=DEFLATE"
-        },
-        {
-          "type": "writers.gdal",
-          "dimension": "Blue",
-          "resolution": %s,
-          "data_type": "float",
-          "output_type": "mean",
-          "window_size": "20",
-          "bounds": "([%s, %s], [%s, %s])",
-          "filename": "%s/B.tif",
+          "filename": "%s/%s.tif",
           "gdalopts": "COMPRESS=DEFLATE"
         }
       ]
     }'''
-    pipeline = jsonTemplate % (all_sources,
-                               minX, maxX, minY, maxY,
-                               args.gsd,
-                               minX, maxX, minY, maxY,
-                               args.output,
-                               args.gsd,
-                               minX, maxX, minY, maxY,
-                               args.output,
-                               args.gsd,
-                               minX, maxX, minY, maxY,
-                               args.output
-                               )
-#    print(pipeline)
-    pdal_pipeline_args = ['pdal', 'pipeline', '--stream', '--stdin']
-    response = subprocess.run(pdal_pipeline_args, input=pipeline.encode(),
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    def genBand(band, FN):
+        pipeline = jsonTemplate % (all_sources,
+                                   minX, maxX, minY, maxY,
+                                   args.gsd, band,
+                                   minX, maxX, minY, maxY,
+                                   args.output, FN
+                                   )
+        logging.info(pipeline)
+        pdal_pipeline_args = ['pdal', 'pipeline', '--stream', '--stdin']
+        response = subprocess.run(pdal_pipeline_args, input=pipeline.encode(),
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if response.returncode != 0:
+            print('STDERR')
+            print(response.stderr)
+            print('STDOUT')
+            print(response.stdout)
+            raise RuntimeError(f'PDAL failed with error code {response.returncode}')
 
-    if response.returncode != 0:
-        print('STDERR')
-        print(response.stderr)
-        print('STDOUT')
-        print(response.stdout)
-        raise RuntimeError(f'PDAL failed with error code {response.returncode}')
+    genBand('Red', 'R')
+    genBand('Green', 'G')
+    genBand('Blue', 'B')
 
 
 if __name__ == '__main__':

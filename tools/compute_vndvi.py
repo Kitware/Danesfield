@@ -17,9 +17,9 @@ from danesfield.gdal_utils import gdal_open, gdal_save
 from generate_rgb import main as computeRGB
 
 
-def vNDVI(path2DSM): # return visible Normalized Difference Vegetation Index (vNDVI)
+def vNDVI(path2output): # return visible Normalized Difference Vegetation Index (vNDVI)
     def getBand(b):
-        FN = os.path.join(path2DSM, f'{b}.tif')
+        FN = os.path.join(path2output, f'{b}.tif')
         img = gdal_open(FN)
         band = img.GetRasterBand(1)
         arr = band.ReadAsArray()
@@ -48,11 +48,9 @@ def main(argv):
     args = parser.parse_args(argv)
     
     imgFN = args.image
-    path2DSM = os.path.dirname(imgFN)
-    computeRGB([path2DSM,
-        '--source_points', args.input,
-        args.output])
-    vndvi = vNDVI(path2DSM)
+    path2output = os.path.dirname(args.output)
+    computeRGB([path2output, '--source_points', args.input])
+    vndvi = vNDVI(path2output)
     gdal_save(vndvi, gdal_open(imgFN), args.output,
               gdal.GDT_Float32,
               options=['COMPRESS=DEFLATE'])

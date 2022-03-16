@@ -438,9 +438,10 @@ def main(args):
                      'msi' in files and 'ortho_img_fpath' in files['msi']]
         cmd_args.append(ndvi_output_fpath)
 
-        run_step(ndvi_outdir,
+        NDVI = run_step(ndvi_outdir,
                  'compute-ndvi',
-                 cmd_args)
+                 cmd_args)==0
+        
 
     else:
         #############################################
@@ -450,13 +451,13 @@ def main(args):
         # for use during segmentation
 
         ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
-        ndvi_output_fpath = os.path.join(ndvi_outdir, 'ndvi.tif')
+        ndvi_output_fpath = os.path.join(ndvi_outdir, 'vndvi.tif')
         cmd_args = py_cmd(relative_tool_path('compute_vndvi.py'))
-        cmd_args += [p3d_file, ndvi_output_fpath]
+        cmd_args += [dsm_file, p3d_file, ndvi_output_fpath]
 
-        run_step(ndvi_outdir,
-                 'compute-ndvi',
-                 cmd_args)
+        NDVI = run_step(ndvi_outdir,
+                 'compute-vndvi',
+                 cmd_args)==0
 
     #############################################
     # Get OSM road vector data
@@ -491,7 +492,7 @@ def main(args):
                  os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
                  '--road-rasterized-bridge',
                  os.path.join(seg_by_height_outdir, 'road_rasterized_bridge.tif')]
-    if args.image:
+    if NDVI:
         cmd_args.extend(['--input-ndvi', ndvi_output_fpath])
 
     run_step(seg_by_height_outdir,
