@@ -28,7 +28,6 @@ def getMinMax(json_string):
 
 
 def main(argv):
-    print(f'RGB argv={argv}')
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-s', '--source_points', nargs='+', help='source points file[s]')

@@ -12,19 +12,33 @@ using RGB colored point cloud, basically following the approach in
 Costa et al. A new visible band index (vNDVI) for estimating NDVI values on RGB images utilizing genetic algorithms. CEA 2020
 '''
 
-import argparse, logging, gdal, os
+import argparse, logging, gdal, os, numpy as np
 from danesfield.gdal_utils import gdal_open, gdal_save
 from generate_rgb import main as computeRGB
 
 
+def normalize(arr, rng): # return array scaled to range
+    a, b = np.min(arr), np.max(arr)
+    c, d = rng[0], rng[1]
+    e, g = b-a, d-c
+    if e:
+        k = g/e    
+        l = c - k*a
+        res = k*arr + l
+    else:
+        res = .5*g*np.ones_like(arr)
+    return res
+
+
 def vNDVI(path2output): # return visible Normalized Difference Vegetation Index (vNDVI)
-    def getBand(b):
+    def getBand(b): # return augmented color band
         FN = os.path.join(path2output, f'{b}.tif')
         img = gdal_open(FN)
         band = img.GetRasterBand(1)
         arr = band.ReadAsArray()
         m = arr[arr>0].min()
-        arr[arr==0] = m/2 # to avoid division by 0
+        arr[arr==band.GetNoDataValue()] = m # ensure some value
+        arr[arr<=0] = m # to avoid division by 0
         return arr
 
     print('Generating vNDVI ...')
@@ -36,7 +50,8 @@ def vNDVI(path2output): # return visible Normalized Difference Vegetation Index 
     rp = -0.1294
     gp = 0.3389
     bp = -0.3118
-    return C * R**rp * G**gp * B**bp
+    res = C * R**rp * G**gp * B**bp
+    return normalize(res, [-1,1])
 
 
 def main(argv):
