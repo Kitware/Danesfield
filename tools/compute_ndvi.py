@@ -6,6 +6,9 @@
 # See accompanying Copyright.txt and LICENSE files for details
 ###############################################################################
 
+'''
+Compute (visible) Normalized Difference Vegetation Index (NDVI).
+'''
 
 import argparse
 import logging
@@ -18,8 +21,10 @@ from danesfield.ndvi import compute_ndvi
 
 def main(args):
     # Configure argument parser
-    parser = argparse.ArgumentParser(
-        description='Compute Normalized Difference Vegetation Index (NDVI)')
+    parser = argparse.ArgumentParser(description=__doc__,
+                                    formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-v', '--visible', action='store_true',
+                        help='Compute visible NDVI (vNDVI) using RGB? default: %(default)s')
     parser.add_argument("source_msi",
                         help="List of registered MSI images from which to estimate NDVI",
                         nargs="+")
@@ -35,7 +40,7 @@ def main(args):
     for msi_file in args.source_msi:
         msi = gdal_open(msi_file)
         # Compute normalized difference vegetation index (NDVI)
-        ndvi = compute_ndvi(msi)
+        ndvi = compute_ndvi(msi, args.visible)
         if avg_ndvi is None:
             avg_ndvi = ndvi
             first_msi = msi
