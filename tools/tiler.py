@@ -14,8 +14,16 @@ import os
 from subprocess import run
 
 from danesfield import gdal_utils
-import vtk
-
+from vtkmodules.vtkIOCityGML import vtkCityGMLReader
+from vtkmodules.vtkIOGeometry import vtkOBJReader
+from vtkmodules.vtkIOPDAL import vtkPDALReader
+from vtkmodules.vtkIOCesium3DTiles import vtkCesium3DTilesWriter
+from vtkmodules.vtkCommonDataModel import (
+    vtkFieldData,
+    vtkMultiBlockDataSet)
+from vtkmodules.vtkCommonCore import (
+    vtkStringArray,
+    vtkVersion)
 
 def get_obj_texture_file_name(filename):
     """
@@ -32,10 +40,10 @@ def set_field(obj, name, value):
     """
     field_data = obj.GetFieldData()
     if not field_data:
-        newfd = vtk.vtkFieldData()
+        newfd = vtkFieldData()
         obj.SetFieldData(newfd)
         field_data = newfd
-    string_array = vtk.vtkStringArray()
+    string_array = vtkStringArray()
     string_array.SetNumberOfTuples(1)
     string_array.SetValue(0, value)
     string_array.SetName(name)
@@ -45,40 +53,59 @@ def set_field(obj, name, value):
 UNINITIALIZED = 2147483647
 
 
-def read_obj_files(
-        number_of_buildings,
-        begin_building_index, end_building_index, lod,
+def read_buildings_obj(
+        number_of_features,
+        begin_feature_index, end_feature_index, lod,
         files, file_offset):
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
     from a list of OBJ files.
     """
-    if number_of_buildings == UNINITIALIZED and begin_building_index != UNINITIALIZED and end_building_index != UNINITIALIZED:
-        building_range = range(begin_building_index, end_building_index)
+    if number_of_features == UNINITIALIZED and \
+       begin_feature_index != UNINITIALIZED and end_feature_index != UNINITIALIZED:
+        feature_range = range(begin_feature_index, end_feature_index)
     else:
-        building_range = range(0, min(len(files), number_of_buildings))
-    root = vtk.vtkMultiBlockDataSet()
-    for i in building_range:
-        reader = vtk.vtkOBJReader()
+        feature_range = range(0, min(len(files), number_of_features))
+    root = vtkMultiBlockDataSet()
+    for i in feature_range:
+        reader = vtkOBJReader()
         reader.SetFileName(files[i])
         reader.Update()
         if i == 0:
             gdal_utils.read_offset(files[i], file_offset)
         polydata = reader.GetOutput()
-        if (polydata.GetNumberOfPoints() == 0):
-            logging.warning("Empty OBJ file: {}".format(files[i]))
+        if polydata.GetNumberOfPoints() == 0:
+            logging.warning("Empty OBJ file: %s", files[i])
             continue
         texture_file = get_obj_texture_file_name(files[i])
         set_field(polydata, "texture_uri", texture_file)
-        building = vtk.vtkMultiBlockDataSet()
+        building = vtkMultiBlockDataSet()
         building.SetBlock(0, polydata)
         root.SetBlock(root.GetNumberOfBlocks(), building)
     return root
 
 
-def read_city_gml_files(
-        number_of_buildings,
-        begin_building_index, end_building_index, lod,
+def read_points_pdal(
+        number_of_features,
+        begin_feature_index, end_feature_index, lod,
+        files, file_offset):
+    """
+    Reads a pdal file files[0], between begin_feature_index and end_feature_index points.
+    """
+    logging.info("Reading: %s", files[0])
+    if len(files) > 1:
+        logging.warning("Can only process one las file for now.")
+    reader = vtkPDALReader()
+    reader.SetFileName(files[0])
+    reader.Update()
+    root = reader.GetOutput()
+    file_offset[:] = [0, 0, 0]
+    return root
+
+
+def read_buildings_citygml(
+        number_of_features,
+        begin_feature_index, end_feature_index, lod,
         files, file_offset):
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
@@ -87,11 +114,11 @@ def read_city_gml_files(
     logging.info("Parsing: %s", files[0])
     if len(files) > 1:
         logging.warning("Can only process one CityGML file for now.")
-    reader = vtk.vtkCityGMLReader()
+    reader = vtkCityGMLReader()
     reader.SetFileName(files[0])
-    reader.SetBeginBuildingIndex(begin_building_index)
-    reader.SetEndBuildingIndex(end_building_index)
-    reader.SetNumberOfBuildings(number_of_buildings)
+    reader.SetBeginBuildingIndex(begin_feature_index)
+    reader.SetEndBuildingIndex(end_feature_index)
+    reader.SetNumberOfBuildings(number_of_features)
     reader.SetLOD(lod)
     reader.Update()
     root = reader.GetOutput()
@@ -103,12 +130,13 @@ def read_city_gml_files(
 
 
 READER = {
-    ".obj": read_obj_files,
-    ".gml": read_city_gml_files
+    ".obj": {vtkCesium3DTilesWriter.Buildings: read_buildings_obj},
+    ".gml": {vtkCesium3DTilesWriter.Buildings: read_buildings_citygml},
+    ".las": {vtkCesium3DTilesWriter.Points: read_points_pdal}
 }
 
 
-def is_supported(filename):
+def is_supported_path(filename):
     """
     Returns true if the filename is support as input in the converter.
     OBJ and CityGML are the only valid file types for now.
@@ -130,7 +158,7 @@ def get_files(input_list):
                 dirname = os.fsencode(name)
                 for file in os.listdir(dirname):
                     filename = os.fsdecode(file)
-                    if not os.path.isdir(filename) and is_supported(filename):
+                    if not os.path.isdir(filename) and is_supported_path(filename):
                         files.append(name + "/" + filename)
             else:
                 files.append(name)
@@ -140,10 +168,11 @@ def get_files(input_list):
 
 
 def tiler(
-        input_list, output, number_of_buildings,
-        begin_building_index, end_building_index,
-        buildings_per_tile, lod, input_offset,
-        dont_save_tiles, dont_save_textures, merge_tile_polydata, content_type, crs,
+        input_list, output, number_of_features,
+        begin_feature_index, end_feature_index,
+        features_per_tile, lod, input_offset,
+        dont_save_tiles, dont_save_textures, merge_tile_polydata, input_type,
+        buildings_content_type, crs,
         utm_zone, utm_hemisphere):
     """
     Reads the input and converts it to 3D Tiles and saves it
@@ -155,23 +184,27 @@ def tiler(
 
     file_offset = [0, 0, 0]
     ext = os.path.splitext(files[0])[1]
-    root = READER[ext](
-        number_of_buildings, begin_building_index,
-        end_building_index, lod, files, file_offset)
+    if ext not in READER or input_type not in READER[ext]:
+        raise Exception("No valid reader for extension {} and input_type {}".format(
+            ext, input_type))
+    root = READER[ext][input_type](
+        number_of_features, begin_feature_index,
+        end_feature_index, lod, files, file_offset)
     logging.info("Done parsing files")
     file_offset = [a + b for a, b in zip(file_offset, input_offset)]
     texture_path = os.path.dirname(files[0])
 
-    writer = vtk.vtkCesium3DTilesWriter()
+    writer = vtkCesium3DTilesWriter()
     writer.SetInputDataObject(root)
     writer.SetDirectoryName(output)
     writer.SetTexturePath(texture_path)
-    writer.SetContentType(content_type)
+    writer.SetInputType(input_type)
+    writer.SetBuildingsContentType(buildings_content_type)
     writer.SetOffset(file_offset)
     writer.SetSaveTextures(not dont_save_textures)
     writer.SetSaveTiles(not dont_save_tiles)
     writer.SetMergeTilePolyData(merge_tile_polydata)
-    writer.SetNumberOfBuildingsPerTile(buildings_per_tile)
+    writer.SetNumberOfFeaturesPerTile(features_per_tile)
     if not crs:
         crs = "+proj=utm +zone={}".format(utm_zone)
         if utm_hemisphere == "S":
@@ -193,13 +226,22 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def check_content_type(value):
+def check_buildings_content_type(value):
     """
     Content type can be only 0: B3DM, 1:GLB, 2:GLTF
     """
     ivalue = int(value)
     if ivalue < 0 or ivalue > 2:
-        raise argparse.ArgumentTypeError("%s is an invalid content_type" % value)
+        raise argparse.ArgumentTypeError("%s is an invalid buildings_content_type" % value)
+    return ivalue
+
+def check_input_type(value):
+    """
+    Content type can be only 0: Buildings, 1: Points, 2: Mesh
+    """
+    ivalue = int(value)
+    if ivalue < 0 or ivalue > 2:
+        raise argparse.ArgumentTypeError("%s is an invalid input_type" % value)
     return ivalue
 
 
@@ -214,31 +256,34 @@ def main(args):
     if (projLib):
         projLibDir = os.path.dirname(projLib)
         projLibFile = os.path.basename(projLib)
-        version = vtk.vtkVersion()
+        version = vtkVersion()
         os.environ["VTK_PROJ_LIB"] = "{}/vtk-{}.{}/{}".format(
             projLibDir, version.GetVTKMajorVersion(), version.GetVTKMinorVersion(),
             projLibFile)
     parser = argparse.ArgumentParser(
         description="Converts large 3D geospatial datasets to the 3D Tiles "
         "format.", formatter_class=SmartFormatter)
-    parser.add_argument("-t", "--buildings_per_tile", type=int,
-                        help="Maximum number of buildings per tile.",
+    parser.add_argument("-t", "--features_per_tile", type=int,
+                        help="Maximum number of features (buildings or points) per tile.",
                         default=10)
     parser.add_argument("input", nargs="+", help="Input files (obj or citygml) or directories. "
                         "We read all files of a known type from each directory "
                         "and add them to the list.")
-    parser.add_argument("-b", "--begin_building_index", type=int,
+    parser.add_argument("-b", "--begin_feature_index", type=int,
                         default=0,
-                        help="Begin building index. Read [begin, end) range.")
-    parser.add_argument("-e", "--end_building_index", type=int,
+                        help="Begin feature index. Read [begin, end) range.")
+    parser.add_argument("-e", "--end_feature_index", type=int,
                         default=UNINITIALIZED,
-                        help="End building index. Read [begin, end) range.")
+                        help="End feature index. Read [begin, end) range.")
     parser.add_argument("--dont_save_tiles", action="store_true",
                         help="Create only tileset.json not the B3DM files")
-    parser.add_argument("--content_type",
+    parser.add_argument("--input_type",
+                        help="Select input type Buildings (0), Points(1) or Mesh(2). ",
+                        type=check_input_type, default=0)
+    parser.add_argument("--buildings_content_type",
                         help="Store tile content using B3DM (0), GLB(1) or GLTF(2). "
                         "GLTF and GLB use the 3DTILES_content_gltf extension.",
-                        type=check_content_type, default=0)
+                        type=check_buildings_content_type, default=0)
     parser.add_argument("-l", "--lod", action="store_true",
                         help="Level of detail to be read (if available)",
                         default=2)
@@ -246,9 +291,9 @@ def main(args):
                         help="Don't save textures even if available",)
     parser.add_argument("-m", "--merge_tile_polydata", action="store_true",
                         help="Merge tile polydata in one large mesh.",)
-    parser.add_argument("-n", "--number_of_buildings", type=int,
+    parser.add_argument("-n", "--number_of_features", type=int,
                         default=UNINITIALIZED,
-                        help="Maximum number of buildings read.")
+                        help="Maximum number of features read.")
     parser.add_argument("-o", "--output", required=True,
                         help="A directory where the 3d-tiles dataset is created. ")
     parser.add_argument("--crs",
@@ -274,18 +319,19 @@ def main(args):
     if ((args.utm_zone is None or args.utm_hemisphere is None) and
             args.crs is None):
         raise Exception("Error: crs or utm_zone/utm_hemisphere are missing.")
-    if args.number_of_buildings != UNINITIALIZED and args.end_building_index != UNINITIALIZED:
-        logging.warning("Cannot use both number_of_buildings and begin_building_index, using later.")
-        args.number_of_buildings = UNINITIALIZED
+    if args.number_of_features != UNINITIALIZED and args.end_feature_index != UNINITIALIZED:
+        logging.warning("Cannot use both number_of_features and begin_feature_index, using later.")
+        args.number_of_features = UNINITIALIZED
     tiler(
-        args.input, args.output, args.number_of_buildings,
-        args.begin_building_index, args.end_building_index,
-        args.buildings_per_tile, args.lod, args.translation,
+        args.input, args.output, args.number_of_features,
+        args.begin_feature_index, args.end_feature_index,
+        args.features_per_tile, args.lod, args.translation,
         args.dont_save_tiles, args.dont_save_textures, args.merge_tile_polydata,
-        args.content_type, args.crs,
+        args.input_type,
+        args.buildings_content_type, args.crs,
         args.utm_zone, args.utm_hemisphere)
 
-    if args.content_type < 2:  # B3DM or GLB
+    if args.buildings_content_type < 2:  # B3DM or GLB
         logging.info("Optimizing gltf and converting to glb ...")
         gltf_files = glob(args.output + "/*/*.gltf")
         for gltf_file in gltf_files:
@@ -301,7 +347,8 @@ def main(args):
         for bin_file in bin_files:
             os.remove(bin_file)
 
-        if args.content_type < 1:  # B3DM
+        if args.buildings_content_type < 1:  # B3DM
+            logging.info("Converting to b3dm ...")
             glb_files = glob(args.output + "/*/*.glb")
             for glb_file in glb_files:
                 cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",

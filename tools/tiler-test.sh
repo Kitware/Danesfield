@@ -12,14 +12,14 @@ tiler_debug()
 
 tiler()
 {
-    VTK_BUILD=build-cesiumoptimizer
-    #PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
-    PYTHONPATH=. /home/danlipsa/miniconda3/envs/core3d-dev/bin/vtkpython tools/tiler.py "$@"
+    VTK_BUILD=build
+    PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
+    #PYTHONPATH=. /home/danlipsa/miniconda3/envs/core3d-dev/bin/vtkpython tools/tiler.py "$@"
 }
 
 print_parameters ()
 {
-    echo "$0 -c[|--city] jacksonville|berlin|nyc"
+    echo "$0 -c[|--city] jacksonville|berlin|nyc|rio-points"
     echo "-c <city>: selects the city mesh to convert to 3D Tiles"
 }
 
@@ -56,13 +56,19 @@ if [ "${CITY}" = "jacksonville" ]; then
     dir=jacksonville-3d-tiles
     rm -rf ${dir}
     mkdir ${dir}
-    # tiler ../../../data/CORE3D/Jacksonville/building_15_building_22.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 100
-    tiler ../../../data/CORE3D/Jacksonville/building_*_building_*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 100
+    CMD=(tiler ../../../data/CORE3D/Jacksonville/building_*_building_*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 1 --buildings_content_type 2)
+    echo ${CMD[*]}
+    ${CMD[*]}
+elif [ "${CITY}" = "jacksonville-points" ]; then
+    dir=jacksonville-3dtiles-points
+    rm -rf ${dir}
+    mkdir ${dir}
+    tiler ../../../data/CORE3D/Jacksonville/building_*_building_*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 10000
 elif [ "${CITY}" = "jacksonville-triangle" ]; then
     dir=jacksonville-triangle
     rm -rf ${dir}
     mkdir ${dir}
-    tiler ../../../data/CORE3D/Jacksonville/triangle.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 2 --dont_save_textures --content_type 2
+    tiler ../../../data/CORE3D/Jacksonville/triangle.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 2 --dont_save_textures --buildings_content_type 2
 elif [ "${CITY}" = "berlin" ]; then
     dir=berlin-3d-tiles
     rm -rf $dir
@@ -89,6 +95,11 @@ elif [ "${CITY}" = "nyc-one" ]; then
     rm -rf $dir
     mkdir $dir
     tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA10_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures -n 1 --content_type 2
+elif [ "${CITY}" = "rio-points" ]; then
+    dir=${CITY}
+    rm -rf $dir
+    mkdir $dir
+    tiler ../../../data/nga_data/RoI-keep_xy_664000_7471500-665000_7472500.las -o ${dir} --crs EPSG:32723 -t 10000
 else
     echo "Error: Cannot find ${CITY}"
     print_parameters "$0"
