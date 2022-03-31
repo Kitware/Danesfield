@@ -24,6 +24,7 @@ from vtkmodules.vtkCommonDataModel import (
 from vtkmodules.vtkCommonCore import (
     vtkStringArray,
     vtkVersion)
+from vtkmodules.vtkFiltersCore import vtkAppendPolyData
 
 def get_obj_texture_file_name(filename):
     """
@@ -85,6 +86,28 @@ def read_buildings_obj(
     return root
 
 
+def read_points_obj(number_of_features,
+                    begin_feature_index, end_feature_index, lod,
+                    files, file_offset):
+    """
+    Builds a  pointset from a list of OBJ files.
+    """
+    append = vtkAppendPolyData()
+    for i, file_name in enumerate(files):
+        reader = vtkOBJReader()
+        reader.SetFileName(file_name)
+        reader.Update()
+        if i == 0:
+            gdal_utils.read_offset(file_name, file_offset)
+        polydata = reader.GetOutput()
+        if polydata.GetNumberOfPoints() == 0:
+            logging.warning("Empty OBJ file: %s", files[i])
+            continue
+        append.AddInputDataObject(polydata)
+    append.Update()
+    return append.GetOutput()
+
+
 def read_points_pdal(
         number_of_features,
         begin_feature_index, end_feature_index, lod,
@@ -130,7 +153,8 @@ def read_buildings_citygml(
 
 
 READER = {
-    ".obj": {vtkCesium3DTilesWriter.Buildings: read_buildings_obj},
+    ".obj": {vtkCesium3DTilesWriter.Buildings: read_buildings_obj,
+             vtkCesium3DTilesWriter.Points: read_points_obj},
     ".gml": {vtkCesium3DTilesWriter.Buildings: read_buildings_citygml},
     ".las": {vtkCesium3DTilesWriter.Points: read_points_pdal}
 }
@@ -172,7 +196,7 @@ def tiler(
         begin_feature_index, end_feature_index,
         features_per_tile, lod, input_offset,
         dont_save_tiles, dont_save_textures, merge_tile_polydata, input_type,
-        buildings_content_type, crs,
+        buildings_content_type, points_color_array, crs,
         utm_zone, utm_hemisphere):
     """
     Reads the input and converts it to 3D Tiles and saves it
@@ -190,6 +214,8 @@ def tiler(
     root = READER[ext][input_type](
         number_of_features, begin_feature_index,
         end_feature_index, lod, files, file_offset)
+    if points_color_array:
+        root.GetPointData().SetActiveScalars(points_color_array)
     logging.info("Done parsing files")
     file_offset = [a + b for a, b in zip(file_offset, input_offset)]
     texture_path = os.path.dirname(files[0])
@@ -298,6 +324,8 @@ def main(args):
                         help="A directory where the 3d-tiles dataset is created. ")
     parser.add_argument("--crs",
                         help="Coordinate reference system (CRS) or spatial reference system (SRS)")
+    parser.add_argument("--points_color_array",
+                        help="Name of the array containing the RGB or RGBA color for point cloud input")
     parser.add_argument("--utm_hemisphere",
                         help="UTM hemisphere for the OBJ file coordinates.",
                         choices=["N", "S"], default="N")
@@ -328,36 +356,37 @@ def main(args):
         args.features_per_tile, args.lod, args.translation,
         args.dont_save_tiles, args.dont_save_textures, args.merge_tile_polydata,
         args.input_type,
-        args.buildings_content_type, args.crs,
+        args.buildings_content_type, args.points_color_array, args.crs,
         args.utm_zone, args.utm_hemisphere)
 
-    if args.buildings_content_type < 2:  # B3DM or GLB
-        logging.info("Optimizing gltf and converting to glb ...")
-        gltf_files = glob(args.output + "/*/*.gltf")
-        for gltf_file in gltf_files:
-            # noq is no quantization as Cesium 1.84 does not support it.
-            cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
-            cmd_args.append(gltf_file)
-            cmd_args.append("-o")
-            cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
-            logging.info("Optimizing: %s", " ".join(cmd_args))
-            run(cmd_args, check=True)
-            os.remove(gltf_file)
-        bin_files = glob(args.output + "/*/*.bin")
-        for bin_file in bin_files:
-            os.remove(bin_file)
-
-        if args.buildings_content_type < 1:  # B3DM
-            logging.info("Converting to b3dm ...")
-            glb_files = glob(args.output + "/*/*.glb")
-            for glb_file in glb_files:
-                cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
-                            "glbToB3dm", "-f"]
-                cmd_args.append(glb_file)
-                cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
-                logging.info("Converting: %s", " ".join(cmd_args))
+    if args.input_type != 1:
+        if args.buildings_content_type < 2:  # B3DM or GLB
+            logging.info("Optimizing gltf and converting to glb ...")
+            gltf_files = glob(args.output + "/*/*.gltf")
+            for gltf_file in gltf_files:
+                # noq is no quantization as Cesium 1.84 does not support it.
+                cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
+                cmd_args.append(gltf_file)
+                cmd_args.append("-o")
+                cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
+                logging.info("Optimizing: %s", " ".join(cmd_args))
                 run(cmd_args, check=True)
-                os.remove(glb_file)
+                os.remove(gltf_file)
+            bin_files = glob(args.output + "/*/*.bin")
+            for bin_file in bin_files:
+                os.remove(bin_file)
+
+            if args.buildings_content_type < 1:  # B3DM
+                logging.info("Converting to b3dm ...")
+                glb_files = glob(args.output + "/*/*.glb")
+                for glb_file in glb_files:
+                    cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
+                                "glbToB3dm", "-f"]
+                    cmd_args.append(glb_file)
+                    cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
+                    logging.info("Converting: %s", " ".join(cmd_args))
+                    run(cmd_args, check=True)
+                    os.remove(glb_file)
     logging.info("Done")
 
 
