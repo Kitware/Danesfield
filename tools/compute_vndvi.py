@@ -46,12 +46,15 @@ def vNDVI(path2output): # return visible Normalized Difference Vegetation Index 
     G = getBand('G')
     B = getBand('B')
     # constants from the paper
-    C = 0.5268
-    rp = -0.1294
-    gp = 0.3389
-    bp = -0.3118
-    res = C * R**rp * G**gp * B**bp
-    return normalize(res, [-1,1])
+    C, rp, gp, bp = 0.5268, -0.1294, 0.3389, -0.3118
+    V = C * R**rp * G**gp * B**bp
+    eps = 0.00075 # TODO param/config
+    M = np.percentile(V, 100-eps)
+    V[V>M] = M
+    m = np.percentile(V, eps)
+    V[V<m] = m
+    res = normalize(V, [-1,1])
+    return res
 
 
 def main(argv):

@@ -14,8 +14,8 @@ def chanNmask(msi_file, ndx):
     return chan, mask
 
 
-def normalize(arr, rng=[0,1], dmn=None): # return array scaled to range
-    a, b = (dmn[0], dmn[1]) if dmn else arr.min(), arr.max()
+def normalize(arr, rng=[0,1], domain=None): # return array scaled to range
+    a, b = (domain[0], domain[1]) if domain else arr.min(), arr.max()
     c, d = rng[0], rng[1]
     e, g = b-a, d-c
     if e:
@@ -60,7 +60,7 @@ def compute_ndvi(msi_file, visible=False):
         G = np.power(G, gp, where=mask)
         B = np.power(B, bp, where=mask)
         V = C*R*G*B
-        eps = 0.00075
+        eps = 0.00075 # TODO param/config
         M = np.percentile(V, 100-eps)
         V[V>M] = M
         m = np.percentile(V, eps)
