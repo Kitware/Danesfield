@@ -76,6 +76,10 @@ elif [ "${CITY}" = "rio-points" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/nga_data/RoI-keep_xy_664000_7471500-665000_7472500.las -o "${CITY}" --crs EPSG:32723 -t 10000 --input_type 1 --points_color_array Color)
+elif [ "${CITY}" = "aphill-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/TeleSculptor/examples/09172008flight1tape3_2/results/textured_mesh.vtp -o "${CITY}" --utm_zone 18 --utm_hemisphere N --translation 293513 4229533 -71.6739744841 -t 10000 --input_type 1 --points_color_array mean)
 else
     echo "Error: Cannot find ${CITY}"
     print_parameters "$0"

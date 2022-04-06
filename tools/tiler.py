@@ -15,6 +15,7 @@ from subprocess import run
 
 from danesfield import gdal_utils
 from vtkmodules.vtkIOCityGML import vtkCityGMLReader
+from vtkmodules.vtkIOXML import vtkXMLPolyDataReader
 from vtkmodules.vtkIOGeometry import vtkOBJReader
 from vtkmodules.vtkIOPDAL import vtkPDALReader
 from vtkmodules.vtkIOCesium3DTiles import vtkCesium3DTilesWriter
@@ -107,6 +108,25 @@ def read_points_obj(number_of_features,
     append.Update()
     return append.GetOutput()
 
+def read_points_vtp(number_of_features,
+                    begin_feature_index, end_feature_index, lod,
+                    files, file_offset):
+    """
+    Builds a  pointset from a list of VTP files.
+    """
+    append = vtkAppendPolyData()
+    for i, file_name in enumerate(files):
+        reader = vtkXMLPolyDataReader()
+        reader.SetFileName(file_name)
+        reader.Update()
+        polydata = reader.GetOutput()
+        if polydata.GetNumberOfPoints() == 0:
+            logging.warning("Empty VTP file: %s", files[i])
+            continue
+        append.AddInputDataObject(polydata)
+    append.Update()
+    return append.GetOutput()
+
 
 def read_points_pdal(
         number_of_features,
@@ -156,7 +176,8 @@ READER = {
     ".obj": {vtkCesium3DTilesWriter.Buildings: read_buildings_obj,
              vtkCesium3DTilesWriter.Points: read_points_obj},
     ".gml": {vtkCesium3DTilesWriter.Buildings: read_buildings_citygml},
-    ".las": {vtkCesium3DTilesWriter.Points: read_points_pdal}
+    ".las": {vtkCesium3DTilesWriter.Points: read_points_pdal},
+    ".vtp": {vtkCesium3DTilesWriter.Points: read_points_vtp}
 }
 
 
