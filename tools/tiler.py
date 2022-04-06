@@ -254,12 +254,13 @@ class SmartFormatter(argparse.HelpFormatter):
 
 def check_buildings_content_type(value):
     """
-    Content type can be only 0: B3DM, 1:GLB, 2:GLTF
+    Content type can be only 0: B3DM, 1:GLB
     """
     ivalue = int(value)
-    if ivalue < 0 or ivalue > 2:
+    if ivalue < 0 or ivalue > 1:
         raise argparse.ArgumentTypeError("%s is an invalid buildings_content_type" % value)
     return ivalue
+
 
 def check_input_type(value):
     """
@@ -275,17 +276,16 @@ def main(args):
     """
     Converts large 3D geospatial datasets to the 3D Tiles format.
     """
-    import os
     # conda adds PROJ_LIB if proj is part of installed packages which points
     # to the conda proj. Construct VTK_PROJ_LIB to point to the VTK proj.
-    projLib = os.environ.get("PROJ_LIB")
-    if (projLib):
-        projLibDir = os.path.dirname(projLib)
-        projLibFile = os.path.basename(projLib)
+    proj_lib = os.environ.get("PROJ_LIB")
+    if proj_lib:
+        proj_lib_dir = os.path.dirname(proj_lib)
+        proj_lib_file = os.path.basename(proj_lib)
         version = vtkVersion()
         os.environ["VTK_PROJ_LIB"] = "{}/vtk-{}.{}/{}".format(
-            projLibDir, version.GetVTKMajorVersion(), version.GetVTKMinorVersion(),
-            projLibFile)
+            proj_lib_dir, version.GetVTKMajorVersion(), version.GetVTKMinorVersion(),
+            proj_lib_file)
     parser = argparse.ArgumentParser(
         description="Converts large 3D geospatial datasets to the 3D Tiles "
         "format.", formatter_class=SmartFormatter)
@@ -307,8 +307,8 @@ def main(args):
                         help="Select input type Buildings (0), Points(1) or Mesh(2). ",
                         type=check_input_type, default=0)
     parser.add_argument("--buildings_content_type",
-                        help="Store tile content using B3DM (0), GLB(1) or GLTF(2). "
-                        "GLTF and GLB use the 3DTILES_content_gltf extension.",
+                        help="Store tile content using B3DM (0) or GLB(1)."
+                        "GLB use the 3DTILES_content_gltf extension.",
                         type=check_buildings_content_type, default=0)
     parser.add_argument("-l", "--lod", action="store_true",
                         help="Level of detail to be read (if available)",
@@ -325,7 +325,7 @@ def main(args):
     parser.add_argument("--crs",
                         help="Coordinate reference system (CRS) or spatial reference system (SRS)")
     parser.add_argument("--points_color_array",
-                        help="Name of the array containing the RGB or RGBA color for point cloud input")
+                        help="Name of the array containing the RGB or RGBA")
     parser.add_argument("--utm_hemisphere",
                         help="UTM hemisphere for the OBJ file coordinates.",
                         choices=["N", "S"], default="N")
@@ -347,7 +347,7 @@ def main(args):
     if ((args.utm_zone is None or args.utm_hemisphere is None) and
             args.crs is None):
         raise Exception("Error: crs or utm_zone/utm_hemisphere are missing.")
-    if args.number_of_features != UNINITIALIZED and args.end_feature_index != UNINITIALIZED:
+    if UNINITIALIZED not in (args.number_of_features, args.end_feature_index):
         logging.warning("Cannot use both number_of_features and begin_feature_index, using later.")
         args.number_of_features = UNINITIALIZED
     tiler(
