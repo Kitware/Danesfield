@@ -50,7 +50,7 @@ if [ "${CITY}" = "jacksonville" ]; then
 elif [ "${CITY}" = "jacksonville-gltf" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100 --buildings_content_type 1)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100 --content_gltf)
 elif [ "${CITY}" = "jacksonville-points" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
@@ -58,7 +58,7 @@ elif [ "${CITY}" = "jacksonville-points" ]; then
 elif [ "${CITY}" = "jacksonville-triangle" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/triangle.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --dont_save_textures --buildings_content_type 1 --input_type 0)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/triangle.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --dont_save_textures --content_gltf --input_type 0)
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
@@ -71,7 +71,7 @@ elif [ "${CITY}" = "nyc" ]; then
     i=1
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml" -o "${CITY}" --crs EPSG:2263 -t 100 --dont_save_textures --buildings_content_type 1 -m -n 10000)
+    CMD=(tiler "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml" -o "${CITY}" --crs EPSG:2263 -t 100 --dont_save_textures --content_gltf -m -n 10000)
 elif [ "${CITY}" = "rio-points" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"

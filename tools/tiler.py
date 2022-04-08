@@ -217,7 +217,7 @@ def tiler(
         begin_feature_index, end_feature_index,
         features_per_tile, lod, input_offset,
         dont_save_tiles, dont_save_textures, merge_tile_polydata, input_type,
-        buildings_content_type, points_color_array, crs,
+        content_gltf, points_color_array, crs,
         utm_zone, utm_hemisphere):
     """
     Reads the input and converts it to 3D Tiles and saves it
@@ -246,7 +246,7 @@ def tiler(
     writer.SetDirectoryName(output)
     writer.SetTexturePath(texture_path)
     writer.SetInputType(input_type)
-    writer.SetBuildingsContentType(buildings_content_type)
+    writer.SetContentGLTF(content_gltf)
     writer.SetOffset(file_offset)
     writer.SetSaveTextures(not dont_save_textures)
     writer.SetSaveTiles(not dont_save_tiles)
@@ -271,16 +271,6 @@ class SmartFormatter(argparse.HelpFormatter):
             return text[2:].splitlines()
         # this is the RawTextHelpFormatter._split_lines
         return argparse.HelpFormatter._split_lines(self, text, width)
-
-
-def check_buildings_content_type(value):
-    """
-    Content type can be only 0: B3DM, 1:GLB
-    """
-    ivalue = int(value)
-    if ivalue < 0 or ivalue > 1:
-        raise argparse.ArgumentTypeError("%s is an invalid buildings_content_type" % value)
-    return ivalue
 
 
 def check_input_type(value):
@@ -327,10 +317,9 @@ def main(args):
     parser.add_argument("--input_type",
                         help="Select input type Buildings (0), Points(1) or Mesh(2). ",
                         type=check_input_type, default=0)
-    parser.add_argument("--buildings_content_type",
-                        help="Store tile content using B3DM (0) or GLB(1)."
-                        "GLB use the 3DTILES_content_gltf extension.",
-                        type=check_buildings_content_type, default=0)
+    parser.add_argument("--content_gltf", action="store_true",
+                        help="Store tile content using B3DM (or PNTS) or GLB."
+                        "GLB use the 3DTILES_content_gltf extension.")
     parser.add_argument("-l", "--lod", action="store_true",
                         help="Level of detail to be read (if available)",
                         default=2)
@@ -377,37 +366,36 @@ def main(args):
         args.features_per_tile, args.lod, args.translation,
         args.dont_save_tiles, args.dont_save_textures, args.merge_tile_polydata,
         args.input_type,
-        args.buildings_content_type, args.points_color_array, args.crs,
+        args.content_gltf, args.points_color_array, args.crs,
         args.utm_zone, args.utm_hemisphere)
 
-    if args.input_type != 1:
-        if args.buildings_content_type < 2:  # B3DM or GLB
-            logging.info("Optimizing gltf and converting to glb ...")
-            gltf_files = glob(args.output + "/*/*.gltf")
-            for gltf_file in gltf_files:
-                # noq is no quantization as Cesium 1.84 does not support it.
-                cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
-                cmd_args.append(gltf_file)
-                cmd_args.append("-o")
-                cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
-                logging.info("Optimizing: %s", " ".join(cmd_args))
-                run(cmd_args, check=True)
-                os.remove(gltf_file)
-            bin_files = glob(args.output + "/*/*.bin")
-            for bin_file in bin_files:
-                os.remove(bin_file)
+    if args.input_type != 1 or args.content_gltf:
+        logging.info("Optimizing gltf and converting to glb ...")
+        gltf_files = glob(args.output + "/*/*.gltf")
+        for gltf_file in gltf_files:
+            # noq is no quantization as Cesium 1.84 does not support it.
+            cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
+            cmd_args.append(gltf_file)
+            cmd_args.append("-o")
+            cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
+            logging.info("Optimizing: %s", " ".join(cmd_args))
+            run(cmd_args, check=True)
+            os.remove(gltf_file)
+        bin_files = glob(args.output + "/*/*.bin")
+        for bin_file in bin_files:
+            os.remove(bin_file)
 
-            if args.buildings_content_type < 1:  # B3DM
-                logging.info("Converting to b3dm ...")
-                glb_files = glob(args.output + "/*/*.glb")
-                for glb_file in glb_files:
-                    cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
-                                "glbToB3dm", "-f"]
-                    cmd_args.append(glb_file)
-                    cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
-                    logging.info("Converting: %s", " ".join(cmd_args))
-                    run(cmd_args, check=True)
-                    os.remove(glb_file)
+    if args.input_type != 1 and not args.content_gltf:  # B3DM
+        logging.info("Converting to b3dm ...")
+        glb_files = glob(args.output + "/*/*.glb")
+        for glb_file in glb_files:
+            cmd_args = ["node", "/3d-tiles-validator/tools/bin/3d-tiles-tools.js",
+                        "glbToB3dm", "-f"]
+            cmd_args.append(glb_file)
+            cmd_args.append(os.path.splitext(glb_file)[0] + '.b3dm')
+            logging.info("Converting: %s", " ".join(cmd_args))
+            run(cmd_args, check=True)
+            os.remove(glb_file)
     logging.info("Done")
 
 
