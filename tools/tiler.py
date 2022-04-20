@@ -174,7 +174,8 @@ def read_buildings_citygml(
 
 READER = {
     ".obj": {vtkCesium3DTilesWriter.Buildings: read_buildings_obj,
-             vtkCesium3DTilesWriter.Points: read_points_obj},
+             vtkCesium3DTilesWriter.Points: read_points_obj,
+             vtkCesium3DTilesWriter.Mesh: read_points_obj},
     ".gml": {vtkCesium3DTilesWriter.Buildings: read_buildings_citygml},
     ".las": {vtkCesium3DTilesWriter.Points: read_points_pdal},
     ".vtp": {vtkCesium3DTilesWriter.Points: read_points_vtp}
