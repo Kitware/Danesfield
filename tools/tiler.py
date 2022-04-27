@@ -56,9 +56,8 @@ UNINITIALIZED = 2147483647
 
 
 def read_buildings_obj(
-        number_of_features,
-        begin_feature_index, end_feature_index, lod,
-        files, file_offset):
+        number_of_features, begin_feature_index, end_feature_index,
+        lod, files, file_offset):
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
     from a list of OBJ files.
@@ -87,9 +86,8 @@ def read_buildings_obj(
     return root
 
 
-def read_points_obj(number_of_features,
-                    begin_feature_index, end_feature_index, lod,
-                    files, file_offset):
+def read_points_obj(number_of_features, begin_feature_index, end_feature_index,
+                    lod, files, file_offset):
     """
     Builds a  pointset from a list of OBJ files.
     """
@@ -108,9 +106,8 @@ def read_points_obj(number_of_features,
     append.Update()
     return append.GetOutput()
 
-def read_points_vtp(number_of_features,
-                    begin_feature_index, end_feature_index, lod,
-                    files, file_offset):
+def read_points_vtp(number_of_features, begin_feature_index, end_feature_index,
+                    lod, files, file_offset):
     """
     Builds a  pointset from a list of VTP files.
     """
@@ -129,9 +126,8 @@ def read_points_vtp(number_of_features,
 
 
 def read_points_pdal(
-        number_of_features,
-        begin_feature_index, end_feature_index, lod,
-        files, file_offset):
+        number_of_features, begin_feature_index, end_feature_index,
+        lod, files, file_offset):
     """
     Reads a pdal file files[0], between begin_feature_index and end_feature_index points.
     """
@@ -147,9 +143,8 @@ def read_points_pdal(
 
 
 def read_buildings_citygml(
-        number_of_features,
-        begin_feature_index, end_feature_index, lod,
-        files, file_offset):
+        number_of_features, begin_feature_index, end_feature_index,
+        lod, files, file_offset):
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
@@ -370,18 +365,27 @@ def main(args):
         args.content_gltf, args.points_color_array, args.crs,
         args.utm_zone, args.utm_hemisphere)
 
+    if args.input_type == 1:  # Points
+        # meshoptimizer does not support points so convert to glb directly.
+        # meshoptimizer prints the following error:
+        # ignoring primitive 0 of mesh 0 because indexed points are not supported
+        log_text = "Converting to glb ..."
+        cmd_args_prefix = ["node", "/gltf-pipeline/bin/gltf-pipeline.js", "-i"]
+    else:
+        log_text = "Optimizing gltf and converting to glb ..."
+        # noq is no quantization as Cesium 1.84 does not support it.
+        cmd_args_prefix = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
     if args.input_type != 1 or args.content_gltf:
-        logging.info("Optimizing gltf and converting to glb ...")
+        logging.info(log_text)
         gltf_files = glob(args.output + "/*/*.gltf")
         for gltf_file in gltf_files:
-            # noq is no quantization as Cesium 1.84 does not support it.
-            cmd_args = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
+            cmd_args = cmd_args_prefix.copy()
             cmd_args.append(gltf_file)
             cmd_args.append("-o")
             cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
-            logging.info("Optimizing: %s", " ".join(cmd_args))
+            logging.info("Execute: %s", " ".join(cmd_args))
             run(cmd_args, check=True)
-            os.remove(gltf_file)
+            # os.remove(gltf_file)
         bin_files = glob(args.output + "/*/*.bin")
         for bin_file in bin_files:
             os.remove(bin_file)

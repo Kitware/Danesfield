@@ -88,6 +88,10 @@ elif [ "${CITY}" = "aphill-points" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/TeleSculptor/examples/09172008flight1tape3_2/results/textured_mesh.vtp -o "${CITY}" --utm_zone 18 --utm_hemisphere N --translation 293513 4229533 -71.6739744841 -t 10000 --input_type 1 --points_color_array mean)
+elif [ "${CITY}" = "aphill-points-gltf" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/TeleSculptor/examples/09172008flight1tape3_2/results/textured_mesh.vtp -o "${CITY}" --utm_zone 18 --utm_hemisphere N --translation 293513 4229533 -71.6739744841 -t 10000 --input_type 1 --points_color_array mean --content_gltf)
 else
     echo "Error: Cannot find ${CITY}"
     print_parameters "$0"
