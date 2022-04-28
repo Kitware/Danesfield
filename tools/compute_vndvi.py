@@ -64,7 +64,7 @@ def main(argv):
     parser.add_argument('input', help='path/to/colored/point/cloud.las')
     parser.add_argument('output', help='path/to/NDVI.tif')
     args = parser.parse_args(argv)
-    
+
     imgFN = args.image
     path2output = os.path.dirname(args.output)
     computeRGB([path2output, '--source_points', args.input])

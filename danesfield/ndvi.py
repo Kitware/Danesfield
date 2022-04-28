@@ -14,7 +14,7 @@ def chanNmask(msi_file, ndx):
     return chan, mask
 
 
-def normalize(arr, rng=[0,1], domain=None): # return array scaled to range
+def linScale(arr, rng=[-1,1], domain=None): # return array scaled to range
     a, b = (domain[0], domain[1]) if domain else arr.min(), arr.max()
     c, d = rng[0], rng[1]
     e, g = b-a, d-c
@@ -26,6 +26,15 @@ def normalize(arr, rng=[0,1], domain=None): # return array scaled to range
         res = .5*g*np.ones_like(arr)
     return res
 
+def normalize(arr, dist=4): # (arr-mean)/stdev
+    m = np.mean(arr)
+    s = np.std(arr)
+    if s:
+        res = (arr-m)/s
+        dist = 4
+        res[res>dist] = dist
+        res[res<-dist] = -dist
+    return linScale(res)
 
 def compute_ndvi(msi_file, visible=False):
     '''
@@ -60,12 +69,12 @@ def compute_ndvi(msi_file, visible=False):
         G = np.power(G, gp, where=mask)
         B = np.power(B, bp, where=mask)
         V = C*R*G*B
-        eps = 0.00075 # TODO param/config
-        M = np.percentile(V, 100-eps)
-        V[V>M] = M
-        m = np.percentile(V, eps)
-        V[V<m] = m
-        res = normalize(V, [-1,1])
+        # eps = 0.00075 # TODO param/config
+        # M = np.percentile(V, 100-eps)
+        # V[V>M] = M
+        # m = np.percentile(V, eps)
+        # V[V<m] = m
+        res = normalize(V)
     else:
         mask = np.logical_and(red_mask, nir_mask)
         red = red.astype(np.float)
