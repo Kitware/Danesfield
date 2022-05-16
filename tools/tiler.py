@@ -12,14 +12,17 @@ from glob import glob
 import logging
 import os
 from subprocess import run
+from typing import (
+    List,
+    Optional)
 
-from danesfield import gdal_utils
 from vtkmodules.vtkIOCityGML import vtkCityGMLReader
 from vtkmodules.vtkIOXML import vtkXMLPolyDataReader
 from vtkmodules.vtkIOGeometry import vtkOBJReader
 from vtkmodules.vtkIOPDAL import vtkPDALReader
 from vtkmodules.vtkIOCesium3DTiles import vtkCesium3DTilesWriter
 from vtkmodules.vtkCommonDataModel import (
+    vtkDataSet,
     vtkFieldData,
     vtkMultiBlockDataSet)
 from vtkmodules.vtkCommonCore import (
@@ -27,16 +30,19 @@ from vtkmodules.vtkCommonCore import (
     vtkVersion)
 from vtkmodules.vtkFiltersCore import vtkAppendPolyData
 
-def get_obj_texture_file_name(filename):
+from danesfield import gdal_utils
+
+
+def get_obj_texture_file_name(path: str) -> str:
     """
     Given an OBJ file name return a file name for the texture by removing .obj and
     adding .png
     """
-    file_no_ext = os.path.splitext(os.path.basename(filename))[0]
+    file_no_ext = os.path.splitext(os.path.basename(path))[0]
     return file_no_ext + ".png"
 
 
-def set_field(obj, name, value):
+def set_field(obj: vtkDataSet, name: str, value: str):
     """
     Adds to an obj an field array name with 1 element value.
     """
@@ -52,12 +58,12 @@ def set_field(obj, name, value):
     field_data.AddArray(string_array)
 
 
-UNINITIALIZED = 2147483647
+UNINITIALIZED : int = 2147483647
 
 
 def read_buildings_obj(
-        number_of_features, begin_feature_index, end_feature_index,
-        lod, files, file_offset):
+        number_of_features : int, begin_feature_index : int, end_feature_index : int,
+        _lod : int, files : List[str], file_offset : List[float]) ->  Optional[vtkMultiBlockDataSet]:
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
     from a list of OBJ files.
@@ -86,8 +92,9 @@ def read_buildings_obj(
     return root
 
 
-def read_points_obj(number_of_features, begin_feature_index, end_feature_index,
-                    lod, files, file_offset):
+def read_points_obj(
+        number_of_features : int, begin_feature_index : int, end_feature_index : int,
+        _lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
     """
     Builds a  pointset from a list of OBJ files.
     """
@@ -106,8 +113,10 @@ def read_points_obj(number_of_features, begin_feature_index, end_feature_index,
     append.Update()
     return append.GetOutput()
 
-def read_points_vtp(number_of_features, begin_feature_index, end_feature_index,
-                    lod, files, file_offset):
+
+def read_points_vtp(
+        number_of_features : int, begin_feature_index : int, end_feature_index : int,
+        _lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
     """
     Builds a  pointset from a list of VTP files.
     """
@@ -126,8 +135,8 @@ def read_points_vtp(number_of_features, begin_feature_index, end_feature_index,
 
 
 def read_points_pdal(
-        number_of_features, begin_feature_index, end_feature_index,
-        lod, files, file_offset):
+        number_of_features : int, begin_feature_index : int, end_feature_index : int,
+        _lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
     """
     Reads a pdal file files[0], between begin_feature_index and end_feature_index points.
     """
@@ -138,17 +147,20 @@ def read_points_pdal(
     reader.SetFileName(files[0])
     reader.Update()
     root = reader.GetOutput()
-    file_offset[:] = [0, 0, 0]
+    for i in range(3):
+        file_offset[i] = 0
     return root
 
 
 def read_buildings_citygml(
-        number_of_features, begin_feature_index, end_feature_index,
-        lod, files, file_offset):
+        number_of_features : int, begin_feature_index : int, end_feature_index : int,
+        lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
     """
+    for i in range(3):
+        file_offset[i] = 0
     logging.info("Parsing: %s", files[0])
     if len(files) > 1:
         logging.warning("Can only process one CityGML file for now.")
@@ -163,21 +175,20 @@ def read_buildings_citygml(
     if not root:
         logging.error("Expecting vtkMultiBlockDataSet")
         return None
-    file_offset[:] = [0, 0, 0]
     return root
 
 
 READER = {
     ".obj": {vtkCesium3DTilesWriter.Buildings: read_buildings_obj,
              vtkCesium3DTilesWriter.Points: read_points_obj,
-             vtkCesium3DTilesWriter.Mesh: read_points_obj},
+             vtkCesium3DTilesWriter.Mesh: read_buildings_obj},
     ".gml": {vtkCesium3DTilesWriter.Buildings: read_buildings_citygml},
     ".las": {vtkCesium3DTilesWriter.Points: read_points_pdal},
     ".vtp": {vtkCesium3DTilesWriter.Points: read_points_vtp}
 }
 
 
-def is_supported_path(filename):
+def is_supported_path(filename: str):
     """
     Returns true if the filename is support as input in the converter.
     OBJ and CityGML are the only valid file types for now.
@@ -186,7 +197,7 @@ def is_supported_path(filename):
     return ext in READER
 
 
-def get_files(input_list):
+def get_files(input_list: List[str]) -> List[str]:
     """
     converts a list of files and directories into a list of files by reading
     the directories and appending all valid files inside to the list.
@@ -209,12 +220,12 @@ def get_files(input_list):
 
 
 def tiler(
-        input_list, output, number_of_features,
-        begin_feature_index, end_feature_index,
-        features_per_tile, lod, input_offset,
-        dont_save_tiles, dont_save_textures, merge_tile_polydata, input_type,
-        content_gltf, points_color_array, crs,
-        utm_zone, utm_hemisphere):
+        input_list: List[str], dirname: str, number_of_features: int,
+        begin_feature_index: int, end_feature_index: int,
+        features_per_tile: int, lod: int, input_offset : List[float],
+        dont_save_tiles: bool, dont_save_textures: bool, merge_tile_polydata: bool, input_type: int,
+        content_gltf: bool, points_color_array: str, crs: str,
+        utm_zone: int, utm_hemisphere: str):
     """
     Reads the input and converts it to 3D Tiles and saves it
     to output.
@@ -223,7 +234,7 @@ def tiler(
     if len(files) == 0:
         raise Exception("No valid input files")
 
-    file_offset = [0, 0, 0]
+    file_offset:List[float] = [0, 0, 0]
     ext = os.path.splitext(files[0])[1]
     if ext not in READER or input_type not in READER[ext]:
         raise Exception("No valid reader for extension {} and input_type {}".format(
@@ -231,16 +242,18 @@ def tiler(
     root = READER[ext][input_type](
         number_of_features, begin_feature_index,
         end_feature_index, lod, files, file_offset)
+    if root is None:
+        return
     if points_color_array:
         root.GetPointData().SetActiveScalars(points_color_array)
     logging.info("Done parsing files")
-    file_offset = [a + b for a, b in zip(file_offset, input_offset)]
+    file_offset = list(a + b for a, b in zip(file_offset, input_offset))
     texture_path = os.path.dirname(files[0])
 
     writer = vtkCesium3DTilesWriter()
     writer.SetInputDataObject(root)
-    writer.SetDirectoryName(output)
-    writer.SetTexturePath(texture_path)
+    writer.SetDirectoryName(dirname)
+    writer.SetTextureBaseDirectory(texture_path)
     writer.SetInputType(input_type)
     writer.SetContentGLTF(content_gltf)
     writer.SetOffset(file_offset)
@@ -269,7 +282,7 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def check_input_type(value):
+def check_input_type(value: str) -> int:
     """
     Content type can be only 0: Buildings, 1: Points, 2: Mesh
     """
@@ -386,9 +399,9 @@ def main(args):
             logging.info("Execute: %s", " ".join(cmd_args))
             run(cmd_args, check=True)
             # os.remove(gltf_file)
-        bin_files = glob(args.output + "/*/*.bin")
-        for bin_file in bin_files:
-            os.remove(bin_file)
+        # bin_files = glob(args.output + "/*/*.bin")
+        # for bin_file in bin_files:
+        #     os.remove(bin_file)
 
     if args.input_type != 1 and not args.content_gltf:  # B3DM
         logging.info("Converting to b3dm ...")

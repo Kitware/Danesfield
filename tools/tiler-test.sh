@@ -2,7 +2,7 @@
 
 tiler()
 {
-    PYTHONPATH="${SCRIPT_DIR}/.." "${VTK_DIR}/bin/vtkpython" "${SCRIPT_DIR}/tiler.py" "$@"
+    PYTHONPATH="${SCRIPT_DIR}/.."  "${VTK_DIR}/bin/vtkpython" "${SCRIPT_DIR}/tiler.py" "$@"
 }
 
 print_parameters ()
@@ -66,7 +66,7 @@ elif [ "${CITY}" = "jacksonville-triangle" ]; then
 elif [ "${CITY}" = "jacksonville-mesh" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_ground.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --dont_save_textures --content_gltf --input_type 2)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_ground.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --content_gltf --input_type 2)
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
