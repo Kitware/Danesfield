@@ -26,7 +26,7 @@ def linScale(arr, rng=[-1,1], domain=None): # return array scaled to range
         res = .5*g*np.ones_like(arr)
     return res
 
-def normalize(arr, dist=4): # (arr-mean)/stdev
+def normalize(arr, dist=4): # return (arr-mean)/stdev clipped to dist
     m = np.mean(arr)
     s = np.std(arr)
     if s:
@@ -69,11 +69,6 @@ def compute_ndvi(msi_file, visible=False):
         G = np.power(G, gp, where=mask)
         B = np.power(B, bp, where=mask)
         V = C*R*G*B
-        # eps = 0.00075 # TODO param/config
-        # M = np.percentile(V, 100-eps)
-        # V[V>M] = M
-        # m = np.percentile(V, eps)
-        # V[V<m] = m
         res = normalize(V)
     else:
         mask = np.logical_and(red_mask, nir_mask)
