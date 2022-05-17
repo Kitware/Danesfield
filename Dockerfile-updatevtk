@@ -1,0 +1,66 @@
+# Dockerfile updating VTK in the Danesfield environment.
+#
+# Rename previous docker image:
+#   docker image tag kitware/danesfield kitware/danesfield-oldvtk
+#
+# Build:
+#   docker build -t kitware/danesfield - -f Dockerfile-updatevtk
+#
+# Run:
+#   docker run \
+#     -i -t --rm \
+#     -v /path/to/data:/mnt/data \
+#     core3d/danesfield \
+#     <command>
+# where <command> is like:
+#   danesfield/tools/generate-dsm.py ...
+#
+# To run with CUDA support, ensure that nvidia-docker2 is installed on the host,
+# then add the following argument to the command line:
+#
+#   --runtime=nvidia
+#
+# Example:
+#   docker run \
+#     -i -t --rm \
+#     --runtime=nvidia \
+#     core3d/danesfield \
+#     danesfield/tools/material_classifier.py --cuda ...
+
+
+FROM kitware/danesfield-oldvtk
+
+LABEL maintainer="Kitware Inc. <kitware@kitware.com>"
+
+# Install cmake 3.23.1
+RUN ["/bin/bash", "-c", "cd ~ && \
+     mkdir projects && \
+     cd projects && \
+     mkdir cmake && \
+     cd cmake && \
+     git clone https://gitlab.kitware.com/cmake/cmake.git src && \
+     cd src && \
+     git checkout v3.23.1 && \
+     cd .. && \
+     mkdir build && \
+     cd build && \
+     ../src/bootstrap && \
+     make -j"]
+
+# Install latest VTK
+RUN ["/bin/bash", "-c", "cd ~/projects && \
+     mkdir VTK && \
+     cd VTK && \
+     git clone https://gitlab.kitware.com/danlipsa/vtk.git src && \
+     cd src && \
+     git checkout 3dtiles-pointcloud && \
+     git submodule init && \
+     git submodule update --recursive && \
+     git fetch https://gitlab.kitware.com/vtk/vtk.git --tags && \
+     cd .. && \
+     mkdir build && \
+     cd build && \
+     CONDA_ENV=/opt/conda/envs/core3d && \
+     ~/projects/cmake/build/bin/cmake ../src -G Ninja -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_PREFIX_PATH:PATH=${CONDA_ENV} -DCMAKE_INSTALL_PREFIX:PATH=${CONDA_ENV} -DCMAKE_INSTALL_RPATH:PATH=${CONDA_ENV}/lib -DBUILD_TESTING:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=ON -DVTK_WRAP_PYTHON:BOOL=ON -DVTK_MODULE_ENABLE_VTK_IOGDAL:BOOL=WANT -DVTK_MODULE_ENABLE_VTK_IOPDAL:BOOL=WANT -DVTK_PYTHON_VERSION:STRING=3 -DVTK_HAS_FEENABLEEXCEPT:BOOL=OFF -DVTK_USE_X:BOOL=ON && \
+     ${CONDA_ENV}/bin/ninja && \
+     ${CONDA_ENV}/bin/ninja install"]
