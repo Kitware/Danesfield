@@ -12,23 +12,23 @@
 name: core3d-dev
 
 channels:
-  - kitware-danesfield
-  - conda-forge/label/cf201901
-  - defaults
-  - pytorch
+#  - kitware-danesfield
+  - conda-forge
+#  - defaults
+#  - pytorch
 
 
 dependencies:
-- vtk
-- liblas
-- flann
-- pcl
-- python-pcl
-- texture-atlas
-- core3d-purdue
-- core3d-tf_ops
-- pubgeo-tools
-- pubgeo-core3d-metrics
+# - vtk
+# - liblas
+# - flann
+# - pcl
+# - python-pcl
+# - texture-atlas
+# - core3d-purdue
+# - core3d-tf_ops
+# - pubgeo-tools
+# - pubgeo-core3d-metrics
 - gdal
 - libgdal
 - pdal

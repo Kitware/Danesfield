@@ -228,7 +228,7 @@ def main(args):
 
     aoi_name = config['aoi']['name']
 
-    gsd = float(config['params'].get('gsd', 0.25))
+    gsd = float(config['params'].get('gsd', "0.25"))
 
     #############################################
     # Run P3D point cloud generation
@@ -273,7 +273,7 @@ def main(args):
     else:
         assert use_rpcs, 'expected an rpc_dir in the config'
 
-    for root, dirs, files in iterable:
+    for root, _, files in iterable:
         input_paths.extend([os.path.join(root, f) for f in files])
 
     collection_id_to_files = collate_input_paths(input_paths)

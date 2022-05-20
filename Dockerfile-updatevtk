@@ -1,10 +1,10 @@
 # Dockerfile updating VTK in the Danesfield environment.
 #
-# Rename previous docker image:
-#   docker image tag kitware/danesfield kitware/danesfield-oldvtk
+# Rename original docker image (if not done already):
+#   docker image tag kitware/danesfield kitware/danesfield-original
 #
 # Build:
-#   docker build -t kitware/danesfield - -f Dockerfile-updatevtk
+#   docker build -t kitware/danesfield . -f Dockerfile-updatevtk
 #
 # Run:
 #   docker run \
@@ -28,12 +28,34 @@
 #     danesfield/tools/material_classifier.py --cuda ...
 
 
-FROM kitware/danesfield-oldvtk
+FROM kitware/danesfield-original
 
 LABEL maintainer="Kitware Inc. <kitware@kitware.com>"
 
-# Install cmake 3.23.1
-RUN ["/bin/bash", "-c", "cd ~ && \
+# update NVIDIA keys
+# see https://github.com/NVIDIA/nvidia-docker/issues/1632
+RUN rm /etc/apt/sources.list.d/cuda.list && \
+    rm /etc/apt/sources.list.d/nvidia-ml.list && \
+    apt-key del 7fa2af80 && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-keyring_1.0-1_all.deb && \
+    dpkg -i cuda-keyring_1.0-1_all.deb
+
+# Install additional packages
+RUN apt-get update -q && \
+    apt-get install -y -q \
+        build-essential \
+        vim \
+        openssh-client
+
+# Generate ssh key to access private repo
+RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root/.ssh/id_ed25519 && \
+    cat /root/.ssh/id_ed25519.pub && \
+    ssh-keyscan -t rsa gitlab.kitware.com >> ~/.ssh/known_hosts && \
+    sleep 3m
+
+
+# Build cmake 3.23.1
+RUN cd ~ && \
      mkdir projects && \
      cd projects && \
      mkdir cmake && \
@@ -45,10 +67,19 @@ RUN ["/bin/bash", "-c", "cd ~ && \
      mkdir build && \
      cd build && \
      ../src/bootstrap && \
-     make -j"]
+     make -j
+
+
+ARG PREFIX=/opt/conda/envs/core3d
+ARG CMAKE=/root/projects/cmake/build/bin/cmake
+ARG NINJA=${PREFIX}/bin/ninja
+# ARG CXX11_ABI=-DCMAKE_CXX_FLAGS='-D_GLIBCXX_USE_CXX11_ABI=0'
+ARG CXX11_ABI=
 
 # Install latest VTK
-RUN ["/bin/bash", "-c", "cd ~/projects && \
+# includes a patch because pdal is compiled with _GLIBCXX_USE_CXX11_ABI=0
+# sed -i '1s/^/#define _GLIBCXX_USE_CXX11_ABI 0\n/' IO/PDAL/vtkPDALReader.cxx && \
+RUN cd ~/projects && \
      mkdir VTK && \
      cd VTK && \
      git clone https://gitlab.kitware.com/danlipsa/vtk.git src && \
@@ -59,8 +90,38 @@ RUN ["/bin/bash", "-c", "cd ~/projects && \
      git fetch https://gitlab.kitware.com/vtk/vtk.git --tags && \
      cd .. && \
      mkdir build && \
+     cd build && \     
+     ${CMAKE} ../src -G Ninja -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_PREFIX_PATH:PATH=${PREFIX} -DCMAKE_INSTALL_PREFIX:PATH=${PREFIX} -DCMAKE_INSTALL_RPATH:PATH=${PREFIX}/lib -DBUILD_TESTING:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=ON -DVTK_WRAP_PYTHON:BOOL=ON -DVTK_MODULE_ENABLE_VTK_IOGDAL:BOOL=WANT -DVTK_MODULE_ENABLE_VTK_IOPDAL:BOOL=NO -DVTK_PYTHON_VERSION:STRING=3 -DVTK_HAS_FEENABLEEXCEPT:BOOL=OFF -DVTK_USE_X:BOOL=ON ${CXX11_ABI} && \
+     ${NINJA} install
+
+# Install core3d-purdue
+RUN cd ~/projects && \
+     git clone git@gitlab.kitware.com:core3d/core3d-purdue.git && \
+     cd core3d-purdue/Segmentation/code && \
+     mkdir build && \
      cd build && \
-     CONDA_ENV=/opt/conda/envs/core3d && \
-     ~/projects/cmake/build/bin/cmake ../src -G Ninja -Wno-dev -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_PREFIX_PATH:PATH=${CONDA_ENV} -DCMAKE_INSTALL_PREFIX:PATH=${CONDA_ENV} -DCMAKE_INSTALL_RPATH:PATH=${CONDA_ENV}/lib -DBUILD_TESTING:BOOL=OFF -DBUILD_SHARED_LIBS:BOOL=ON -DVTK_WRAP_PYTHON:BOOL=ON -DVTK_MODULE_ENABLE_VTK_IOGDAL:BOOL=WANT -DVTK_MODULE_ENABLE_VTK_IOPDAL:BOOL=WANT -DVTK_PYTHON_VERSION:STRING=3 -DVTK_HAS_FEENABLEEXCEPT:BOOL=OFF -DVTK_USE_X:BOOL=ON && \
-     ${CONDA_ENV}/bin/ninja && \
-     ${CONDA_ENV}/bin/ninja install"]
+     ${CMAKE} -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${PREFIX} -DCMAKE_INSTALL_PREFIX:PATH=${PREFIX} -DEigen3_INCLUDE_DIR:PATH=${PREFIX}\include\eigen3  ${CXX11_ABI} .. && \
+     ${NINJA} install && \
+     cd ../../.. && \
+     cd Reconstruction/code && \
+     mkdir build && \
+     cd build && \
+     ${CMAKE} -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH:PATH=${PREFIX} -DCMAKE_INSTALL_PREFIX:PATH=${PREFIX} ${CXX11_ABI} .. && \
+     ${NINJA} install
+
+# Install texture-atlas
+# includes a patch for a missing include
+RUN cd ~/projects && \
+     mkdir TextureAtlas && \
+     cd TextureAtlas && \
+     git clone git@gitlab.kitware.com:core3d/core3d-keu.git src && \
+     cd src && \
+     git checkout v1.0.3 && \
+     sed -i '5 i #include <vector>' Texture_Atlas/src/camera.h && \
+     cd .. && \
+     mkdir build && \
+     cd build && \
+     ${CMAKE} -G Ninja -Wno-dev -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH:PATH=${PREFIX} -DCMAKE_INSTALL_PREFIX:PATH=${PREFIX} -DCMAKE_INSTALL_RPATH:PATH=${PREFIX}/lib -DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=10.9 ${CXX11_ABI} ../src/Texture_Atlas/src && \
+     ${NINJA} install
+
+# RUN rm -rf ~/projects ~/.ssh
