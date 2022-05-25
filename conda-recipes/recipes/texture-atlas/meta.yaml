@@ -3,9 +3,7 @@ package:
   version: {{ environ['GIT_DESCRIBE_TAG'] ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
 
 source:
-  patches:
-    - texture-atlas.patch
-  git_tag: v1.0.3
+  git_tag: 95b9f9c65c45a788320022d68b6860311e8b0b19
   git_url: git@gitlab.kitware.com:core3d/core3d-keu.git
 
 build:
@@ -19,13 +17,13 @@ requirements:
     - eigen
     - opencv {{ opencv }}
     - libgdal {{ libgdal }}
-    - libboost {{ libboost }}
+    - boost-cpp {{ boostcpp }}
   run:
     - vtk
     - eigen
     - opencv
     - libgdal
-    - libboost
+    - boost-cpp
 
 test:
   commands:

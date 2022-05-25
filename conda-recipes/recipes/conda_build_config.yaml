@@ -2,36 +2,33 @@
 python:
   - 3.6
 
-libboost:
-  - 1.67
+boostcpp:
+  - 1.70
 
 libgdal:
-  - 2
+  - 3.0
 
 pdal:
-  - 1.8
+  - 2.0
 
 opencv:
-  - 3.4
+  - 4.2
 
 qhull:
   - 2015.2
 
-# this version exists only in defaults, so there is no conflict with conda-forge
-tensorflow:
-  - 1.13.1
-
-numpy:
-  - 1.15
-
 cython:
-  - 0.25.2
+  - 0.25
+
+# this version exists only in defaults, so there is no conflict with conda-forge
+tensorflowgpu:
+  - 1.14
 
 pin_run_as_build:
-  libboost: x.x
+  boostcpp: x
   libgdal: x
-  pdal: x.x
-  opencv: x.x
-  qhull: x.x
-  tensorflow: x.x.x
-  numpy: x.x
+  pdal: x
+  opencv: x
+  qhull: x
+  tensorflowgpu: x
+  python: x

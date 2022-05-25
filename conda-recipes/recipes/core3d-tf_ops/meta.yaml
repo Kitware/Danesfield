@@ -13,7 +13,9 @@ build:
 
 requirements:
   build:
-    - tensorflow-gpu {{ tensorflow }}
+    - tensorflow-gpu {{ tensorflowgpu }}
+    - python {{ python }}
 
   run:
-    - tensorflow-gpu {{ tensorflow }}
+    - tensorflow-gpu
+    - python

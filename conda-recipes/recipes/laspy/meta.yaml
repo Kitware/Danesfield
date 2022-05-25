@@ -14,9 +14,9 @@ build:
 
 requirements:
   build:
-    - python
+    - python {{ python }}
     - setuptools
-    - numpy {{ numpy }}
+    - numpy
   run:
     - python
     - numpy

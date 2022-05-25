@@ -15,18 +15,17 @@ build:
 
 requirements:
     build:
-        - toolchain
         - cmake
         - ninja
         - flann
-        - libboost {{ libboost }}
+        - boost-cpp {{ boostcpp }}
         - eigen
         - liblas
         - qhull {{ qhull }}
 
     run:
         - flann
-        - libboost
+        - boost-cpp
         - eigen
         - liblas
         - qhull

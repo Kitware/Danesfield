@@ -7,30 +7,27 @@ package:
     name: liblas
     version: 1.8.4
 source:
-    patches:
-        - liblas.patch
-    sha256: 8f0adeea3a14c995513b833f4a92b5389ee78312b144eab6039f35985ee5ef02
-    url: https://github.com/libLAS/libLAS/archive/1.8.1.zip
+    git_rev: ded463732db1f9baf461be6f3fe5b8bb683c41cd
+    git_url: https://github.com/libLAS/libLAS.git
 
 build:
     number: 1
 
 requirements:
     build:
-        - toolchain
         - cmake
         - ninja
-        - libboost {{ libboost }}
+        - boost-cpp {{ boostcpp }}
         - libgdal {{ libgdal }}
         - geotiff
     run:
-        - boost
+        - boost-cpp
         - libgdal
         - geotiff
 about:
     home: https://liblas.org/
     license: BSD
-    license_file: COPYING
+    license_file: LICENSE.txt
     summary: Library for reading and writing the very common LAS LiDAR format.
 extra:
     copy_test_source_files: true

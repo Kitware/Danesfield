@@ -14,7 +14,7 @@ build:
 requirements:
   build:
     - cython {{ cython }}
-    - numpy {{ numpy }}
+    - numpy
     - pkg-config
     - pcl
     - nose

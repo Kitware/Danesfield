@@ -3,15 +3,17 @@ package:
     version: {{ environ['GIT_DESCRIBE_TAG'] ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
 
 source:
-    git_rev: d1dcc51
-    git_url: git@gitlab.kitware.com:core3d/core3d-purdue.git
+  patches:
+    - boost.patch
+  git_rev: d1dcc51
+  git_url: git@gitlab.kitware.com:core3d/core3d-purdue.git
 
 build:
     number: 1
 
 requirements:
   build:
-  - toolchain
+  - boost-cpp {{ boostcpp }}
   - cmake
   - ninja
   - cgal
@@ -22,6 +24,7 @@ requirements:
   - vtk
 
   run:
+  - boost-cpp
   - cgal
   - eigen
   - flann

@@ -10,8 +10,6 @@ source:
   patches:
     # Compile with PDAL 1.7
     - pdal-1.7.patch
-    # Fix error linking with conda-forge PDAL
-    - fix-conda-forge-pdal-link.patch
 
 build:
   number: 1

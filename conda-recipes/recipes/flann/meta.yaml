@@ -25,7 +25,6 @@ about:
 
 requirements:
     build:
-    - toolchain
     - cmake
     - ninja
     - hdf5

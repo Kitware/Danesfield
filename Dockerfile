@@ -65,12 +65,15 @@ RUN rm /etc/apt/sources.list.d/cuda.list && \
     dpkg -i cuda-keyring_1.0-1_all.deb
 
 
-# Install additional packages
+# Build packages
 RUN apt-get update -q && \
     apt-get install -y -q \
         build-essential \
         vim \
-        openssh-client
+        openssh-client \
+        libgl1-mesa-dev \
+        libxt-dev
+
 
 # Generate ssh key to access private repo
 RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root/.ssh/id_ed25519 && \
@@ -86,100 +89,163 @@ RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root
 #
 #     IsADirectoryError(21, 'Is a directory')
 #
-ENV CONDA_EXECUTABLE /opt/conda/bin/conda
+ARG CONDA=/opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    ${CONDA_EXECUTABLE} clean -tipsy && \
+    ${CONDA} clean -tipsy && \
     rm ~/miniconda.sh
 
+RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
+# mamba works much, much faster than conda
+RUN ${CONDA} update conda -y -q && \
+    ${CONDA} install conda-libmamba-solver
+ARG SOLVER="--experimental-solver libmamba"
+RUN ${CONDA} install -n base conda-forge::mamba -y -q || exit 1
+ARG MAMBA=/opt/conda/bin/mamba
+
+RUN apt-get install -y -q libarchive-dev
+
+WORKDIR /
+# Patches for Colmap and VisSat
+ADD patches /patches
+
+# Install ColmapForVisSat from Github
+RUN git clone --recursive https://github.com/Kai-46/ColmapForVisSat.git && \
+  cd ColmapForVisSat && \
+  git checkout 9d96671 && \
+  git apply /patches/colmap_deps.patch && \
+  chmod +x /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \
+  chmod +x /ColmapForVisSat/ubuntu1804_install_colmap.sh && \
+  apt-get update && \
+  /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \
+  cd /ColmapForVisSat && \
+  ./ubuntu1804_install_colmap.sh
+
+# Install VisSat package from Github
+RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteStereo.git && \
+  cd VisSatSatelliteStereo && \
+  git checkout e5ca3a0 && \
+  git apply ../patches/vissat.patch && \
+  source /opt/conda/etc/profile.d/conda.sh && \
+  conda create -n vissat python=3.6 pip=20.0.* && \
+  conda activate vissat && \
+  pip install -r /VisSatSatelliteStereo/requirements.txt && \
+  pip uninstall -y numpy && \
+  conda install -y numpy libgdal gdal"]
+
+# Install LAStools package from Github
+RUN git clone https://github.com/LAStools/LAStools.git && \
+  cd LAStools && \
+  make
+
+RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
+  unzip /BilateralFilter.zip && \
+  rm /BilateralFilter.zip && \
+  cd BilateralFilter && \
+  mkdir build && \
+  cd build && \
+  cmake -DCMAKE_BUILD_TYPE=Release .. && \
+  make
+
+# Install latest stable version of node and npm
+RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \
+     /usr/bin/npm install -g n  && \
+     n stable"]
+
+# Install 3d-tiles-tools for converting glb to b3dm
+RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git && \
+     cd 3d-tiles-validator/tools && \
+     /usr/local/bin/npm install"]
+
+# Install meshoptimizer for optimizing the gltf and converting to glb
+RUN ["/bin/bash", "-c", "git clone https://github.com/zeux/meshoptimizer.git src && \
+     mkdir meshoptimizer && \
+     cd meshoptimizer && \
+     mv ../src . && \
+     cd src && \
+     git checkout v0.16 && \
+     cd .. && \
+     mkdir build && \
+     cd build && \
+     cmake -DMESHOPT_BUILD_GLTFPACK:BOOL=ON ../src && \
+     make -j"]
+
+
+
+COPY ./deployment/conda/conda_env.yml \
+     ./danesfield/deployment/conda/conda_env.yml
+
+# Create CORE3D Conda environment
+RUN ${CONDA} env create  -f ./danesfield/deployment/conda/conda_env.yml -n core3d
 
 
 # Add the conda recipes for the build
-ADD ../danesfield-conda-recipes/ /root/danesfield-conda-recipes
+RUN mkdir /root/conda-recipes
+COPY conda-recipes/recipes/conda_build_config.yaml /root/conda-recipes/conda_build_config.yaml
+
+ARG CHANNELS="-c conda-forge/label/cf202003 -c defaults"
+
+# build dependent packages
+WORKDIR /root/conda-recipes
+
+ADD conda-recipes/recipes/liblas /root/conda-recipes/liblas
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml liblas
+# RUN ${CONDA} install  -n core3d -c local liblas
+
+ADD conda-recipes/recipes/pcl /root/conda-recipes/pcl
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml pcl
+# RUN ${CONDA} install  -n core3d -c local pcl
+
+# this package does not exist on conda-forge. It only works with
+# a certain version of pcl which we need to build as well.
+ADD conda-recipes/recipes/python-pcl /root/conda-recipes/python-pcl
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml python-pcl
+# RUN ${CONDA} install  -n core3d -c local python-pcl
+
+ADD conda-recipes/recipes/vtk /root/conda-recipes/vtk
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml vtk
+# RUN ${CONDA} install  -n core3d -c local vtk
+
+ADD conda-recipes/recipes/texture-atlas /root/conda-recipes/texture-atlas
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml texture-atlas
+# RUN ${CONDA} install  -n core3d -c local texture-atlas
+
+ADD conda-recipes/recipes/core3d-purdue /root/conda-recipes/core3d-purdue
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml core3d-purdue
+# RUN ${CONDA} install  -n core3d -c local core3d-purdue
+
+ADD conda-recipes/recipes/laspy /root/conda-recipes/laspy
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml laspy
+# RUN ${CONDA} install  -n core3d -c local laspy
+
+ADD conda-recipes/recipes/pubgeo-tools /root/conda-recipes/pubgeo-tools
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-tools
+# RUN ${CONDA} install  -n core3d -c local pubgeo-tools
+
+ADD conda-recipes/recipes/pubgeo-core3d-metrics /root/conda-recipes/pubgeo-core3d-metrics
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-core3d-metrics
+# RUN ${CONDA} install  -n core3d -c local pubgeo-core3d-metrics
+
+ADD conda-recipes/recipes/core3d-tf_ops /root/conda-recipes/core3d-tf_ops
+RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml core3d-tf_ops
+# RUN ${CONDA} install  -n core3d -c local core3d-tf-ops
 
 
-# # Copy environment definition first so that Conda environment isn't recreated
-# # unnecessarily when other source files change.
-# COPY ./deployment/conda/conda_env.yml \
-#      ./danesfield/deployment/conda/conda_env.yml
+WORKDIR /
 
-# # Create CORE3D Conda environment
-# RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.yml -n core3d && \
-#     ${CONDA_EXECUTABLE} clean -tipsy
 
-# # Copy patches for Colmap and VisSat
-# COPY patches /patches
+# Install Danesfield package into CORE3D Conda environment
+COPY . ./danesfield
+RUN rm -rf ./danesfield/deployment
+RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+  conda activate core3d && \
+  pip install -e ./danesfield"]
 
-# # Install ColmapForVisSat from Github
-# RUN git clone --recursive https://github.com/Kai-46/ColmapForVisSat.git && \
-#   cd ColmapForVisSat && \
-#   git checkout 9d96671 && \
-#   git apply ../patches/colmap_deps.patch && \
-#   chmod +x /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \
-#   chmod +x /ColmapForVisSat/ubuntu1804_install_colmap.sh && \
-#   apt-get update && \
-#   /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \ 
-#   cd /ColmapForVisSat && \
-#   ./ubuntu1804_install_colmap.sh
+# Clean up.
+RUN ${CONDA} clean -tipsy
 
-# # Install VisSat package from Github
-# RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteStereo.git && \
-#   cd VisSatSatelliteStereo && \
-#   git checkout e5ca3a0 && \
-#   git apply ../patches/vissat.patch && \
-#   source /opt/conda/etc/profile.d/conda.sh && \
-#   conda create -n vissat python=3.6 pip=20.0.* && \
-#   conda activate vissat && \
-#   pip install -r /VisSatSatelliteStereo/requirements.txt && \
-#   pip uninstall -y numpy && \
-#   conda install -y numpy libgdal gdal"]
+# Set entrypoint to script that sets up and activates CORE3D environment
+ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
 
-# # Install LAStools package from Github
-# RUN git clone https://github.com/LAStools/LAStools.git && \
-#   cd LAStools && \
-#   make
-
-# # Install Danesfield package into CORE3D Conda environment
-# COPY . ./danesfield
-# RUN rm -rf ./danesfield/deployment
-# RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-#   conda activate core3d && \
-#   pip install -e ./danesfield"]
-
-# RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
-#   unzip /BilateralFilter.zip && \
-#   rm /BilateralFilter.zip && \
-#   cd BilateralFilter && \
-#   mkdir build && \
-#   cd build && \
-#   cmake -DCMAKE_BUILD_TYPE=Release .. && \
-#   make
-
-# # Install latest stable version of node and npm
-# RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \
-#      /usr/bin/npm install -g n  && \
-#      n stable"]
-
-# # Install 3d-tiles-tools for converting glb to b3dm
-# RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git && \
-#      cd 3d-tiles-validator/tools && \
-#      /usr/local/bin/npm install"]
-
-# # Install meshoptimizer for optimizing the gltf and converting to glb
-# RUN ["/bin/bash", "-c", "git clone https://github.com/zeux/meshoptimizer.git src && \
-#      mkdir meshoptimizer && \
-#      cd meshoptimizer && \
-#      mv ../src . && \
-#      cd src && \
-#      git checkout v0.16 && \
-#      cd .. && \
-#      mkdir build && \
-#      cd build && \
-#      cmake -DMESHOPT_BUILD_GLTFPACK:BOOL=ON ../src && \
-#      make -j"]
-
-# # Set entrypoint to script that sets up and activates CORE3D environment
-# ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
-
-# # Set default command when executing the container
-# CMD ["/bin/bash"]
+# Set default command when executing the container
+CMD ["/bin/bash"]
