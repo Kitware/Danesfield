@@ -9,7 +9,7 @@ package:
   version: {{ environ['GIT_DESCRIBE_TAG'] ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
 
 source:
-  git_branch: 3dtiles-pointcloud
+  git_rev: e6e5a7966136604a0689a81a41226030e95bd411
   git_url: https://gitlab.kitware.com/danlipsa/vtk.git
 
 build:

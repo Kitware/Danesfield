@@ -77,10 +77,10 @@ def collate_input_paths(paths):
     :type paths: enumerable
     '''
     input_re = re.compile(r'(?P<gra>GRA_)?.*'
-                          '(?P<prefix>[0-9]{2}[A-Z]{3}[0-9]{8})\-'
-                          '(?P<modality>P1BS|M1BS|A1BS)\-'
-                          '(?P<trail>[0-9]{12}_[0-9]{2}_P[0-9]{3}).*'
-                          '(?P<ext>\..+)$')
+                          r'(?P<prefix>[0-9]{2}[A-Z]{3}[0-9]{8})\-'
+                          r'(?P<modality>P1BS|M1BS|A1BS)\-'
+                          r'(?P<trail>[0-9]{12}_[0-9]{2}_P[0-9]{3}).*'
+                          r'(?P<ext>\..+)$')
 
     modality_map = {'P1BS': 'pan',
                     'M1BS': 'msi',
@@ -221,11 +221,12 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
                                     stdout=subprocess.PIPE,
                                     universal_newlines=True,
                                     bufsize=1)
-            # Write the output/err both to stdout and the log file
+        # Write the output/err both to stdout and the log file
         with open(step_log_fpath, 'w') as out_f:
-            for line in proc.stdout:
-                print(line, end='')
-                print(line, end='', file=out_f)
+            if (proc.stdout):
+                for line in proc.stdout:
+                    print(line, end='')
+                    print(line, end='', file=out_f)
 
         # Wait for the process to terminate and set the return code
         # (max of 5 seconds)
@@ -355,6 +356,23 @@ def main(args):
              'generate-dsm',
              cmd_args)
 
+    #############################################
+    # 3D Tiles from P3D point cloud
+    #############################################
+    tiler_points_outdir = os.path.join(working_dir, 'tiler-points')
+    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+
+    cmd_args = py_cmd(relative_tool_path('tiler.py'))
+    cmd_args.append(p3d_file)
+    cmd_args.extend(['-o', tiler_points_outdir])
+    cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
+                     '--utm_zone', str(utm_zone),
+                     '-t', str(10000),
+                     '--input_type', str(1)])
+    run_step_switch_env('tiler', tiler_points_outdir,
+                        'tiler',
+                        cmd_args)
+
     # #############################################
     # # Fit Dtm to the DSM
     # #############################################
@@ -376,6 +394,7 @@ def main(args):
     # needs to use the DSM, DTM from above and Raytheon RPC file,
     # which is a by-product of P3D.
 
+    ndvi_output_fpath = ""
     if args.image:
         orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
         for collection_id, files in collection_id_to_files.items():
@@ -423,7 +442,7 @@ def main(args):
     # Get OSM road vector data
     #############################################
     # Query OpenStreetMap for road vector data
-
+    road_vector_output_fpath = ""
     if args.roads:
         get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
         road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
@@ -459,6 +478,7 @@ def main(args):
              'segment-by-height',
              cmd_args)
 
+
     # pythorch is broken with missing symbol.
     # That is not that surprising, given that we use three repos for
     # binary packages: conda-forge, defaults and pytorch. In this case
@@ -473,6 +493,7 @@ def main(args):
     # # Material Segmentation
     # #############################################
 
+    material_classifier_outdir = ""
     # if args.image:
     #     material_classifier_outdir = os.path.join(working_dir, 'material-classification')
     #     cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
@@ -524,6 +545,7 @@ def main(args):
              'roof-geon-extraction',
              cmd_args)
 
+    texture_mapping_outdir = ""
     if not args.image:
         occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
     else:
@@ -568,7 +590,7 @@ def main(args):
                  cmd_args)
 
     #############################################
-    # 3D Tiles Generation
+    # 3D Tiles Generation from buildings
     #############################################
     tiler_outdir = os.path.join(working_dir, 'tiler')
     if args.image:

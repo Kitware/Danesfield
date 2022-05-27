@@ -8,5 +8,4 @@
 ~/miniconda3/bin/conda build -m conda_build_config.yaml laspy
 ~/miniconda3/bin/conda build -m conda_build_config.yaml pubgeo-tools
 ~/miniconda3/bin/conda build -m conda_build_config.yaml pubgeo-core3d-metrics
-# ~/miniconda3/bin/conda build -m conda_build_config.yaml gaia
 ~/miniconda3/bin/conda build -m conda_build_config.yaml core3d-tf_ops
