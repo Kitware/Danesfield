@@ -25,10 +25,10 @@ tensorflowgpu:
   - 1.14
 
 pin_run_as_build:
-  boostcpp: x
-  libgdal: x
-  pdal: x
-  opencv: x
-  qhull: x
-  tensorflowgpu: x
-  python: x
+  python: x.x
+  boostcpp: x.x
+  libgdal: x.x
+  pdal: x.x
+  opencv: x.x
+  qhull: x.x
+  tensorflowgpu: x.x

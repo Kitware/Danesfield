@@ -18,7 +18,6 @@ else
     )
 fi
 
-# now we can start configuring
 cmake .. -G "Ninja" \
     -Wno-dev \
     -DCMAKE_BUILD_TYPE=$BUILD_CONFIG \

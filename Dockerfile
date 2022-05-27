@@ -171,12 +171,10 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/zeux/meshoptimizer.git src
      make -j"]
 
 
-
-COPY ./deployment/conda/conda_env.yml \
-     ./danesfield/deployment/conda/conda_env.yml
+COPY deployment/conda/conda_env.yml /root/conda_env.yml
 
 # Create CORE3D Conda environment
-RUN ${CONDA} env create  -f ./danesfield/deployment/conda/conda_env.yml -n core3d
+RUN ${MAMBA} env create  -f /root/conda_env.yml -n core3d
 
 
 # Add the conda recipes for the build
@@ -189,46 +187,46 @@ ARG CHANNELS="-c conda-forge/label/cf202003 -c defaults"
 WORKDIR /root/conda-recipes
 
 ADD conda-recipes/recipes/liblas /root/conda-recipes/liblas
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml liblas
-# RUN ${CONDA} install  -n core3d -c local liblas
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml liblas
+RUN ${MAMBA} install  -n core3d -c local liblas
 
 ADD conda-recipes/recipes/pcl /root/conda-recipes/pcl
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml pcl
-# RUN ${CONDA} install  -n core3d -c local pcl
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pcl
+RUN ${MAMBA} install  -n core3d -c local pcl
 
 # this package does not exist on conda-forge. It only works with
 # a certain version of pcl which we need to build as well.
 ADD conda-recipes/recipes/python-pcl /root/conda-recipes/python-pcl
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml python-pcl
-# RUN ${CONDA} install  -n core3d -c local python-pcl
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml python-pcl
+RUN ${MAMBA} install  -n core3d -c local python-pcl
 
 ADD conda-recipes/recipes/vtk /root/conda-recipes/vtk
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml vtk
-# RUN ${CONDA} install  -n core3d -c local vtk
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml vtk
+# RUN ${MAMBA} install  -n core3d -c local vtk
 
 ADD conda-recipes/recipes/texture-atlas /root/conda-recipes/texture-atlas
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml texture-atlas
-# RUN ${CONDA} install  -n core3d -c local texture-atlas
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml texture-atlas
+# RUN ${MAMBA} install  -n core3d -c local texture-atlas
 
 ADD conda-recipes/recipes/core3d-purdue /root/conda-recipes/core3d-purdue
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml core3d-purdue
-# RUN ${CONDA} install  -n core3d -c local core3d-purdue
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml core3d-purdue
+RUN ${MAMBA} install  -n core3d -c local core3d-purdue
 
 ADD conda-recipes/recipes/laspy /root/conda-recipes/laspy
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml laspy
-# RUN ${CONDA} install  -n core3d -c local laspy
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml laspy
+# RUN ${MAMBA} install  -n core3d -c local laspy
 
 ADD conda-recipes/recipes/pubgeo-tools /root/conda-recipes/pubgeo-tools
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-tools
-# RUN ${CONDA} install  -n core3d -c local pubgeo-tools
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-tools
+# RUN ${MAMBA} install  -n core3d -c local pubgeo-tools
 
 ADD conda-recipes/recipes/pubgeo-core3d-metrics /root/conda-recipes/pubgeo-core3d-metrics
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-core3d-metrics
-# RUN ${CONDA} install  -n core3d -c local pubgeo-core3d-metrics
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-core3d-metrics
+# RUN ${MAMBA} install  -n core3d -c local pubgeo-core3d-metrics
 
 ADD conda-recipes/recipes/core3d-tf_ops /root/conda-recipes/core3d-tf_ops
-RUN ${CONDA} build ${CHANNELS} -m conda_build_config.yaml core3d-tf_ops
-# RUN ${CONDA} install  -n core3d -c local core3d-tf-ops
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml core3d-tf_ops
+# RUN ${MAMBA} install  -n core3d -c local core3d-tf-ops
 
 
 WORKDIR /
@@ -242,7 +240,7 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
   pip install -e ./danesfield"]
 
 # Clean up.
-RUN ${CONDA} clean -tipsy
+RUN ${MAMBA} clean -tipsy
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]

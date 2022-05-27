@@ -120,6 +120,41 @@ def py_cmd(tool_path):
     return ['python', '-u', tool_path]
 
 
+def run_step_switch_env(conda_env, working_dir, step_name, command, abort_on_error=True):
+    '''Runs a command if it has not already been run successfully.
+
+    Before the command is run, we activate conda_env.
+
+    and exit status files are written to `working_dir`.  This script
+    will exit(1) if the command's exit status is anything but 0, and
+    if `abort_on_error` is True.
+
+    The stdout and stderr of the command are both printed to stdout
+    and written to the log file.
+
+    :param working_dir: Directory to create for log and exit status
+    output files.
+    :type working_dir: str
+
+    :param step_name: Nominal identifier for the step.
+    :type step_name: str
+
+    :param command: Command passed directly to `subprocess.Popen`.
+    :type command: array or str
+
+    :param abort_on_error: If True, the program will exit if the step
+    fails.  Default is True.
+    :type abort_on_error: bool
+
+    '''
+    command_switch_env = ['source', '/opt/conda/etc/profile.d/conda.sh', '&&',
+                          'conda', 'activate', conda_env, '&&',
+                          'export', 'PYTHONPATH=/danesfield', '&&']
+    command_switch_env.extend(command)
+    # no need to switch back as that happens when the process finishes.
+    string_command = " ".join(command_switch_env)
+    return run_step(working_dir, step_name, string_command, abort_on_error)
+
 def run_step(working_dir, step_name, command, abort_on_error=True):
     '''
     Runs a command if it has not already been run successfully.  Log
@@ -172,13 +207,21 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
         logging.info('---- Running step: {} ----'.format(step_name))
         logging.debug(command)
         # Run the step; newline buffered text
-        proc = subprocess.Popen(command,
-                                stderr=subprocess.STDOUT,
-                                stdout=subprocess.PIPE,
-                                universal_newlines=True,
-                                bufsize=1)
-
-        # Write the output/err both to stdout and the log file
+        if (isinstance(command,str)):
+            proc = subprocess.Popen(command,
+                                    stderr=subprocess.STDOUT,
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True,
+                                    bufsize=1,
+                                    shell=True,
+                                    executable='/bin/bash')
+        else:
+            proc = subprocess.Popen(command,
+                                    stderr=subprocess.STDOUT,
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True,
+                                    bufsize=1)
+            # Write the output/err both to stdout and the log file
         with open(step_log_fpath, 'w') as out_f:
             for line in proc.stdout:
                 print(line, end='')
@@ -541,9 +584,9 @@ def main(args):
     cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
                      '--utm_zone', str(utm_zone)])
 
-    run_step(tiler_outdir,
-             'tiler',
-             cmd_args)
+    run_step_switch_env('tiler', tiler_outdir,
+                 'tiler',
+                 cmd_args)
 
     #############################################
     # Buildings to DSM
