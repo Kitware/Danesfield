@@ -138,18 +138,23 @@ def read_points_pdal(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
         _lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
     """
-    Reads a pdal file files[0], between begin_feature_index and end_feature_index points.
+    Reads a point set from a list of pdal files
     """
-    logging.info("Reading: %s", files[0])
-    if len(files) > 1:
-        logging.warning("Can only process one las file for now.")
-    reader = vtkPDALReader()
-    reader.SetFileName(files[0])
-    reader.Update()
-    root = reader.GetOutput()
+    append = vtkAppendPolyData()
+    for i, file_name in enumerate(files):
+        reader = vtkPDALReader()
+        reader.SetFileName(file_name)
+        print("Reading {} ...".format(file_name))
+        reader.Update()
+        polydata = reader.GetOutput()
+        if polydata.GetNumberOfPoints() == 0:
+            logging.warning("Empty PDAL file: %s", files[i])
+            continue
+        append.AddInputDataObject(polydata)
+    append.Update()
     for i in range(3):
         file_offset[i] = 0
-    return root
+    return append.GetOutput()
 
 
 def read_buildings_citygml(
@@ -184,6 +189,7 @@ READER = {
              vtkCesium3DTilesWriter.Mesh: read_buildings_obj},
     ".gml": {vtkCesium3DTilesWriter.Buildings: read_buildings_citygml},
     ".las": {vtkCesium3DTilesWriter.Points: read_points_pdal},
+    ".laz": {vtkCesium3DTilesWriter.Points: read_points_pdal},
     ".vtp": {vtkCesium3DTilesWriter.Points: read_points_vtp}
 }
 
@@ -329,7 +335,7 @@ def main(args):
     parser.add_argument("--content_gltf", action="store_true",
                         help="Store tile content using B3DM (or PNTS) or GLB."
                         "GLB use the 3DTILES_content_gltf extension.")
-    parser.add_argument("-l", "--lod", action="store_true",
+    parser.add_argument("-l", "--lod", type=int,
                         help="Level of detail to be read (if available)",
                         default=2)
     parser.add_argument("--dont_save_textures", action="store_true",
@@ -344,7 +350,8 @@ def main(args):
     parser.add_argument("--crs",
                         help="Coordinate reference system (CRS) or spatial reference system (SRS)")
     parser.add_argument("--points_color_array",
-                        help="Name of the array containing the RGB or RGBA")
+                        help="Name of the array containing the RGB or RGBA. The values\n"
+                        "in the array can be unsigned char and unsigned short.")
     parser.add_argument("--utm_hemisphere",
                         help="UTM hemisphere for the OBJ file coordinates.",
                         choices=["N", "S"], default="N")

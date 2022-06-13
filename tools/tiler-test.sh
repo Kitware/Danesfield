@@ -2,7 +2,7 @@
 
 tiler()
 {
-    PYTHONPATH="${SCRIPT_DIR}/.."  "${VTK_DIR}/bin/vtkpython" "${SCRIPT_DIR}/tiler.py" "$@"
+    PYTHONPATH="${SCRIPT_DIR}/.." "${VTK_DIR}/bin/vtkpython" "${SCRIPT_DIR}/tiler.py" "$@"
 }
 
 print_parameters ()
@@ -40,7 +40,7 @@ eval set -- "$PARAMS"
 # generate 3D Tiles
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 DATA_DIR=~/data
-VTK_DIR=~/projects/VTK/build-3dtiles-pointcloud
+VTK_DIR=~/projects/VTK/build-3dtiles-glb
 echo "$SCRIPT_DIR" "$DATA_DIR" "$VTK_DIR"
 
 if [ "${CITY}" = "jacksonville" ]; then
@@ -92,6 +92,22 @@ elif [ "${CITY}" = "aphill-points-gltf" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/TeleSculptor/examples/09172008flight1tape3_2/results/textured_mesh.vtp -o "${CITY}" --utm_zone 18 --utm_hemisphere N --translation 293513 4229533 -71.6739744841 -t 10000 --input_type 1 --points_color_array mean --content_gltf)
+elif [ "${CITY}" = "berlin3" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml-three-buildings.gml -o "${CITY}" --crs EPSG:25833 -t 2)
+elif [ "${CITY}" = "rapid3d-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler /media/videonas/fouo/projects/danesfield_courier/Rapid3D/adhoc4/filter-black-points.las -o "${CITY}" --utm_zone 18 --utm_hemisphere N -t 20000 --input_type 1 --points_color_array Color)
+elif [ "${CITY}" = "ukraine-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler /run/user/1000/gvfs/afp-volume:host=bananas.local,user=dan.lipsa,volume=fouo/data_golden/NGA/ukraine/ukraine_sfm_[01234]_classified.laz -o "${CITY}" --utm_zone 37 --utm_hemisphere N -t 20000 --input_type 1 --points_color_array Color)
+elif [ "${CITY}" = "rapid3d-gltf" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler /media/videonas/fouo/projects/danesfield_courier/results/pc_texture_maps/Rapid3D/adhoc4noBlack/*.obj -o "${CITY}" --utm_zone 18 --utm_hemisphere N -t 20 --content_gltf)
 else
     echo "Error: Cannot find ${CITY}"
     print_parameters "$0"
