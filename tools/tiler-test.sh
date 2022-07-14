@@ -70,16 +70,15 @@ elif [ "${CITY}" = "jacksonville-mesh" ]; then
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o "${CITY}" --utm_zone 33 --utm_hemisphere N -t 200 --dont_save_textures --number_of_features 10000 --input_type 0)
+    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml "${DATA_DIR}"/Berlin-3D/Friedrichshain-Kreuzberg/citygml.gml -o "${CITY}" --utm_zone 33 --utm_hemisphere N -t 200 --number_of_features 10000 --input_type 0 --dont_save_textures --content_gltf)
 elif [ "${CITY}" = "berlin-stadium" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml-stadium.gml -o "${CITY}" --crs EPSG:25833 -t 100 --number_of_features 1)
 elif [ "${CITY}" = "nyc" ]; then
-    i=1
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml" -o "${CITY}" --crs EPSG:2263 -t 100 --dont_save_textures --content_gltf -m -n 10000)
+    CMD=(tiler "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA1_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA2_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA3_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA4_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA5_3D_Buildings_Merged.gml" -o "${CITY}" --crs EPSG:2263 -t 100 --dont_save_textures --content_gltf)
 elif [ "${CITY}" = "rio-points" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"

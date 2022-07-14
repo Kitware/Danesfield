@@ -166,21 +166,34 @@ def read_buildings_citygml(
     """
     for i in range(3):
         file_offset[i] = 0
-    logging.info("Parsing: %s", files[0])
-    if len(files) > 1:
-        logging.warning("Can only process one CityGML file for now.")
-    reader = vtkCityGMLReader()
-    reader.SetFileName(files[0])
-    reader.SetBeginBuildingIndex(begin_feature_index)
-    reader.SetEndBuildingIndex(end_feature_index)
-    reader.SetNumberOfBuildings(number_of_features)
-    reader.SetLOD(lod)
-    reader.Update()
-    root = reader.GetOutput()
-    if not root:
-        logging.error("Expecting vtkMultiBlockDataSet")
-        return None
-    return root
+    allBuildings = vtkMultiBlockDataSet()
+    for i, file_name in enumerate(files):
+        print("Reading {} ...".format(file_name))
+        reader = vtkCityGMLReader()
+        reader.SetFileName(file_name)
+        reader.SetBeginBuildingIndex(begin_feature_index)
+        reader.SetEndBuildingIndex(end_feature_index)
+        reader.SetNumberOfBuildings(number_of_features)
+        reader.SetLOD(lod)
+        reader.Update()
+        mb = reader.GetOutput()
+        if not mb:
+            logging.error("Expecting vtkMultiBlockDataSet")
+            return None
+        currentNumberOfBlocks = mb.GetNumberOfBlocks()
+        allNumberOfBlocks = allBuildings.GetNumberOfBlocks()
+        allBuildings.SetNumberOfBlocks(allNumberOfBlocks + currentNumberOfBlocks)
+        # add all buildings to all
+        buildingIt = mb.NewTreeIterator()
+        buildingIt.VisitOnlyLeavesOff()
+        buildingIt.TraverseSubTreeOff()
+        buildingIt.InitTraversal()
+        j = 0
+        while not buildingIt.IsDoneWithTraversal():
+            allBuildings.SetBlock(allNumberOfBlocks + j, buildingIt.GetCurrentDataObject())
+            j = j + 1
+            buildingIt.GoToNextItem()
+    return allBuildings
 
 
 READER = {
