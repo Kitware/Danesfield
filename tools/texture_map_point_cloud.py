@@ -54,7 +54,6 @@ def timer_func(func):
     return wrap_func
 
 # Load point cloud data with pdal
-@timer_func
 def load_point_cloud(filename):
     pdal_input = u"""
     {{
@@ -88,7 +87,7 @@ def tri_area(tri):
 
 # Class to support texture mapping point cloud data to meshes
 class pointCloudTextureMapper(object):
-    def __init__(self, points, data, output_dir, mode):
+    def __init__(self, points, data, output_dir):
 
         # Size of texture image
         self.img_size = (500, 500, 3)
@@ -104,12 +103,8 @@ class pointCloudTextureMapper(object):
         # Location to save data
         self.output_dir = output_dir
 
-        # Splat or sample mode
-        self.mode = mode
-
     # Create a texture map image by finding the nearest point to a pixel and using
     # its value to set the color.
-    @timer_func
     def texture_sample(self, img, mesh):
 
         faces = mesh.faces()
@@ -154,28 +149,6 @@ class pointCloudTextureMapper(object):
             for px, ci in zip(pixel_indices, closest_indices[1]):
                 img[px[0], px[1], :] = self.data[ci]
 
-    # Create a texture map image by taking every point in the point cloud and
-    # mapping it to the nearest point on the mesh.
-    @timer_func
-    def texture_splat(self, img, mesh, points):
-
-        closest_points = []
-        uv_coords = mesh_closest_points(points, mesh, closest_points)
-
-        img_size = img.shape
-        img_pre_arr = [ [ [] for i in range(img_size[0]) ] for j in range(img_size[1]) ]
-
-        for (idx, u, v), rgb in zip(uv_coords, self.data):
-            tx_coord = mesh.texture_map(idx, u, v)
-            px, py = int((1.-tx_coord[1])*img_size[1]), int(tx_coord[0]*img_size[0])
-            img_pre_arr[px][py].append(rgb.astype(np.float64))
-
-        # Take the average at each pixel
-        for i in range(img_size[0]):
-            for j in range(img_size[1]):
-                if img_pre_arr[i][j]:
-                    img[i, j] = np.array(img_pre_arr[i][j]).mean(axis=0)
-
     def process_mesh(self, meshfile):
         print('Processing mesh ', meshfile)
         new_mesh = Mesh.from_obj_file(str(meshfile))
@@ -187,15 +160,7 @@ class pointCloudTextureMapper(object):
         # Create the texture image
         img_arr = np.zeros(self.img_size, dtype=np.float32)
 
-        if self.mode == 'splat':
-            kw_points = []
-            for p in self.points:
-                kw_point = Point3d()
-                kw_point.value = p
-                kw_points.append(kw_point)
-            self.texture_splat(img_arr, new_mesh, kw_points)
-        else:
-            self.texture_sample(img_arr, new_mesh)
+        self.texture_sample(img_arr, new_mesh)
 
         new_name = self.output_dir / meshfile.stem
 
@@ -215,8 +180,6 @@ def main(args):
     parser.add_argument("point_cloud_file", help="path to point cloud file")
     parser.add_argument("--output_dir", help="directory to save the results. "
                         "Defaults to mesh_dir")
-    parser.add_argument("--mode", help="toggle between 'sample' and 'splat'. "
-                        "Defaults to sample.")
     args = parser.parse_args(args)
 
     # Load kwiver modules
@@ -257,7 +220,7 @@ def main(args):
     rgb_data = rgb_data/np.max(rgb_data)
     # rgb_data = rgb_data/2048.
 
-    texMapper = pointCloudTextureMapper(points, rgb_data, output_dir, args.mode)
+    texMapper = pointCloudTextureMapper(points, rgb_data, output_dir)
 
     for mf in mesh_files:
         texMapper.process_mesh(mf)
