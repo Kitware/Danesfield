@@ -105,10 +105,13 @@ class pointCloudTextureMapper(object):
 
     # Create a texture map image by finding the nearest point to a pixel and using
     # its value to set the color.
-    def texture_sample(self, img, mesh):
+    def texture_sample(self, img, mesh, utm_shift):
 
         faces = mesh.faces()
-        vertices = mesh.vertices()
+        vertices = np.array(mesh.vertices())
+
+        for v in vertices:
+            v += utm_shift
 
         img_size = img.shape
         img_dx = 1./img_size[0]
@@ -149,6 +152,24 @@ class pointCloudTextureMapper(object):
             for px, ci in zip(pixel_indices, closest_indices[1]):
                 img[px[0], px[1], :] = self.data[ci]
 
+    def utm_shift(self, meshfile):
+    # Check for UTM corrections in mesh file header
+        with open(meshfile, "r") as in_f:
+            header = [next(in_f) for x in range(3)]
+
+        # Set the shift values for the mesh from header data
+        shift = np.zeros(3)
+        for l in header:
+            cols = l.split()
+            if '#x' in cols[0]:
+                shift[0] = float(cols[2])
+            elif '#y' in cols[0]:
+                shift[1] = float(cols[2])
+            elif '#z' in cols[0]:
+                shift[2] = float(cols[2])
+
+        return shift
+
     def process_mesh(self, meshfile):
         print('Processing mesh ', meshfile)
         new_mesh = Mesh.from_obj_file(str(meshfile))
@@ -160,7 +181,7 @@ class pointCloudTextureMapper(object):
         # Create the texture image
         img_arr = np.zeros(self.img_size, dtype=np.float32)
 
-        self.texture_sample(img_arr, new_mesh)
+        self.texture_sample(img_arr, new_mesh, self.utm_shift(meshfile))
 
         new_name = self.output_dir / meshfile.stem
 
@@ -196,24 +217,8 @@ def main(args):
     else:
         output_dir = Path(args.mesh_dir)
 
-    # Check for UTM corrections in mesh file header
-    with open(mesh_files[0], "r") as in_f:
-        header = [next(in_f) for x in range(3)]
-
-    # Set the shift values for the mesh from header data
-    utm_shift = np.zeros(3)
-    for l in header:
-      cols = l.split()
-      if '#x' in cols[0]:
-          utm_shift[0] = float(cols[2])
-      elif '#y' in cols[0]:
-          utm_shift[1] = float(cols[2])
-      elif '#z' in cols[0]:
-          utm_shift[2] = float(cols[2])
-
     pc_data = load_point_cloud(args.point_cloud_file)
-    points = (np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
-              - utm_shift)
+    points = np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
 
     # Currently just transfer point color to mesh
     rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
