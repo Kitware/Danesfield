@@ -32,11 +32,11 @@ After downloading the Docker container, imagery, and models, the script can run 
 
 The full docker run command executed by this demo script will look something like this:
 ::
-	docker run -it --gpus all --shm-size 8G -v /home/danesfield/Demo/imgpath:/mnt 
-	-v /home/danesfield/Demo/outdir:/workdir -v /home/danesfield/Demo/configdir:/configs 
-	-v /home/danesfield/Demo/Models:/models kitware/danesfield source 
-	/opt/conda/etc/profile.d/conda.sh && conda activate core3d && 
-	python danesfield/tools/run_danesfield.py --image --vissat 
+	docker run -it --gpus all --shm-size 8G -v /home/danesfield/Demo/imgpath:/mnt \
+	-v /home/danesfield/Demo/outdir:/workdir -v /home/danesfield/Demo/configdir:/configs \
+	-v /home/danesfield/Demo/Models:/models kitware/danesfield source \
+	/opt/conda/etc/profile.d/conda.sh && conda activate core3d && \
+	python danesfield/tools/run_danesfield.py --image --vissat \
 	/configs/input_Jacksonville.ini
 
 This can be used as a starting point for manually running the Danesfield Docker container in other ways. Notably, the ``--image`` option indicates that the pipeline should start with satellite images (instead of a point cloud) and the ``--vissat`` option indicates that VisSat should be used to generate a point cloud from the images. To process a point cloud, leave off both of these options and in the Danesfield configuration (see section below) set ``p3d_path`` to the point cloud file to use. 
