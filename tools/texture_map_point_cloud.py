@@ -14,22 +14,22 @@ the nearest point in the point cloud.
 '''
 
 import argparse
-import math
-import matplotlib.pyplot as plt
+import imageio
+import json
 import numpy as np
 import pdal
-import random
 import sys
 
 from pathlib import Path
 from scipy.spatial import KDTree
 from time import time
 
+from danesfield.gpm import GPM
+from danesfield.gpm_decode64 import json_numpy_array_hook
+
 from kwiver.vital.types import Mesh
-from kwiver.vital.types.point import Point3d
 from kwiver.vital.algo import UVUnwrapMesh
 from kwiver.arrows.core import mesh_triangulate
-from kwiver.arrows.core import mesh_closest_points
 
 from kwiver.vital.modules import load_known_modules
 
@@ -87,25 +87,28 @@ def tri_area(tri):
 
 # Class to support texture mapping point cloud data to meshes
 class pointCloudTextureMapper(object):
-    def __init__(self, points, data, output_dir):
+    def __init__(self, points, output_dir, color_data, err_data=None):
 
         # Size of texture image
-        self.img_size = (500, 500, 3)
+        self.img_size = (500, 500)
 
         self.points = points
 
         # KDTree for efficient searches of closest point
         self.search_tree = KDTree(points)
 
-        # Data to be mapped to meshes
-        self.data = data
+        # Color data to be mapped to meshes
+        self.color_data = color_data
+
+        # Error data to be mapped to meshes
+        self.err_data = err_data
 
         # Location to save data
         self.output_dir = output_dir
 
     # Create a texture map image by finding the nearest point to a pixel and using
     # its value to set the color.
-    def texture_sample(self, img, mesh, utm_shift):
+    def texture_sample(self, img, mesh, data, utm_shift):
 
         faces = mesh.faces()
         vertices = np.array(mesh.vertices())
@@ -150,7 +153,7 @@ class pointCloudTextureMapper(object):
             closest_indices = self.search_tree.query(pixel_points)
 
             for px, ci in zip(pixel_indices, closest_indices[1]):
-                img[px[0], px[1], :] = self.data[ci]
+                img[px[0], px[1], :] = data[ci]
 
     def utm_shift(self, meshfile):
     # Check for UTM corrections in mesh file header
@@ -173,32 +176,41 @@ class pointCloudTextureMapper(object):
     def process_mesh(self, meshfile):
         print('Processing mesh ', meshfile)
         new_mesh = Mesh.from_obj_file(str(meshfile))
+        new_name = self.output_dir / meshfile.stem
 
         mesh_triangulate(new_mesh)
         uv_unwrap_mesh = UVUnwrapMesh.create('core')
         uv_unwrap_mesh.unwrap(new_mesh)
 
-        # Create the texture image
-        img_arr = np.zeros(self.img_size, dtype=np.float32)
+        # Create the color texture image
+        color_img = np.zeros(self.img_size + (3,), dtype=np.float32)
 
-        self.texture_sample(img_arr, new_mesh, self.utm_shift(meshfile))
-
-        new_name = self.output_dir / meshfile.stem
-
-        plt.imsave(new_name.with_suffix('.png'), img_arr)
+        self.texture_sample(color_img, new_mesh, self.color_data, self.utm_shift(meshfile))
+        imageio.imwrite(new_name.with_suffix('.png'), color_img)
 
         with open(new_name.with_suffix('.mtl'), 'w') as f:
             f.write(mtl_template.format(new_name.with_suffix('.png').name))
 
         new_mesh.set_tex_source(new_name.with_suffix('.mtl').name)
+
+        if self.err_data is not None:
+            err_img = np.zeros(self.img_size + (3, 3), dtype=np.float32)
+            err_img[:] = np.nan
+            self.texture_sample(err_img, new_mesh, self.err_data, self.utm_shift(meshfile))
+            for i in range(3):
+                for j in range(i+1):
+                    tiff_name = Path(str(new_name) + f'_{i}_{j}')
+                    imageio.imwrite(tiff_name.with_suffix('.tiff'), err_img[:,:,i,j])
+
         Mesh.to_obj_file(str(new_name.with_suffix('.obj')), new_mesh)
 
 def main(args):
     parser = argparse.ArgumentParser(
-        description="Take point cloud data and add a texture map to a mesh that "
-                    " paints that data on the mesh.")
+        description="Texture map either point cloud data or GPM error data "
+                    "associated with the point cloud.")
     parser.add_argument("mesh_dir", help="path to directory holding the mesh files")
-    parser.add_argument("point_cloud_file", help="path to point cloud file")
+    parser.add_argument("point_cloud", help="path to point cloud file")
+    parser.add_argument("--gpm_json", help="JSON file with extracted GPM metadata")
     parser.add_argument("--output_dir", help="directory to save the results. "
                         "Defaults to mesh_dir")
     args = parser.parse_args(args)
@@ -217,15 +229,27 @@ def main(args):
     else:
         output_dir = Path(args.mesh_dir)
 
-    pc_data = load_point_cloud(args.point_cloud_file)
+    pc_data = load_point_cloud(args.point_cloud)
     points = np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
 
-    # Currently just transfer point color to mesh
-    rgb_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
-    rgb_data = rgb_data/np.max(rgb_data)
-    # rgb_data = rgb_data/2048.
+    # Get color data from point cloud
+    color_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
+    color_data = color_data/np.max(color_data)
 
-    texMapper = pointCloudTextureMapper(points, rgb_data, output_dir)
+    # Get error data from gpm metadata if available
+    if args.gpm_json:
+        with open(args.gpm_json) as mf:
+            gpm = GPM(json.load(mf, object_hook=json_numpy_array_hook))
+
+        if 'PPE_LUT_Index' in pc_data.dtype.names:
+            gpm.setupPPELookup(points, pc_data['PPE_LUT_Index'])
+
+        print("Getting error")
+        err_data = gpm.get_per_point_error(points)
+    else:
+        err_data = None
+
+    texMapper = pointCloudTextureMapper(points, output_dir, color_data, err_data)
 
     for mf in mesh_files:
         texMapper.process_mesh(mf)
