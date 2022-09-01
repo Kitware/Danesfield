@@ -1,0 +1,26 @@
+{
+  "dataset_dir": "/mnt/UCSD/WV3/PAN",
+  "work_dir": "/workdir/UCSD_new/vissat",
+  "bounding_box": {
+    "zone_number": 11,
+    "hemisphere": "N",
+    "ul_easting": 477262,
+    "ul_northing": 3638321,
+    "width": 1003.0,
+    "height": 997.0
+  },
+  "steps_to_run": {
+    "clean_data": true,
+    "crop_image": true,
+    "derive_approx": true,
+    "choose_subset": true,
+    "colmap_sfm_perspective": true,
+    "inspect_sfm_perspective": false,
+    "reparam_depth": true,
+    "colmap_mvs": true,
+    "aggregate_2p5d": true,
+    "aggregate_3d": true
+  },
+  "alt_min": -500.0,
+  "alt_max": 500.0
+}

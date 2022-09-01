@@ -1,0 +1,26 @@
+{
+    "dataset_dir": "/mnt/Omaha/WV3/PAN",
+    "work_dir": "/workdir/Omaha/vissat",
+    "bounding_box": {
+        "zone_number": 15,
+        "hemisphere": "N",
+        "ul_easting": 252753,
+        "ul_northing": 4573181,
+        "width": 1018.0,
+        "height": 977.0
+    },
+    "steps_to_run": {
+        "clean_data": true,
+        "crop_image": true,
+        "derive_approx": true,
+        "choose_subset": true,
+        "colmap_sfm_perspective": true,
+        "inspect_sfm_perspective": false,
+        "reparam_depth": true,
+        "colmap_mvs": true,
+        "aggregate_2p5d": true,
+        "aggregate_3d": true
+    },
+    "alt_min": 1000.0,
+    "alt_max": 1500.0
+}
