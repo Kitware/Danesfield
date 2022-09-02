@@ -9,40 +9,61 @@
 
 import argparse
 from glob import glob
+import json
 import logging
+import math
 import os
+import re
 from subprocess import run
 from typing import (
     List,
+    Tuple,
     Optional)
 
 from vtkmodules.vtkIOCityGML import vtkCityGMLReader
 from vtkmodules.vtkIOXML import vtkXMLPolyDataReader
 from vtkmodules.vtkIOGeometry import vtkOBJReader
 from vtkmodules.vtkIOPDAL import vtkPDALReader
+from vtkmodules.vtkIOImage import (
+    vtkPNGWriter,
+    vtkTIFFReader)
 from vtkmodules.vtkIOCesium3DTiles import vtkCesium3DTilesWriter
 from vtkmodules.vtkCommonDataModel import (
-    vtkDataSet,
+    vtkDataObject,
     vtkFieldData,
+    vtkImageData,
     vtkMultiBlockDataSet)
 from vtkmodules.vtkCommonCore import (
     vtkStringArray,
+    vtkUnsignedCharArray,
     vtkVersion)
 from vtkmodules.vtkFiltersCore import vtkAppendPolyData
-
+from vtkmodules.vtkImagingCore import vtkImageFlip
 from danesfield import gdal_utils
 
 
-def get_obj_texture_file_name(path: str) -> str:
+def get_obj_texture_file_names(path: str) -> Tuple[List[str], List[str]]:
     """
-    Given an OBJ file name return a file name for the texture by removing .obj and
-    adding .png
+    Given an OBJ file name return a file names for the textures by removing .obj and
+    looking for file_name.png, file_name_1.png, ..., file_name_x.tiff, ...
+    PNGs have to be specified before TIFFs.
+    The textures could contain colors or properties.
     """
     file_no_ext = os.path.splitext(os.path.basename(path))[0]
-    return file_no_ext + ".png"
+    dir = os.path.dirname(path)
+    png_re = r'^' + re.escape(file_no_ext) + r'(|_\d).png$'
+    png_files = [f for f in os.listdir(dir) if re.search(png_re, f, re.IGNORECASE)]
+    tiff_re = r'^' + re.escape(file_no_ext) + r'(|_\d).tiff$'
+    tiff_files = [f for f in os.listdir(dir) if re.search(tiff_re, f, re.IGNORECASE)]
+    # remove from the list of PNGs files that have the same basename as TIFFs. Assume
+    # those are quantized files previously generated
+    png_files = [f + ".png" for f in set([os.path.splitext(f)[0] for f in png_files]).difference([os.path.splitext(f)[0] for f in tiff_files])]
+    tiff_files.sort(key=lambda f: int(re.sub('\\D', '', f)))
+    print("png: {}, tiff: {}".format(png_files, tiff_files))
+    return (png_files, tiff_files)
 
 
-def set_field(obj: vtkDataSet, name: str, value: str):
+def set_field(obj: vtkDataObject, name: str, values: List[str]):
     """
     Adds to an obj an field array name with 1 element value.
     """
@@ -52,8 +73,12 @@ def set_field(obj: vtkDataSet, name: str, value: str):
         obj.SetFieldData(newfd)
         field_data = newfd
     string_array = vtkStringArray()
-    string_array.SetNumberOfTuples(1)
-    string_array.SetValue(0, value)
+    string_array.SetNumberOfTuples(len(values))
+    print("{}: ".format(name), end='')
+    for i, value in enumerate(values):
+        print(value, end=', ')
+        string_array.SetValue(i, value)
+    print()
     string_array.SetName(name)
     field_data.AddArray(string_array)
 
@@ -61,12 +86,133 @@ def set_field(obj: vtkDataSet, name: str, value: str):
 UNINITIALIZED : int = 2147483647
 
 
+def path_basename(path: str) -> str:
+    file_no_ext = os.path.splitext(os.path.basename(path))[0]
+    basename_re = r'([^_]+)(_\d)?'
+    basename = re.match(basename_re, file_no_ext)
+    if basename:
+        return basename.group(1)
+    else:
+        logging.error("Cannot extract basename of: {}".format(file_no_ext))
+        return ""
+
+
+property_texture_template = """{
+        "EXT_structural_metadata": {
+            "schema": {
+                "classes": {
+                    "mesh": {
+                        "name": "Mesh GPM error",
+                        "properties": {
+                        }
+                    }
+                }
+            },
+            "propertyTextures": [
+                {
+                    "class": "mesh",
+                    "properties": {
+                    }
+                }
+            ]
+        }
+    }"""
+
+def quantize(dir: str, tiff_files: List[str], texture_index: int, generate_json: bool) -> Tuple[List[str], Optional[str]]:
+    """
+    Quantizes a float array in each tiff file to one component in a RGBA png file and
+    generates a json describing property textures encoded if generate_json is true.
+    The json file is described by
+    https://github.com/CesiumGS/3d-tiles/tree/main/specification/Metadata
+    and
+    https://github.com/CesiumGS/glTF/tree/3d-tiles-next/extensions/2.0/Vendor/EXT_structural_metadata
+    """
+    png_count = math.ceil(len(tiff_files) / 4)
+    pbasename = path_basename(tiff_files[0])
+    quantized_files = []
+    pt = json.loads(property_texture_template)
+    schema_properties = pt['EXT_structural_metadata']['schema']['classes']\
+        ['mesh']['properties']
+    propertyTextures_properties = pt['EXT_structural_metadata']['propertyTextures'][0]\
+        ['properties']
+    for i in range(png_count):
+        # read 4 tiff files per png file
+        png_data = vtkImageData()
+        png_array = vtkUnsignedCharArray()
+        png_array.SetNumberOfComponents(4)
+        for j in range(4):
+            tiff_index = i*4 + j
+            if tiff_index < len(tiff_files):
+                print("reading tiff: {}".format(dir + "/" + tiff_files[tiff_index]))
+                tiff_reader = vtkTIFFReader()
+                tiff_reader.SetFileName(dir + "/" + tiff_files[tiff_index])
+                tiff_reader.Update()
+                tiff_data = tiff_reader.GetOutput()
+                tiff_array = tiff_data.GetPointData().GetArray(0)
+                xRange = tiff_array.GetRange()
+                if generate_json:
+                    property_name = "c" + str(i*4 + j)
+                    schema_properties[property_name] = {}
+                    schema_properties[property_name]["name"] = "Covariance " + str(i*4 + j)
+                    schema_properties[property_name]["type"] = "SCALAR"
+                    schema_properties[property_name]["componentType"] = "UINT8"
+                    schema_properties[property_name]["normalized"] = True
+                    schema_properties[property_name]["offset"] = xRange[0]
+                    schema_properties[property_name]["scale"] = xRange[1] - xRange[0]
+
+                    propertyTextures_properties[property_name] = {}
+                    propertyTextures_properties[property_name]["index"] = texture_index + i
+                    propertyTextures_properties[property_name]["texCoord"] = 0
+                    propertyTextures_properties[property_name]["channels"] = [ j ]
+
+                dims = tiff_data.GetDimensions()
+                if j == 0:
+                    png_data.SetDimensions(dims)
+                    png_array.SetNumberOfTuples(dims[0] * dims[1])
+                else:
+                    prev_dims = png_data.GetDimensions()
+                    if not prev_dims == dims:
+                        logging.error("TIFF files with different dimensions. 0: {} {}: {}".format(prev_dims, j, dims))
+                for k in range(png_array.GetNumberOfTuples()):
+                    x = tiff_array.GetComponent(k, 0)
+                    png_array.SetComponent(
+                        k, j,
+                        (x - xRange[0]) / (xRange[1] - xRange[0]) * 255)
+            else:
+                for k in range(png_array.GetNumberOfTuples()):
+                    png_array.SetComponent(k, j, 0)
+        png_data.GetPointData().SetScalars(png_array)
+
+        # we have to flip the PNG because we flip the textures in GLTFWriter.
+        flip_y = vtkImageFlip()
+        flip_y.SetFilteredAxis(1)
+        flip_y.SetInputDataObject(png_data)
+
+        png_writer = vtkPNGWriter()
+        png_writer.SetInputConnection(flip_y.GetOutputPort())
+        quantized_file_basename = pbasename + "_" + str(texture_index + i)
+        quantized_files.append( quantized_file_basename + ".png")
+        print("writing png: {}".format(dir + "/" + quantized_file_basename + ".png"))
+        png_writer.SetFileName(dir + "/" + quantized_file_basename + ".png")
+        png_writer.Write()
+    property_texture_file = None
+    if generate_json:
+        property_texture_file = dir + "/" + pbasename + ".json"
+        with open(property_texture_file, "w") as outfile:
+            json.dump(pt, outfile, indent=4)
+    return (quantized_files, property_texture_file)
+
+
 def read_buildings_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float]) ->  Optional[vtkMultiBlockDataSet]:
+        _lod : int, files : List[str], file_offset : List[float]) ->  Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
-    from a list of OBJ files.
+    from a list of OBJ files. It can generate quantized png textures from property
+    textures stored in tiff files. It generates a property texture description
+    for the first OBJ - the assumption is that the property textures are the same for
+    all textures in the dataset.
+    It expects textures in order PNGs first and then TIFFs.
     """
     if number_of_features == UNINITIALIZED and \
        begin_feature_index != UNINITIALIZED and end_feature_index != UNINITIALIZED:
@@ -74,6 +220,7 @@ def read_buildings_obj(
     else:
         feature_range = range(0, min(len(files), number_of_features))
     root = vtkMultiBlockDataSet()
+    property_texture_file = None
     for i in feature_range:
         reader = vtkOBJReader()
         reader.SetFileName(files[i])
@@ -84,17 +231,18 @@ def read_buildings_obj(
         if polydata.GetNumberOfPoints() == 0:
             logging.warning("Empty OBJ file: %s", files[i])
             continue
-        texture_file = get_obj_texture_file_name(files[i])
-        set_field(polydata, "texture_uri", texture_file)
+        (png_files, tiff_files) = get_obj_texture_file_names(files[i])
+        (quantized_files, property_texture_file) = quantize(os.path.dirname(files[i]), tiff_files, len(png_files), i == 0)
+        set_field(polydata, "texture_uri", png_files + quantized_files)
         building = vtkMultiBlockDataSet()
         building.SetBlock(0, polydata)
         root.SetBlock(root.GetNumberOfBlocks(), building)
-    return root
+    return (root, property_texture_file)
 
 
 def read_points_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
+        _lod : int, files : List[str], file_offset : List[float]) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Builds a  pointset from a list of OBJ files.
     """
@@ -111,12 +259,12 @@ def read_points_obj(
             continue
         append.AddInputDataObject(polydata)
     append.Update()
-    return append.GetOutput()
+    return (append.GetOutput(), None)
 
 
 def read_points_vtp(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
+        _lod : int, files : List[str], file_offset : List[float]) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Builds a  pointset from a list of VTP files.
     """
@@ -131,12 +279,12 @@ def read_points_vtp(
             continue
         append.AddInputDataObject(polydata)
     append.Update()
-    return append.GetOutput()
+    return (append.GetOutput(), None)
 
 
 def read_points_pdal(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
+        _lod : int, files : List[str], file_offset : List[float]) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Reads a point set from a list of pdal files
     """
@@ -154,12 +302,12 @@ def read_points_pdal(
     append.Update()
     for i in range(3):
         file_offset[i] = 0
-    return append.GetOutput()
+    return (append.GetOutput(), None)
 
 
 def read_buildings_citygml(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        lod : int, files : List[str], file_offset : List[float]) -> Optional[vtkMultiBlockDataSet]:
+        lod : int, files : List[str], file_offset : List[float]) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
@@ -179,7 +327,7 @@ def read_buildings_citygml(
         mb = reader.GetOutput()
         if not mb:
             logging.error("Expecting vtkMultiBlockDataSet")
-            return None
+            return (None, None)
         currentNumberOfBlocks = mb.GetNumberOfBlocks()
         allNumberOfBlocks = allBuildings.GetNumberOfBlocks()
         allBuildings.SetNumberOfBlocks(allNumberOfBlocks + currentNumberOfBlocks)
@@ -193,7 +341,7 @@ def read_buildings_citygml(
             allBuildings.SetBlock(allNumberOfBlocks + j, buildingIt.GetCurrentDataObject())
             j = j + 1
             buildingIt.GoToNextItem()
-    return allBuildings
+    return (allBuildings, None)
 
 
 READER = {
@@ -239,11 +387,11 @@ def get_files(input_list: List[str]) -> List[str]:
 
 
 def tiler(
-        input_list: List[str], dirname: str, number_of_features: int,
+        input_list: List[str], output_dir: str, number_of_features: int,
         begin_feature_index: int, end_feature_index: int,
         features_per_tile: int, lod: int, input_offset : List[float],
         dont_save_tiles: bool, dont_save_textures: bool, merge_tile_polydata: bool, input_type: int,
-        content_gltf: bool, points_color_array: str, crs: str,
+        content_gltf: bool, content_gltf_save_gltf:bool, points_color_array: str, crs: str,
         utm_zone: int, utm_hemisphere: str):
     """
     Reads the input and converts it to 3D Tiles and saves it
@@ -258,7 +406,7 @@ def tiler(
     if ext not in READER or input_type not in READER[ext]:
         raise Exception("No valid reader for extension {} and input_type {}".format(
             ext, input_type))
-    root = READER[ext][input_type](
+    (root, property_texture_file) = READER[ext][input_type](
         number_of_features, begin_feature_index,
         end_feature_index, lod, files, file_offset)
     if root is None:
@@ -271,10 +419,12 @@ def tiler(
 
     writer = vtkCesium3DTilesWriter()
     writer.SetInputDataObject(root)
-    writer.SetDirectoryName(dirname)
+    writer.SetDirectoryName(output_dir)
     writer.SetTextureBaseDirectory(texture_path)
+    writer.SetPropertyTextureFile(property_texture_file)
     writer.SetInputType(input_type)
     writer.SetContentGLTF(content_gltf)
+    writer.SetContentGLTFSaveGLB(not content_gltf_save_gltf)
     writer.SetOffset(file_offset)
     writer.SetSaveTextures(not dont_save_textures)
     writer.SetSaveTiles(not dont_save_tiles)
@@ -346,8 +496,11 @@ def main(args):
                         help="Select input type Buildings (0), Points(1) or Mesh(2). ",
                         type=check_input_type, default=0)
     parser.add_argument("--content_gltf", action="store_true",
-                        help="Store tile content using B3DM (or PNTS) or GLB."
+                        help="Store tile content using B3DM (or PNTS) or GLB/GLTF."
                         "GLB use the 3DTILES_content_gltf extension.")
+    parser.add_argument("--content_gltf_save_gltf", action="store_true",
+                        help="Store tile content as GLTF or GLB."
+                        "Use the 3DTILES_content_gltf extension.")
     parser.add_argument("-l", "--lod", type=int,
                         help="Level of detail to be read (if available)",
                         default=2)
@@ -395,7 +548,7 @@ def main(args):
         args.features_per_tile, args.lod, args.translation,
         args.dont_save_tiles, args.dont_save_textures, args.merge_tile_polydata,
         args.input_type,
-        args.content_gltf, args.points_color_array, args.crs,
+        args.content_gltf, args.content_gltf_save_gltf, args.points_color_array, args.crs,
         args.utm_zone, args.utm_hemisphere)
 
     if args.input_type == 1:  # Points
@@ -408,7 +561,8 @@ def main(args):
         log_text = "Optimizing gltf and converting to glb ..."
         # noq is no quantization as Cesium 1.84 does not support it.
         cmd_args_prefix = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
-    if args.input_type != 1 or args.content_gltf:
+    if args.input_type != 1 and (not args.content_gltf or
+                                 (args.content_gltf and not args.content_gltf_save_gltf)):
         logging.info(log_text)
         gltf_files = glob(args.output + "/*/*.gltf")
         for gltf_file in gltf_files:
@@ -418,10 +572,10 @@ def main(args):
             cmd_args.append(os.path.splitext(gltf_file)[0] + '.glb')
             logging.info("Execute: %s", " ".join(cmd_args))
             run(cmd_args, check=True)
-            # os.remove(gltf_file)
-        # bin_files = glob(args.output + "/*/*.bin")
-        # for bin_file in bin_files:
-        #     os.remove(bin_file)
+            os.remove(gltf_file)
+        bin_files = glob(args.output + "/*/*.bin")
+        for bin_file in bin_files:
+             os.remove(bin_file)
 
     if args.input_type != 1 and not args.content_gltf:  # B3DM
         logging.info("Converting to b3dm ...")
