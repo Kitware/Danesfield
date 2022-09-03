@@ -118,7 +118,7 @@ property_texture_template = """{
         }
     }"""
 
-def quantize(dir: str, tiff_files: List[str], texture_index: int, generate_json: bool) -> Tuple[List[str], Optional[str]]:
+def quantize(dir: str, tiff_files: List[str], texture_index: int, features_range: List[Tuple[float, float]], generate_json: bool) -> Tuple[List[str], Optional[str]]:
     """
     Quantizes a float array in each tiff file to one component in a RGBA png file and
     generates a json describing property textures encoded if generate_json is true.
@@ -150,6 +150,9 @@ def quantize(dir: str, tiff_files: List[str], texture_index: int, generate_json:
                 tiff_data = tiff_reader.GetOutput()
                 tiff_array = tiff_data.GetPointData().GetArray(0)
                 xRange = tiff_array.GetRange()
+                features_range[tiff_index] = (min(features_range[tiff_index][0], xRange[0]),
+                                              max(features_range[tiff_index][1], xRange[1]))
+                xRange = features_range[tiff_index]
                 if generate_json:
                     property_name = "c" + str(i*4 + j)
                     schema_properties[property_name] = {}
@@ -197,7 +200,7 @@ def quantize(dir: str, tiff_files: List[str], texture_index: int, generate_json:
         png_writer.Write()
     property_texture_file = None
     if generate_json:
-        property_texture_file = dir + "/" + pbasename + ".json"
+        property_texture_file = dir + "/property_texture.json"
         with open(property_texture_file, "w") as outfile:
             json.dump(pt, outfile, indent=4)
     return (quantized_files, property_texture_file)
@@ -216,23 +219,32 @@ def read_buildings_obj(
     """
     if number_of_features == UNINITIALIZED and \
        begin_feature_index != UNINITIALIZED and end_feature_index != UNINITIALIZED:
-        feature_range = range(begin_feature_index, end_feature_index)
+        feature_index_range = range(begin_feature_index, end_feature_index)
     else:
-        feature_range = range(0, min(len(files), number_of_features))
+        feature_index_range = range(0, min(len(files), number_of_features))
     root = vtkMultiBlockDataSet()
     property_texture_file = None
-    for i in feature_range:
+    feature_range: List[Tuple[float, float]] = []
+    for i in feature_index_range:
         reader = vtkOBJReader()
         reader.SetFileName(files[i])
         reader.Update()
-        if i == 0:
-            gdal_utils.read_offset(files[i], file_offset)
         polydata = reader.GetOutput()
         if polydata.GetNumberOfPoints() == 0:
             logging.warning("Empty OBJ file: %s", files[i])
             continue
         (png_files, tiff_files) = get_obj_texture_file_names(files[i])
-        (quantized_files, property_texture_file) = quantize(os.path.dirname(files[i]), tiff_files, len(png_files), i == 0)
+        if i == 0:
+            gdal_utils.read_offset(files[i], file_offset)
+            for _ in range(len(tiff_files)):
+                feature_range.append((sys.float_info.max, sys.float_info.min))
+        if len(feature_range) != len(tiff_files):
+            logging.error("Number of properties for feature {} is different than "
+                          "for feature 0: {} versus {}".format(
+                              i, len(tiff_files), len(feature_range)))
+        (quantized_files, ptf) = quantize(os.path.dirname(files[i]), tiff_files, len(png_files), feature_range, i == len(feature_index_range) - 1)
+        if ptf:
+            property_texture_file = ptf
         set_field(polydata, "texture_uri", png_files + quantized_files)
         building = vtkMultiBlockDataSet()
         building.SetBlock(0, polydata)
@@ -416,7 +428,6 @@ def tiler(
     logging.info("Done parsing files")
     file_offset = list(a + b for a, b in zip(file_offset, input_offset))
     texture_path = os.path.dirname(files[0])
-
     writer = vtkCesium3DTilesWriter()
     writer.SetInputDataObject(root)
     writer.SetDirectoryName(output_dir)

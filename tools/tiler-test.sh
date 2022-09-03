@@ -74,7 +74,7 @@ elif [ "${CITY}" = "jacksonville-property-texture" ]; then
 elif [ "${CITY}" = "jacksonville-property-texture-buildings" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/buildings/*square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --content_gltf --content_gltf_save_gltf --input_type 0)
+    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/buildings/*square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --content_gltf --content_gltf_save_gltf --input_type 0 -t 2)
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
