@@ -94,17 +94,6 @@ def set_field(obj: vtkDataObject, name: str, values: List[str]):
 UNINITIALIZED : int = 2147483647
 
 
-def path_basename(path: str) -> str:
-    file_no_ext = os.path.splitext(os.path.basename(path))[0]
-    basename_re = r'([^_]+)(_\d)?'
-    basename = re.match(basename_re, file_no_ext)
-    if basename:
-        return basename.group(1)
-    else:
-        logging.error("Cannot extract basename of: {}".format(file_no_ext))
-        return ""
-
-
 property_texture_template = """{
         "EXT_structural_metadata": {
             "schema": {
@@ -126,7 +115,7 @@ property_texture_template = """{
         }
     }"""
 
-def quantize(dir: str, tiff_files: List[str], property_names: List[str], texture_index: int, features_range: List[Tuple[float, float]], generate_json: bool, property_texture_flip_y: bool) -> Tuple[List[str], Optional[str]]:
+def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], texture_index: int, features_range: List[Tuple[float, float]], generate_json: bool, property_texture_flip_y: bool) -> Tuple[List[str], Optional[str]]:
     """
     Quantizes a float array in each tiff file to one component in a RGBA png file and
     generates a json describing property textures encoded if generate_json is true.
@@ -135,8 +124,9 @@ def quantize(dir: str, tiff_files: List[str], property_names: List[str], texture
     and
     https://github.com/CesiumGS/glTF/tree/3d-tiles-next/extensions/2.0/Vendor/EXT_structural_metadata
     """
+    dir = os.path.dirname(obj_path)
+    file_no_ext = os.path.splitext(os.path.basename(obj_path))[0]
     png_count = math.ceil(len(tiff_files) / 4)
-    pbasename = path_basename(tiff_files[0])
     quantized_files = []
     pt = json.loads(property_texture_template)
     schema_properties = pt['EXT_structural_metadata']['schema']['classes']\
@@ -210,7 +200,7 @@ def quantize(dir: str, tiff_files: List[str], property_names: List[str], texture
             png_writer.SetInputConnection(flip_y_filter.GetOutputPort())
         else:
             png_writer.SetInputDataObject(png_data)
-        quantized_file_basename = pbasename + "_" + str(texture_index + i)
+        quantized_file_basename = file_no_ext + "_" + str(texture_index + i)
         quantized_files.append( quantized_file_basename + ".png")
         print("writing png: {}".format(dir + "/" + quantized_file_basename + ".png"))
         png_writer.SetFileName(dir + "/" + quantized_file_basename + ".png")
@@ -259,7 +249,7 @@ def read_buildings_obj(
             logging.error("Number of properties for feature {} is different than "
                           "for feature 0: {} versus {}".format(
                               i, len(tiff_files), len(feature_range)))
-        (quantized_files, ptf) = quantize(os.path.dirname(files[i]), tiff_files, property_names, len(png_files), feature_range, i == len(feature_index_range) - 1, property_texture_flip_y)
+        (quantized_files, ptf) = quantize(files[i], tiff_files, property_names, len(png_files), feature_range, i == len(feature_index_range) - 1, property_texture_flip_y)
         if ptf:
             property_texture_file = ptf
         set_field(polydata, "texture_uri", png_files + quantized_files)
