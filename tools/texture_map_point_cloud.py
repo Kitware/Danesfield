@@ -185,7 +185,10 @@ class pointCloudTextureMapper(object):
         # Create the color texture image
         color_img = np.zeros(self.img_size + (3,), dtype=np.float32)
 
-        self.texture_sample(color_img, new_mesh, self.color_data, self.utm_shift(meshfile))
+        # Get the utm shift
+        utm_shift = self.utm_shift(meshfile)
+
+        self.texture_sample(color_img, new_mesh, self.color_data, utm_shift)
         imageio.imwrite(new_name.with_suffix('.png'), color_img)
 
         with open(new_name.with_suffix('.mtl'), 'w') as f:
@@ -196,13 +199,22 @@ class pointCloudTextureMapper(object):
         if self.err_data is not None:
             err_img = np.zeros(self.img_size + (3, 3), dtype=np.float32)
             err_img[:] = np.nan
-            self.texture_sample(err_img, new_mesh, self.err_data, self.utm_shift(meshfile))
+            self.texture_sample(err_img, new_mesh, self.err_data, utm_shift)
             for i in range(3):
                 for j in range(i+1):
                     tiff_name = Path(str(new_name) + f'_{i}_{j}')
                     imageio.imwrite(tiff_name.with_suffix('.tiff'), err_img[:,:,i,j])
 
         Mesh.to_obj_file(str(new_name.with_suffix('.obj')), new_mesh)
+
+        # Append the UTM shift to the new mesh file
+        utm_header = (f'#x offset: {utm_shift[0]}\n'
+                      f'#y offset: {utm_shift[1]}\n'
+                      f'#z offset: {utm_shift[2]}\n')
+        with open(new_name.with_suffix('.obj'), 'r+') as f:
+            content = f.read()
+            f.seek(0, 0)
+            f.write(utm_header + content)
 
 def main(args):
     parser = argparse.ArgumentParser(
