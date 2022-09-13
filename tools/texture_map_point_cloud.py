@@ -87,7 +87,7 @@ def tri_area(tri):
 
 # Class to support texture mapping point cloud data to meshes
 class pointCloudTextureMapper(object):
-    def __init__(self, points, output_dir, color_data, err_data=None):
+    def __init__(self, points, output_dir, color_data, err_data=None, use_dist=False):
 
         # Size of texture image
         self.img_size = (500, 500)
@@ -105,6 +105,9 @@ class pointCloudTextureMapper(object):
 
         # Location to save data
         self.output_dir = output_dir
+
+        # Use distance from point to pixel
+        self.use_dist = use_dist
 
     # Create a texture map image by finding the nearest point to a pixel and using
     # its value to set the color.
@@ -150,10 +153,21 @@ class pointCloudTextureMapper(object):
                         pixel_indices.append([int((1. - y)*img_size[1]),
                                               int(x*img_size[0])])
 
-            closest_indices = self.search_tree.query(pixel_points)
+            distances, closest_indices = self.search_tree.query(pixel_points)
 
-            for px, ci in zip(pixel_indices, closest_indices[1]):
-                img[px[0], px[1], :] = data[ci]
+
+            for idx, (px, ci, dist) in enumerate(zip(pixel_indices, closest_indices, distances)):
+                if self.use_dist:
+                    dvec = np.array(self.points[ci] - pixel_points[idx])
+                    covar_correction = np.outer(dvec, dvec)
+                elif (data is not None):
+                    covar_correction = np.zeros(data[ci].shape)
+                else:
+                    covar_correction = 0.0
+                if data is not None:
+                    img[px[0], px[1], :] = self.process_pixel(data[ci], dist, covar_correction)
+                else:
+                    img[px[0], px[1]] = self.process_pixel(None, dist, covar_correction)
 
     def utm_shift(self, meshfile):
     # Check for UTM corrections in mesh file header
@@ -173,6 +187,16 @@ class pointCloudTextureMapper(object):
 
         return shift
 
+    # Apply distance to pixel if requested
+    def process_pixel(self, px, dist, covar_corr):
+        if px is None:
+            return dist
+        else:
+            if (type(px) is np.ndarray) and (px.shape == covar_corr.shape):
+                return px + covar_corr
+            else:
+                return px
+
     def process_mesh(self, meshfile):
         print('Processing mesh ', meshfile)
         new_mesh = Mesh.from_obj_file(str(meshfile))
@@ -188,6 +212,7 @@ class pointCloudTextureMapper(object):
         # Get the utm shift
         utm_shift = self.utm_shift(meshfile)
 
+        print('Texturing sample')
         self.texture_sample(color_img, new_mesh, self.color_data, utm_shift)
         imageio.imwrite(new_name.with_suffix('.png'), color_img)
 
@@ -205,6 +230,13 @@ class pointCloudTextureMapper(object):
                     tiff_name = Path(str(new_name) + f'_{i}_{j}')
                     imageio.imwrite(tiff_name.with_suffix('.tiff'), err_img[:,:,i,j])
 
+        dist_img = np.zeros(self.img_size, dtype=np.float32)
+        dist_img[:] = np.nan
+        self.texture_sample(dist_img, new_mesh, None, utm_shift)
+        dist_img_name = Path(str(new_name) + '_dist')
+        imageio.imwrite(dist_img_name.with_suffix('.tiff'), dist_img)
+
+        print('Writing out new mesh file')
         Mesh.to_obj_file(str(new_name.with_suffix('.obj')), new_mesh)
 
         # Append the UTM shift to the new mesh file
@@ -216,6 +248,8 @@ class pointCloudTextureMapper(object):
             f.seek(0, 0)
             f.write(utm_header + content)
 
+        print('Finished with mesh')
+
 def main(args):
     parser = argparse.ArgumentParser(
         description="Texture map either point cloud data or GPM error data "
@@ -224,7 +258,16 @@ def main(args):
     parser.add_argument("point_cloud", help="path to point cloud file")
     parser.add_argument("--gpm_json", help="JSON file with extracted GPM metadata")
     parser.add_argument("--output_dir", help="directory to save the results. "
-                        "Defaults to mesh_dir")
+                        "Defaults to mesh_dir. If left to be the mesh_dir then "
+                        "the original mesh files will be overwritten.")
+    parser.add_argument("--use_dist", help="adjust texture value by the distance "
+                        " to the sample point. Exact behavior depends on the data type",
+                        action='store_true', default=False)
+    parser.add_argument("--included_errors", help="comma separated booleans"
+                        " for the three error types: anchor point, ppe, and"
+                        " unmodeled. For example '1,0,1' would include the"
+                        " standard and unmodeled errors", default="1,1,1")
+
     args = parser.parse_args(args)
 
     # Load kwiver modules
@@ -256,15 +299,30 @@ def main(args):
         if 'PPE_LUT_Index' in pc_data.dtype.names:
             gpm.setupPPELookup(points, pc_data['PPE_LUT_Index'])
 
+        # Determine which error to include
+        if args.included_errors:
+            inc_err = [(True if int(e) == 1 else False) for
+                       e in args.included_errors.split(',')]
+        else:
+            inc_err = [True, True, True]
+
         print("Getting error")
-        err_data = gpm.get_per_point_error(points)
+        err_data = np.zeros( (len(points), 3, 3) )
+        if inc_err[0]:
+            err_data += gpm.get_covar(points)
+        if inc_err[1]:
+            err_data += gpm.get_per_point_error(points)
+        if inc_err[2]:
+            err_data += gpm.get_unmodeled_error(points)
     else:
         err_data = None
 
-    texMapper = pointCloudTextureMapper(points, output_dir, color_data, err_data)
+    texMapper = pointCloudTextureMapper(points, output_dir, color_data, err_data, args.use_dist)
 
     for mf in mesh_files:
         texMapper.process_mesh(mf)
+
+    print('Finished')
 
 if __name__ == '__main__':
     main(sys.argv[1:])
