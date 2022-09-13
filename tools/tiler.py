@@ -12,6 +12,7 @@ from glob import glob
 import json
 import logging
 import math
+import numpy as np
 import os
 import re
 from subprocess import run
@@ -20,6 +21,7 @@ from typing import (
     Tuple,
     Optional)
 
+from vtkmodules.util import numpy_support
 from vtkmodules.vtkIOCityGML import vtkCityGMLReader
 from vtkmodules.vtkIOXML import vtkXMLPolyDataReader
 from vtkmodules.vtkIOGDAL import vtkGDALRasterReader
@@ -34,6 +36,7 @@ from vtkmodules.vtkCommonDataModel import (
     vtkImageData,
     vtkMultiBlockDataSet)
 from vtkmodules.vtkCommonCore import (
+    vtkDataArray,
     vtkStringArray,
     vtkUnsignedCharArray,
     vtkVersion)
@@ -42,7 +45,7 @@ from vtkmodules.vtkImagingCore import vtkImageFlip
 from danesfield import gdal_utils
 
 
-def get_obj_texture_file_names(path: str) -> Tuple[List[str], List[str], List[str]]:
+def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tuple[List[str], List[str], List[str]]:
     """Given an OBJ file name return a file names for the textures
     (colors or properties) by removing .obj and looking for
     file_name.png, file_name_1.png, ..., file_name_x.tiff, ...  PNGs
@@ -54,6 +57,17 @@ def get_obj_texture_file_names(path: str) -> Tuple[List[str], List[str], List[st
     dir = os.path.dirname(path)
     png_re = r'^' + re.escape(file_no_ext) + r'.*\.png$'
     png_files = [f for f in os.listdir(dir) if re.search(png_re, f, re.IGNORECASE)]
+    png_files_quantized_removed = []
+    for png_file in png_files:
+        postfix = re.sub(re.escape(file_no_ext), '', png_file)
+        index_str = re.sub('\\D', '', postfix)
+        if index_str:
+            index = int(index_str)
+        else:
+            index = 0
+        if index < property_texture_png_index:
+            png_files_quantized_removed.append(png_file)
+    png_files = png_files_quantized_removed
     tiff_re = r'^' + re.escape(file_no_ext) + r'_(.*)\.tiff$'
     tiff_files = []
     property_names = []
@@ -62,9 +76,6 @@ def get_obj_texture_file_names(path: str) -> Tuple[List[str], List[str], List[st
         if m:
             tiff_files.append(f)
             property_names.append(m.group(1))
-    # remove from the list of PNGs files that have the same basename as TIFFs. Assume
-    # those are quantized files previously generated
-    png_files = [f + ".png" for f in set([os.path.splitext(f)[0] for f in png_files]).difference([os.path.splitext(f)[0] for f in tiff_files])]
     tiff_files.sort(key=lambda f: int(re.sub('\\D', '', f)))
     property_names.sort(key=lambda f: int(re.sub('\\D', '', f)))
     print("pngs: {}, tiffs: {}, names: {}".format(png_files, tiff_files, property_names))
@@ -115,7 +126,27 @@ property_texture_template = """{
         }
     }"""
 
-def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], texture_index: int, features_range: List[Tuple[float, float]], generate_json: bool, property_texture_flip_y: bool) -> Tuple[List[str], Optional[str]]:
+
+def read_tiff(tiff_file_name: str) -> Tuple[vtkDataArray, Tuple[int, int, int]]:
+    '''
+    Reads a tiff file and returns its values and dimensions of the image.
+    If data is stored in cells, dimensions are one less than if data is stored in points.
+    '''
+    tiff_reader = vtkGDALRasterReader()
+    tiff_reader.SetFileName(tiff_file_name)
+    tiff_reader.Update()
+    tiff_data = tiff_reader.GetOutput()
+    # try if data is in points
+    tiff_array = tiff_data.GetPointData().GetArray(0)
+    dims = tiff_data.GetDimensions()
+    if tiff_array is None:
+        # try if data is in cells
+        tiff_array = tiff_data.GetCellData().GetArray(0)
+        dims = (dims[0] - 1, dims[1] - 1, dims[2])
+    return (tiff_array, dims)
+
+
+def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], texture_index: int, features_range: List[Tuple[float, float]], features_percentile_range: List[Tuple[float, float]], generate_json: bool) -> Tuple[List[str], Optional[str]]:
     """
     Quantizes a float array in each tiff file to one component in a RGBA png file and
     generates a json describing property textures encoded if generate_json is true.
@@ -138,23 +169,22 @@ def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], te
         png_data = vtkImageData()
         png_array = vtkUnsignedCharArray()
         png_array.SetNumberOfComponents(4)
+        pa = numpy_support.vtk_to_numpy(png_array)
         for j in range(4):
             tiff_index = i*4 + j
             if tiff_index < len(tiff_files):
                 print("reading tiff: {}".format(dir + "/" + tiff_files[tiff_index]))
-                tiff_reader = vtkGDALRasterReader()
-                tiff_reader.SetFileName(dir + "/" + tiff_files[tiff_index])
-                tiff_reader.Update()
-                tiff_data = tiff_reader.GetOutput()
-                tiff_array = tiff_data.GetPointData().GetArray(0)
-                tiff_data_in_cells = False
-                if tiff_array is None:
-                    tiff_array = tiff_data.GetCellData().GetArray(0)
-                    tiff_data_in_cells = True
-                xRange = tiff_array.GetRange()
-                features_range[tiff_index] = (min(features_range[tiff_index][0], xRange[0]),
-                                              max(features_range[tiff_index][1], xRange[1]))
-                xRange = features_range[tiff_index]
+                (tiff_array, dims) = read_tiff(dir + "/" + tiff_files[tiff_index])
+                ta = numpy_support.vtk_to_numpy(tiff_array)
+                if features_percentile_range:
+                    ta = np.nan_to_num(ta, copy=True, nan=features_percentile_range[tiff_index][0])
+                    ta[ta > features_percentile_range[tiff_index][1]] = features_percentile_range[tiff_index][1]
+                    ta[ta < features_percentile_range[tiff_index][0]] = features_percentile_range[tiff_index][0]
+
+                fr = (np.min(ta), np.max(ta))
+                features_range[tiff_index] = (min(features_range[tiff_index][0], fr[0]),
+                                              max(features_range[tiff_index][1], fr[1]))
+                fr = features_range[tiff_index]
                 if generate_json:
                     property_name = "c" + property_names[tiff_index]
                     schema_properties[property_name] = {}
@@ -162,44 +192,34 @@ def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], te
                     schema_properties[property_name]["type"] = "SCALAR"
                     schema_properties[property_name]["componentType"] = "UINT8"
                     schema_properties[property_name]["normalized"] = True
-                    schema_properties[property_name]["offset"] = xRange[0]
-                    schema_properties[property_name]["scale"] = xRange[1] - xRange[0]
+                    schema_properties[property_name]["offset"] = float(fr[0])
+                    schema_properties[property_name]["scale"] = float(fr[1] - fr[0])
 
                     propertyTextures_properties[property_name] = {}
                     propertyTextures_properties[property_name]["index"] = texture_index + i
                     propertyTextures_properties[property_name]["texCoord"] = 0
                     propertyTextures_properties[property_name]["channels"] = [ j ]
 
-                dims = tiff_data.GetDimensions()
-                if tiff_data_in_cells:
-                    dims = (dims[0] - 1, dims[1] - 1, 1)
                 if j == 0:
                     png_data.SetDimensions(dims)
                     png_array.SetNumberOfTuples(dims[0] * dims[1])
+                    pa = numpy_support.vtk_to_numpy(png_array)
                 else:
                     prev_dims = png_data.GetDimensions()
                     if not prev_dims == dims:
                         logging.error("TIFF files with different dimensions. 0: {} {}: {}".format(prev_dims, j, dims))
-                for k in range(png_array.GetNumberOfTuples()):
-                    x = tiff_array.GetComponent(k, 0)
-                    png_array.SetComponent(
-                        k, j,
-                        (x - xRange[0]) / (xRange[1] - xRange[0]) * 255)
+                pa[:,j] = (ta - fr[0]) / (fr[1] - fr[0]) * 255
             else:
-                for k in range(png_array.GetNumberOfTuples()):
-                    png_array.SetComponent(k, j, 0)
+                pa[:,j] = 255
         png_data.GetPointData().SetScalars(png_array)
 
-        # we have to flip the PNG because how TIFFs are saved in VTK
+        # we have to flip the PNG because TIFFs are loaded flipped in VTK
         flip_y_filter = None
         png_writer = vtkPNGWriter()
-        if property_texture_flip_y:
-            flip_y_filter = vtkImageFlip()
-            flip_y_filter.SetFilteredAxis(1)
-            flip_y_filter.SetInputDataObject(png_data)
-            png_writer.SetInputConnection(flip_y_filter.GetOutputPort())
-        else:
-            png_writer.SetInputDataObject(png_data)
+        flip_y_filter = vtkImageFlip()
+        flip_y_filter.SetFilteredAxis(1)
+        flip_y_filter.SetInputDataObject(png_data)
+        png_writer.SetInputConnection(flip_y_filter.GetOutputPort())
         quantized_file_basename = file_no_ext + "_" + str(texture_index + i)
         quantized_files.append( quantized_file_basename + ".png")
         print("writing png: {}".format(dir + "/" + quantized_file_basename + ".png"))
@@ -215,7 +235,7 @@ def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], te
 
 def read_buildings_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_flip_y: bool) ->  Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) ->  Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
     from a list of OBJ files. It can generate quantized png textures from property
@@ -231,7 +251,27 @@ def read_buildings_obj(
         feature_index_range = range(0, min(len(files), number_of_features))
     root = vtkMultiBlockDataSet()
     property_texture_file = None
-    feature_range: List[Tuple[float, float]] = []
+    feature_percentile_range: List[Tuple[float, float]] = []
+    if (quantization_percentile < 100):
+        all_tiff_values: List[List[float]] = []
+        for i in feature_index_range:
+            dir = os.path.dirname(files[i])
+            (png_files, tiff_files, property_names) = get_obj_texture_file_names(files[i], property_texture_png_index)
+            if i == 0:
+                all_tiff_values = [[] for _ in range(len(tiff_files))]
+            for j in range(len(tiff_files)):
+                (tiff_array, _) = read_tiff(dir + "/" + tiff_files[j])
+                if i == 0:
+                    all_tiff_values[j] = numpy_support.vtk_to_numpy(tiff_array)
+                else:
+                    all_tiff_values[j] = np.concatenate(
+                        (all_tiff_values[j], numpy_support.vtk_to_numpy(tiff_array)))
+        for j in range(len(all_tiff_values)):
+            feature_percentile_range.append(
+                (np.nanpercentile(all_tiff_values[j], (100 - quantization_percentile) / 2),
+                 np.nanpercentile(all_tiff_values[j], quantization_percentile + (100 - quantization_percentile) / 2)))
+            print("percentile range {} : {}".format(j, feature_percentile_range[j]))
+    features_range: List[Tuple[float, float]] = []
     for i in feature_index_range:
         reader = vtkOBJReader()
         reader.SetFileName(files[i])
@@ -240,16 +280,16 @@ def read_buildings_obj(
         if polydata.GetNumberOfPoints() == 0:
             logging.warning("Empty OBJ file: %s", files[i])
             continue
-        (png_files, tiff_files, property_names) = get_obj_texture_file_names(files[i])
+        (png_files, tiff_files, property_names) = get_obj_texture_file_names(files[i], property_texture_png_index)
         if i == 0:
             gdal_utils.read_offset(files[i], file_offset)
             for _ in range(len(tiff_files)):
-                feature_range.append((sys.float_info.max, sys.float_info.min))
-        if len(feature_range) != len(tiff_files):
+                features_range.append((sys.float_info.max, -sys.float_info.max))
+        if len(features_range) != len(tiff_files):
             logging.error("Number of properties for feature {} is different than "
                           "for feature 0: {} versus {}".format(
-                              i, len(tiff_files), len(feature_range)))
-        (quantized_files, ptf) = quantize(files[i], tiff_files, property_names, len(png_files), feature_range, i == len(feature_index_range) - 1, property_texture_flip_y)
+                              i, len(tiff_files), len(features_range)))
+        (quantized_files, ptf) = quantize(files[i], tiff_files, property_names, len(png_files), features_range, feature_percentile_range, i == len(feature_index_range) - 1)
         if ptf:
             property_texture_file = ptf
         set_field(polydata, "texture_uri", png_files + quantized_files)
@@ -261,7 +301,7 @@ def read_buildings_obj(
 
 def read_points_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_flip_y: bool) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Builds a  pointset from a list of OBJ files.
     """
@@ -283,7 +323,7 @@ def read_points_obj(
 
 def read_points_vtp(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_flip_y: bool) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Builds a  pointset from a list of VTP files.
     """
@@ -303,7 +343,7 @@ def read_points_vtp(
 
 def read_points_pdal(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_flip_y: bool) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Reads a point set from a list of pdal files
     """
@@ -326,7 +366,7 @@ def read_points_pdal(
 
 def read_buildings_citygml(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        lod : int, files : List[str], file_offset : List[float], property_texture_flip_y: bool) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
@@ -411,7 +451,7 @@ def tiler(
         features_per_tile: int, lod: int, input_offset : List[float],
         dont_save_tiles: bool, dont_save_textures: bool, merge_tile_polydata: bool, input_type: int,
         content_gltf: bool, content_gltf_save_gltf:bool, points_color_array: str, crs: str,
-        utm_zone: int, utm_hemisphere: str, property_texture_flip_y: bool):
+        utm_zone: int, utm_hemisphere: str, property_texture_png_index: int, quantization_percentile: float):
     """
     Reads the input and converts it to 3D Tiles and saves it
     to output.
@@ -427,7 +467,7 @@ def tiler(
             ext, input_type))
     (root, property_texture_file) = READER[ext][input_type](
         number_of_features, begin_feature_index,
-        end_feature_index, lod, files, file_offset, property_texture_flip_y)
+        end_feature_index, lod, files, file_offset, property_texture_png_index, quantization_percentile)
     if root is None:
         return
     if points_color_array:
@@ -508,10 +548,11 @@ def main(args):
     parser.add_argument("-e", "--end_feature_index", type=int,
                         default=UNINITIALIZED,
                         help="End feature index. Read [begin, end) range.")
+    parser.add_argument("--quantization_percentile", type=int,
+                        default=100,
+                        help="Restrict the quantization interval to the specified percentile of values.")
     parser.add_argument("--dont_save_tiles", action="store_true",
                         help="Create only tileset.json not the B3DM files")
-    parser.add_argument("--property_texture_flip_y", action="store_true",
-                        help="Flip property textures along Y axis")
     parser.add_argument("--input_type",
                         help="Select input type Buildings (0), Points(1) or Mesh(2). ",
                         type=check_input_type, default=0)
@@ -538,6 +579,11 @@ def main(args):
     parser.add_argument("--points_color_array",
                         help="Name of the array containing the RGB or RGBA. The values\n"
                         "in the array can be unsigned char and unsigned short.")
+    parser.add_argument("--property_texture_png_index", type=int,
+                        help="If using property textures (having tiffs along side pngs) "
+                        "this index is used to save quantized values in: filename_index.png, filename_(index+1).png and so on. "
+                        "This allows us to know how many pngs per building are in the input file.",
+                        default=0)
     parser.add_argument("--utm_hemisphere",
                         help="UTM hemisphere for the OBJ file coordinates.",
                         choices=["N", "S"], default="N")
@@ -569,7 +615,7 @@ def main(args):
         args.dont_save_tiles, args.dont_save_textures, args.merge_tile_polydata,
         args.input_type,
         args.content_gltf, args.content_gltf_save_gltf, args.points_color_array, args.crs,
-        args.utm_zone, args.utm_hemisphere, args.property_texture_flip_y)
+        args.utm_zone, args.utm_hemisphere, args.property_texture_png_index, args.quantization_percentile)
 
     if args.input_type == 1:  # Points
         # meshoptimizer does not support points so convert to glb directly.

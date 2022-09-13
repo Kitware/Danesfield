@@ -70,15 +70,23 @@ elif [ "${CITY}" = "jacksonville-mesh" ]; then
 elif [ "${CITY}" = "jacksonville-property-texture" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/mesh/square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --content_gltf --content_gltf_save_gltf --input_type 2 --property_texture_flip_y)
+    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/mesh/square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --content_gltf --content_gltf_save_gltf --input_type 2)
 elif [ "${CITY}" = "jacksonville-property-texture-buildings" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/buildings/*square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_flip_y)
+    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/buildings/*square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0)
 elif [ "${CITY}" = "ucsd-property-texture-buildings" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_textured_limited/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 10 --content_gltf --content_gltf_save_gltf --input_type 0  --property_texture_flip_y)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_textured_limited/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0)
+elif [ "${CITY}" = "ucsd-property-texture-buildings-with-nans" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/limited_region_with_nans/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1)
+elif [ "${CITY}" = "ucsd-limited-region" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 --quantization_percentile 80)
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
