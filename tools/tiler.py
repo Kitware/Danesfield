@@ -55,7 +55,7 @@ def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tu
     """
     file_no_ext = os.path.splitext(os.path.basename(path))[0]
     dir = os.path.dirname(path)
-    png_re = r'^' + re.escape(file_no_ext) + r'.*\.png$'
+    png_re = r'^' + re.escape(file_no_ext) + r'([\D].*)?\.png$'
     png_files = [f for f in os.listdir(dir) if re.search(png_re, f, re.IGNORECASE)]
     png_files_quantized_removed = []
     for png_file in png_files:
@@ -68,6 +68,10 @@ def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tu
         if index < property_texture_png_index:
             png_files_quantized_removed.append(png_file)
     png_files = png_files_quantized_removed
+    if len(png_files) > property_texture_png_index:
+        logging.error("Expecting {} texture files but got: {}".format(
+            property_texture_png_index, png_files))
+        return ([], [], [])
     tiff_re = r'^' + re.escape(file_no_ext) + r'_(.*)\.tiff$'
     tiff_files = []
     property_names = []
@@ -155,9 +159,11 @@ def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], te
     and
     https://github.com/CesiumGS/glTF/tree/3d-tiles-next/extensions/2.0/Vendor/EXT_structural_metadata
     """
+    tiffs_per_png = 3
+    png_components = 4
     dir = os.path.dirname(obj_path)
     file_no_ext = os.path.splitext(os.path.basename(obj_path))[0]
-    png_count = math.ceil(len(tiff_files) / 4)
+    png_count = math.ceil(len(tiff_files) / tiffs_per_png)
     quantized_files = []
     pt = json.loads(property_texture_template)
     schema_properties = pt['EXT_structural_metadata']['schema']['classes']\
@@ -165,14 +171,15 @@ def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], te
     propertyTextures_properties = pt['EXT_structural_metadata']['propertyTextures'][0]\
         ['properties']
     for i in range(png_count):
-        # read 4 tiff files per png file
+        # read tiff_per_png tiff files per png file
         png_data = vtkImageData()
         png_array = vtkUnsignedCharArray()
-        png_array.SetNumberOfComponents(4)
+        # pngs are RGBA
+        png_array.SetNumberOfComponents(png_components)
         pa = numpy_support.vtk_to_numpy(png_array)
-        for j in range(4):
-            tiff_index = i*4 + j
-            if tiff_index < len(tiff_files):
+        for j in range(png_components):
+            tiff_index = i * tiffs_per_png + j
+            if j < tiffs_per_png and tiff_index < len(tiff_files):
                 print("reading tiff: {}".format(dir + "/" + tiff_files[tiff_index]))
                 (tiff_array, dims) = read_tiff(dir + "/" + tiff_files[tiff_index])
                 ta = numpy_support.vtk_to_numpy(tiff_array)
@@ -235,7 +242,7 @@ def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], te
 
 def read_buildings_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) ->  Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) ->  Tuple[Optional[vtkMultiBlockDataSet], str]:
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
     from a list of OBJ files. It can generate quantized png textures from property
@@ -251,7 +258,7 @@ def read_buildings_obj(
     else:
         feature_index_range = range(0, min(len(files), number_of_features))
     root = vtkMultiBlockDataSet()
-    property_texture_file = None
+    property_texture_file = ""
     feature_percentile_range: List[Tuple[float, float]] = []
     number_of_tiff_files = 0
     if (quantization_percentile < 100):
@@ -318,7 +325,7 @@ def read_buildings_obj(
 
 def read_points_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
     """
     Builds a  pointset from a list of OBJ files.
     """
@@ -335,12 +342,12 @@ def read_points_obj(
             continue
         append.AddInputDataObject(polydata)
     append.Update()
-    return (append.GetOutput(), None)
+    return (append.GetOutput(), "")
 
 
 def read_points_vtp(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
     """
     Builds a  pointset from a list of VTP files.
     """
@@ -355,12 +362,12 @@ def read_points_vtp(
             continue
         append.AddInputDataObject(polydata)
     append.Update()
-    return (append.GetOutput(), None)
+    return (append.GetOutput(), "")
 
 
 def read_points_pdal(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
     """
     Reads a point set from a list of pdal files
     """
@@ -378,12 +385,12 @@ def read_points_pdal(
     append.Update()
     for i in range(3):
         file_offset[i] = 0
-    return (append.GetOutput(), None)
+    return (append.GetOutput(), "")
 
 
 def read_buildings_citygml(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], Optional[str]]:
+        lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
@@ -403,7 +410,7 @@ def read_buildings_citygml(
         mb = reader.GetOutput()
         if not mb:
             logging.error("Expecting vtkMultiBlockDataSet")
-            return (None, None)
+            return (None, "")
         currentNumberOfBlocks = mb.GetNumberOfBlocks()
         allNumberOfBlocks = allBuildings.GetNumberOfBlocks()
         allBuildings.SetNumberOfBlocks(allNumberOfBlocks + currentNumberOfBlocks)
@@ -417,7 +424,7 @@ def read_buildings_citygml(
             allBuildings.SetBlock(allNumberOfBlocks + j, buildingIt.GetCurrentDataObject())
             j = j + 1
             buildingIt.GoToNextItem()
-    return (allBuildings, None)
+    return (allBuildings, "")
 
 
 READER = {
@@ -466,7 +473,9 @@ def tiler(
         input_list: List[str], output_dir: str, number_of_features: int,
         begin_feature_index: int, end_feature_index: int,
         features_per_tile: int, lod: int, input_offset : List[float],
-        dont_save_tiles: bool, dont_save_textures: bool, merge_tile_polydata: bool, input_type: int,
+        dont_save_tiles: bool, dont_save_textures: bool, merge_tile_polydata: bool,
+        merged_texture_width: int,
+        input_type: int,
         content_gltf: bool, content_gltf_save_gltf:bool, points_color_array: str, crs: str,
         utm_zone: int, utm_hemisphere: str, property_texture_png_index: int, quantization_percentile: float):
     """
@@ -504,6 +513,7 @@ def tiler(
     writer.SetSaveTextures(not dont_save_textures)
     writer.SetSaveTiles(not dont_save_tiles)
     writer.SetMergeTilePolyData(merge_tile_polydata)
+    writer.SetMergedTextureWidth(merged_texture_width)
     writer.SetNumberOfFeaturesPerTile(features_per_tile)
     if not crs:
         crs = "+proj=utm +zone={}".format(utm_zone)
@@ -585,7 +595,10 @@ def main(args):
     parser.add_argument("--dont_save_textures", action="store_true",
                         help="Don't save textures even if available",)
     parser.add_argument("-m", "--merge_tile_polydata", action="store_true",
-                        help="Merge tile polydata in one large mesh.",)
+                        help="Merge tile polydata and textures in one large mesh.",)
+    parser.add_argument("--merged_texture_width", type=int,
+                        help="Restrict the merged texture to this value (expressed "
+                        " in number of input textures)", default=np.iinfo(np.int32).max)
     parser.add_argument("-n", "--number_of_features", type=int,
                         default=UNINITIALIZED,
                         help="Maximum number of features read.")
@@ -600,7 +613,7 @@ def main(args):
                         help="If using property textures (having tiffs along side pngs) "
                         "this index is used to save quantized values in: filename_index.png, filename_(index+1).png and so on. "
                         "This allows us to know how many pngs per building are in the input file.",
-                        default=0)
+                        default=np.iinfo(np.int32).max)
     parser.add_argument("--utm_hemisphere",
                         help="UTM hemisphere for the OBJ file coordinates.",
                         choices=["N", "S"], default="N")
@@ -630,6 +643,7 @@ def main(args):
         args.begin_feature_index, args.end_feature_index,
         args.features_per_tile, args.lod, args.translation,
         args.dont_save_tiles, args.dont_save_textures, args.merge_tile_polydata,
+        args.merged_texture_width,
         args.input_type,
         args.content_gltf, args.content_gltf_save_gltf, args.points_color_array, args.crs,
         args.utm_zone, args.utm_hemisphere, args.property_texture_png_index, args.quantization_percentile)

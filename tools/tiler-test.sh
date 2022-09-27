@@ -46,7 +46,7 @@ echo "$SCRIPT_DIR" "$DATA_DIR" "$VTK_DIR"
 if [ "${CITY}" = "jacksonville" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100  --content_gltf --content_gltf_save_gltf -m --merged_texture_width 1)
 elif [ "${CITY}" = "jacksonville-gltf" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
@@ -75,14 +75,18 @@ elif [ "${CITY}" = "jacksonville-property-texture-buildings" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/buildings/*square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0)
-elif [ "${CITY}" = "ucsd-limited-region" ]; then
+elif [ "${CITY}" = "ucsd-limited-region-rgb" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-all-region" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_all_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_all_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+elif [ "${CITY}" = "ucsd-full-region-self-error" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
