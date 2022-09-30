@@ -28,7 +28,7 @@ Valid AWS credentials will need to be passed to the script to access the CORE3D 
 Running Danesfield
 ------------------
 
-After downloading the Docker container, imagery, and models, the script can run the Danesfield container on the source imagery. This is achieved with the ``--run`` option. When running Danesfield, one must specify the location of the source imagery, model files, an output directory, and configuration files. Use the ``--model_path`` argument to provide the directory where the necessary model files are located. Use the ``--config_path`` argument to provide the directory where the necessary configuration files are located. Finally, use the ``--out_path`` argument to provide where the directory where Danesfield should save all its output.
+After downloading the Docker container, imagery, and models, the script can run the Danesfield container on the source imagery. This is achieved with the ``--run`` option. When running Danesfield, one must specify the location of the source imagery, model files, an output directory, and configuration files. Use the ``--model_path`` argument to provide the directory where the necessary model files are located. Use the ``--config_path`` argument to provide the directory where the necessary configuration files are located. Finally, use the ``--out_path`` argument to provide where the directory where Danesfield should save all its output. If none of these paths are specified, then these directories will be created within the current directory as a default. 
 
 The full docker run command executed by this demo script will look something like this:
 ::
@@ -36,17 +36,17 @@ The full docker run command executed by this demo script will look something lik
 	-v /home/danesfield/Demo/outdir:/workdir -v /home/danesfield/Demo/configdir:/configs \
 	-v /home/danesfield/Demo/Models:/models kitware/danesfield source \
 	/opt/conda/etc/profile.d/conda.sh && conda activate core3d && \
-	python danesfield/tools/run_danesfield.py --image --vissat \
+	python danesfield/tools/run_danesfield.py --image --vissat --roads \
 	/configs/input_Jacksonville.ini
 
-This can be used as a starting point for manually running the Danesfield Docker container in other ways. Notably, the ``--image`` option indicates that the pipeline should start with satellite images (instead of a point cloud) and the ``--vissat`` option indicates that VisSat should be used to generate a point cloud from the images. To process a point cloud, leave off both of these options and in the Danesfield configuration (see section below) set ``p3d_path`` to the point cloud file to use. 
+This can be used as a starting point for manually running the Danesfield Docker container in other ways. Notably, the ``--image`` option indicates that the pipeline should start with satellite images (instead of a point cloud) and the ``--vissat`` option indicates that VisSat should be used to generate a point cloud from the images. To process a point cloud, leave off both of these options and in the Danesfield configuration (see section below) set ``p3d_path`` to the point cloud file to use. This can also be accomplished by using the --point_cloud argument on the demo script to provide the path of the point cloud. No images will be downloaded, and the point cloud will be copied into the specified output directory (assuming it is not already there). If the point cloud option is used, a site name should still be provided with the --site argument, as that name will be used as a prefix for naming output files and directories. 
 
 Configuring Danesfield
 ----------------------
 
 Two configuration files are needed for Danesfield. The first is required to be named ``input_<region>.ini``, where <region> is replaced by the name of teh site. An example of what information it needs can be found at https://github.com/Kitware/Danesfield/blob/master/tools/example_vissat_config.json.
-The only fields that need to be filled out in this file are ``gsd`` and ``cuda``. The first is the desired ground sample distance (default .25), and the second is whether or not Cuda is available. 
-The other configuration file is for VisSat Satellite Stereo, and it must be named ``<region>_config.json``. An example of this file can be found at https://github.com/Kitware/Danesfield/blob/master/input.ini. The ``bounding_box`` fields are related to the area that you want to reconstruct with Danesfield. They include the UTM zone, easting, and northing of the bounding box's upper left corner, as well as its width and height in meters. The ``steps_to_run`` fields should be as they appear in the example. The final fields, ``alt_min`` and ``alt_max``, are the approximate minimum and maximum altitudes present in the area of interest. 
+The only fields that need to be filled out in this file are ``gsd`` and ``cuda``. The first is the desired ground sample distance (default .25), and the second is whether or not CUDA is available. If Danesfield is being run without images, the gsd field can be ignored. 
+The other configuration file is for VisSat Satellite Stereo, and it must be named ``<region>_config.json``. An example of this file can be found at https://github.com/Kitware/Danesfield/blob/master/input.ini. The ``bounding_box`` fields are related to the area that you want to reconstruct with Danesfield. They include the UTM zone, easting, and northing of the bounding box's upper left corner, as well as its width and height in meters. The ``steps_to_run`` fields should be as they appear in the example. The final fields, ``alt_min`` and ``alt_max``, are the approximate minimum and maximum altitudes present in the area of interest. This file is not necessary if Danesfield is being run without images.
 
 The two example configuration files linked above should be copied into the configuration directory and renamed to the required names. Edit the necessary fields and the rest of the fields will be filled in by the demo script. 
 
@@ -62,3 +62,5 @@ Run with ``--help`` to se a quick explanation of each command line argument.
 To get a shell in the container without having to run Danesfield's pipeline, run 
 ::
 	docker exec -it kitware/danesfield /bin/bash
+
+All example configuration files were made with the assumption that user-specified directories were mounted to the Danesfield Docker container as they are in the example run command in the 'Running Danesfield' section. For instance, the user-specified ``imgpath`` becomes ``/mnt`` in the container. Users should change the configuration files to reflect their own mount locations if they choose to run Danesfield without the demo script. 
