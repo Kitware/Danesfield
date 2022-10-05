@@ -25,10 +25,21 @@ There are three sites (Jacksonville, UCSD, Omaha) currently available on IARPA's
 
 Valid AWS credentials will need to be passed to the script to access the CORE3D dataset. To do this, use the ``--key_id`` and ``--secret_key`` arguments. It's possible that more sites will be added to the dataset in the future, so to view all available sites, use the ``--show-sites`` option. 
 
+Configuring Danesfield
+----------------------
+
+Two configuration files are needed for Danesfield. The first is required to be named ``input_<region>.ini``, where <region> is replaced by the name of the site. An example of what information it needs can be found at https://github.com/Kitware/Danesfield/blob/master/tools/example_vissat_config.json.
+The only fields that need to be filled out in this file are ``gsd`` and ``cuda``. The first is the desired ground sample distance (default .25), and the second is whether or not CUDA is available. If Danesfield is being run without images, the gsd field can be ignored. 
+The other configuration file is for VisSat Satellite Stereo, and it must be named ``<region>_config.json``. An example of this file can be found at https://github.com/Kitware/Danesfield/blob/master/input.ini. The ``bounding_box`` fields are related to the area that you want to reconstruct with Danesfield. They include the UTM zone, easting, and northing of the bounding box's upper left corner, as well as its width and height in meters. The ``steps_to_run`` fields should be as they appear in the example. The final fields, ``alt_min`` and ``alt_max``, are the approximate minimum and maximum altitudes present in the area of interest. This file is not necessary if Danesfield is being run without images.
+
+The two example configuration files linked above should be copied into the configuration directory and renamed to the required names. Edit the necessary fields and the rest of the fields will be filled in by the demo script. 
+
+Three example configuration files, one for each available region, come with this demo. 
+
 Running Danesfield
 ------------------
 
-After downloading the Docker container, imagery, and models, the script can run the Danesfield container on the source imagery. This is achieved with the ``--run`` option. When running Danesfield, one must specify the location of the source imagery, model files, an output directory, and configuration files. Use the ``--model_path`` argument to provide the directory where the necessary model files are located. Use the ``--config_path`` argument to provide the directory where the necessary configuration files are located. Finally, use the ``--out_path`` argument to provide where the directory where Danesfield should save all its output. If none of these paths are specified, then these directories will be created within the current directory as a default. 
+After downloading the Docker container, imagery, and models, the demo script can run the Danesfield container on the source imagery. This is achieved with the ``--run`` option. When running Danesfield, one must specify the location of the source imagery, model files, an output directory, and configuration files. Use the ``--model_path`` argument to provide the directory where the necessary model files are located. Use the ``--config_path`` argument to provide the directory where the necessary configuration files are located. Finally, use the ``--out_path`` argument to provide where the directory where Danesfield should save all its output. If none of these paths are specified, then these directories will be created within the current directory as a default. 
 
 The full docker run command executed by this demo script will look something like this:
 ::
@@ -39,21 +50,14 @@ The full docker run command executed by this demo script will look something lik
 	python danesfield/tools/run_danesfield.py --image --vissat --roads \
 	/configs/input_Jacksonville.ini
 
-This can be used as a starting point for manually running the Danesfield Docker container in other ways. Notably, the ``--image`` option indicates that the pipeline should start with satellite images (instead of a point cloud) and the ``--vissat`` option indicates that VisSat should be used to generate a point cloud from the images. To process a point cloud, leave off both of these options and in the Danesfield configuration (see section below) set ``p3d_path`` to the point cloud file to use. This can also be accomplished by using the --point_cloud argument on the demo script to provide the path of the point cloud. No images will be downloaded, and the point cloud will be copied into the specified output directory (assuming it is not already there). If the point cloud option is used, a site name should still be provided with the --site argument, as that name will be used as a prefix for naming output files and directories. 
+This can be used as a starting point for manually running the Danesfield Docker container in other ways. There are two main ways to run the Danesfield pipeline: with and without images. The ``--image`` option along with the ``--vissat`` option indicate that the pipeline should start with satellite images and generate a point cloud using VisSat. VisSat will save the final point cloud to the path specified under the ``p3d_path`` field in the Danesfield configuration file (see section above). No point cloud will need to be provided by the user in this case. If the demo script is being used to run Danesfield, ``p3d_path`` will automatically be set to ``<out_path>/<site>/cloud.las``. To process an existing point cloud instead of generating one from images, omit both the ``--vissat`` and ``--image`` options. Now the ``p3d_path`` field in the configuration file must be set by the user to the starting point cloud's location. This can also be accomplished by using the ``--point_cloud`` option on the demo script. Use that option to provide the location of the starting point cloud, and the script will then copy that point cloud into the specified output directory and automatically fill in ``p3d_path``with that new location. If this option is used, the ``--site`` argument should still be used to provide a site name as it will be used as a prefix for naming output files and directories. No images will be downloaded in this case because they are not needed.
 
-Configuring Danesfield
-----------------------
-
-Two configuration files are needed for Danesfield. The first is required to be named ``input_<region>.ini``, where <region> is replaced by the name of teh site. An example of what information it needs can be found at https://github.com/Kitware/Danesfield/blob/master/tools/example_vissat_config.json.
-The only fields that need to be filled out in this file are ``gsd`` and ``cuda``. The first is the desired ground sample distance (default .25), and the second is whether or not CUDA is available. If Danesfield is being run without images, the gsd field can be ignored. 
-The other configuration file is for VisSat Satellite Stereo, and it must be named ``<region>_config.json``. An example of this file can be found at https://github.com/Kitware/Danesfield/blob/master/input.ini. The ``bounding_box`` fields are related to the area that you want to reconstruct with Danesfield. They include the UTM zone, easting, and northing of the bounding box's upper left corner, as well as its width and height in meters. The ``steps_to_run`` fields should be as they appear in the example. The final fields, ``alt_min`` and ``alt_max``, are the approximate minimum and maximum altitudes present in the area of interest. This file is not necessary if Danesfield is being run without images.
-
-The two example configuration files linked above should be copied into the configuration directory and renamed to the required names. Edit the necessary fields and the rest of the fields will be filled in by the demo script. 
-
-Three example configuration files, one for each available region, come with this demo. 
+There is a third option for running Danesfield's container from the command line. Using only the ``--image`` option without the ``--vissat`` option will allow the user to start with an existing point cloud (the omission of ``--vissat`` means a cloud must be provided), but still run some of the intermediate steps that require images. Notably, the image orthorectification, material classification, and texturing steps can now run with the provided images. These images will not, however, contribute to the point cloud or the final reconstruction in any way.
 
 Other Notes
 -----------
+
+Danesfield's final tiled results can be found in the ``tiler`` folder in the output directory. If images were used, textured meshes can be found in the ``texture-mapping`` folder in the output directory, and if no images were used, then meshes without texture can be found in the ``roof-geon-extraction`` folder. 
 
 To check for a more recent release of Danesfield's Docker image, use the ``--pull_image`` option. 
 
