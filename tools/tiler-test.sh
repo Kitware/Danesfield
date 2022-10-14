@@ -40,13 +40,17 @@ eval set -- "$PARAMS"
 # generate 3D Tiles
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 DATA_DIR=~/data
-VTK_DIR=~/projects/VTK/build-3dtiles-glb
+VTK_DIR=~/projects/VTK/build-gitlab-3dtiles-glb
 echo "$SCRIPT_DIR" "$DATA_DIR" "$VTK_DIR"
 
 if [ "${CITY}" = "jacksonville" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100)
+elif [ "${CITY}" = "toycity" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/citygml/CityGML_2.0_Test_Dataset_2012-04-23/*Buildings*.gml "${DATA_DIR}"/citygml/CityGML_2.0_Test_Dataset_2012-04-23/*Terrain*.gml -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --translation 435200 3354000 0 --lod 3 --content_gltf --content_gltf_save_gltf)
 elif [ "${CITY}" = "jacksonville-merged" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
@@ -90,7 +94,15 @@ elif [ "${CITY}" = "ucsd-all-region" ]; then
 elif [ "${CITY}" = "ucsd-full-region-self-error" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1)
+elif [ "${CITY}" = "ucsd-full-region-self-error-m" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+elif [ "${CITY}" = "ucsd-full-region-with-dist" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_with_dist/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-all-total-error" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"

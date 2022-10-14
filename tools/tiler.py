@@ -44,8 +44,17 @@ from vtkmodules.vtkFiltersCore import vtkAppendPolyData
 from vtkmodules.vtkImagingCore import vtkImageFlip
 from danesfield import gdal_utils
 
+def numeric_key(f):
+    valString = re.sub('\\D', '', f)
+    val = 0
+    if not valString:
+        val = hash(f)
+    else:
+        val = int(valString)
+    return val
+    
 
-def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tuple[List[str], List[str], List[str]]:
+def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tuple[str, List[str], List[str]]:
     """Given an OBJ file name return a file names for the textures
     (colors or properties) by removing .obj and looking for
     file_name.png, file_name_1.png, ..., file_name_x.tiff, ...  PNGs
@@ -80,10 +89,10 @@ def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tu
         if m:
             tiff_files.append(f)
             property_names.append(m.group(1))
-    tiff_files.sort(key=lambda f: int(re.sub('\\D', '', f)))
-    property_names.sort(key=lambda f: int(re.sub('\\D', '', f)))
-    print("pngs: {}, tiffs: {}, names: {}".format(png_files, tiff_files, property_names))
-    return (png_files, tiff_files, property_names)
+    property_names.sort(key=numeric_key)
+    print("file_no_ext: {}, pngs: {}, names: {}".format(
+        file_no_ext, png_files, property_names))
+    return (file_no_ext, png_files, property_names)
 
 
 def set_field(obj: vtkDataObject, name: str, values: List[str]):
@@ -301,7 +310,9 @@ def read_buildings_obj(
         if polydata.GetNumberOfPoints() == 0:
             logging.warning("Empty OBJ file: %s", files[i])
             continue
-        (png_files, tiff_files, property_names) = get_obj_texture_file_names(files[i], property_texture_png_index)
+        (file_no_ext, png_files, property_names) = get_obj_texture_file_names(files[i], property_texture_png_index)
+        tiff_files = [file_no_ext + "_" +f + ".tiff" for f in property_names]
+        print("tiffs: {}".format(tiff_files))
         if i == 0:
             number_of_tiff_files = len(tiff_files)
             gdal_utils.read_offset(files[i], file_offset)
