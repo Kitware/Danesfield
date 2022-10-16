@@ -52,7 +52,7 @@ def numeric_key(f):
     else:
         val = int(valString)
     return val
-    
+
 
 def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tuple[str, List[str], List[str]]:
     """Given an OBJ file name return a file names for the textures
@@ -80,7 +80,7 @@ def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tu
     if len(png_files) > property_texture_png_index:
         logging.error("Expecting {} texture files but got: {}".format(
             property_texture_png_index, png_files))
-        return ([], [], [])
+        return (file_no_ext, [], [])
     tiff_re = r'^' + re.escape(file_no_ext) + r'_(.*)\.tiff$'
     tiff_files = []
     property_names = []
@@ -90,8 +90,6 @@ def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tu
             tiff_files.append(f)
             property_names.append(m.group(1))
     property_names.sort(key=numeric_key)
-    print("file_no_ext: {}, pngs: {}, names: {}".format(
-        file_no_ext, png_files, property_names))
     return (file_no_ext, png_files, property_names)
 
 
@@ -274,20 +272,22 @@ def read_buildings_obj(
         all_tiff_values: List[List[float]] = []
         for i in feature_index_range:
             dir = os.path.dirname(files[i])
-            (png_files, tiff_files, property_names) = get_obj_texture_file_names(files[i], property_texture_png_index)
+            (file_no_ext, png_files, property_names) = get_obj_texture_file_names(files[i], property_texture_png_index)
+            tiff_files = [file_no_ext + "_" + f + ".tiff" for f in property_names]
+            print("pngs: {}, tiffs: {}, names: {}".format(png_files, tiff_files, property_names))
             if i == 0:
                 number_of_tiff_files = len(tiff_files)
                 if number_of_tiff_files == 0:
                     logging.error("Passing quantization_percentile implies "
                                   "there are TIFF files but we didn't fine any")
-                    return (None, None)
+                    return (None, "")
                 all_tiff_values = [[] for _ in range(number_of_tiff_files)]
             else:
                 if not number_of_tiff_files == len(tiff_files):
                   logging.error("Different number of TIFF files for first feature: {} "
                                 "and for feature {}: {}".format(
                                     number_of_tiff_files, i, len(tiff_files)))
-                  return (None, None)
+                  return (None, "")
             for j in range(len(tiff_files)):
                 (tiff_array, _) = read_tiff(dir + "/" + tiff_files[j])
                 if i == 0:
@@ -311,8 +311,8 @@ def read_buildings_obj(
             logging.warning("Empty OBJ file: %s", files[i])
             continue
         (file_no_ext, png_files, property_names) = get_obj_texture_file_names(files[i], property_texture_png_index)
-        tiff_files = [file_no_ext + "_" +f + ".tiff" for f in property_names]
-        print("tiffs: {}".format(tiff_files))
+        tiff_files = [file_no_ext + "_" + f + ".tiff" for f in property_names]
+        print("pngs: {}, tiffs: {}, names: {}".format(png_files, tiff_files, property_names))
         if i == 0:
             number_of_tiff_files = len(tiff_files)
             gdal_utils.read_offset(files[i], file_offset)
@@ -323,7 +323,7 @@ def read_buildings_obj(
                 logging.error("Different number of TIFF files for first feature: {} "
                               "and for feature {}: {}".format(
                                   number_of_tiff_files, i, len(tiff_files)))
-                return (None, None)
+                return (None, "")
         (quantized_files, ptf) = quantize(files[i], tiff_files, property_names, len(png_files), features_range, feature_percentile_range, i == len(feature_index_range) - 1)
         if ptf:
             property_texture_file = ptf

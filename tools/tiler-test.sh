@@ -40,7 +40,7 @@ eval set -- "$PARAMS"
 # generate 3D Tiles
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 DATA_DIR=~/data
-VTK_DIR=~/projects/VTK/build-gitlab-3dtiles-glb
+VTK_DIR=~/projects/VTK/build-3dtiles-glb
 echo "$SCRIPT_DIR" "$DATA_DIR" "$VTK_DIR"
 
 if [ "${CITY}" = "jacksonville" ]; then
@@ -92,10 +92,6 @@ elif [ "${CITY}" = "ucsd-all-region" ]; then
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_all_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-full-region-self-error" ]; then
-    rm -rf "${CITY}"
-    mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1)
-elif [ "${CITY}" = "ucsd-full-region-self-error-m" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
     CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
