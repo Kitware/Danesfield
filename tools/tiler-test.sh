@@ -50,7 +50,7 @@ if [ "${CITY}" = "jacksonville" ]; then
 elif [ "${CITY}" = "toycity" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/citygml/CityGML_2.0_Test_Dataset_2012-04-23/*Buildings*.gml "${DATA_DIR}"/citygml/CityGML_2.0_Test_Dataset_2012-04-23/*Terrain*.gml -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --translation 435200 3354000 0 --lod 3 --content_gltf --content_gltf_save_gltf)
+    CMD=(tiler  "${DATA_DIR}"/citygml/CityGML_2.0_Test_Dataset_2012-04-23/*.gml -o "${CITY}" --utm_zone 18 --utm_hemisphere N -t 2 --translation 486981.5 4421889 -10 --lod 3 --content_gltf --content_gltf_save_gltf)
 elif [ "${CITY}" = "jacksonville-merged" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
@@ -106,7 +106,7 @@ elif [ "${CITY}" = "ucsd-all-total-error" ]; then
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml "${DATA_DIR}"/Berlin-3D/Friedrichshain-Kreuzberg/citygml.gml -o "${CITY}" --utm_zone 33 --utm_hemisphere N -t 200 --number_of_features 10000 --input_type 0 --dont_save_textures --content_gltf)
+    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml "${DATA_DIR}"/Berlin-3D/Friedrichshain-Kreuzberg/citygml.gml -o "${CITY}" --utm_zone 33 --utm_hemisphere N -t 200 --number_of_features 10000 --input_type 0 --dont_save_textures --content_gltf --content_gltf_save_gltf -m)
 elif [ "${CITY}" = "berlin-stadium" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
