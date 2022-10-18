@@ -25,7 +25,9 @@ from vtkmodules.util import numpy_support
 from vtkmodules.vtkIOCityGML import vtkCityGMLReader
 from vtkmodules.vtkIOXML import vtkXMLPolyDataReader
 from vtkmodules.vtkIOGDAL import vtkGDALRasterReader
-from vtkmodules.vtkIOGeometry import vtkOBJReader
+from vtkmodules.vtkIOGeometry import (
+    vtkOBJReader,
+    vtkGLTFWriter)
 from vtkmodules.vtkIOPDAL import vtkPDALReader
 from vtkmodules.vtkIOImage import (
     vtkPNGWriter)
@@ -95,7 +97,7 @@ def get_obj_texture_file_names(path: str, property_texture_png_index: int) -> Tu
 
 def set_field(obj: vtkDataObject, name: str, values: List[str]):
     """
-    Adds to an obj an field array name with 1 element value.
+    Adds to an obj a string field array name
     """
     field_data = obj.GetFieldData()
     if not field_data:
@@ -104,11 +106,8 @@ def set_field(obj: vtkDataObject, name: str, values: List[str]):
         field_data = newfd
     string_array = vtkStringArray()
     string_array.SetNumberOfTuples(len(values))
-    print("{}: ".format(name), end='')
     for i, value in enumerate(values):
-        print(value, end=', ')
         string_array.SetValue(i, value)
-    print()
     string_array.SetName(name)
     field_data.AddArray(string_array)
 
@@ -249,7 +248,7 @@ def quantize(obj_path: str, tiff_files: List[str], property_names: List[str], te
 
 def read_buildings_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) ->  Tuple[Optional[vtkMultiBlockDataSet], str]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) ->  Tuple[Optional[vtkMultiBlockDataSet], str, str]:
     """
     Builds a multiblock dataset (similar with one built by the CityGML reader)
     from a list of OBJ files. It can generate quantized png textures from property
@@ -280,14 +279,14 @@ def read_buildings_obj(
                 if number_of_tiff_files == 0:
                     logging.error("Passing quantization_percentile implies "
                                   "there are TIFF files but we didn't fine any")
-                    return (None, "")
+                    return (None, "", "")
                 all_tiff_values = [[] for _ in range(number_of_tiff_files)]
             else:
                 if not number_of_tiff_files == len(tiff_files):
                   logging.error("Different number of TIFF files for first feature: {} "
                                 "and for feature {}: {}".format(
                                     number_of_tiff_files, i, len(tiff_files)))
-                  return (None, "")
+                  return (None, "", "")
             for j in range(len(tiff_files)):
                 (tiff_array, _) = read_tiff(dir + "/" + tiff_files[j])
                 if i == 0:
@@ -302,6 +301,7 @@ def read_buildings_obj(
             print("percentile range {} : {}".format(j, feature_percentile_range[j]))
     features_range: List[Tuple[float, float]] = []
     number_of_tiff_files = 0
+    texture_base_directory = os.path.dirname(files[0])
     for i in feature_index_range:
         reader = vtkOBJReader()
         reader.SetFileName(files[i])
@@ -323,7 +323,7 @@ def read_buildings_obj(
                 logging.error("Different number of TIFF files for first feature: {} "
                               "and for feature {}: {}".format(
                                   number_of_tiff_files, i, len(tiff_files)))
-                return (None, "")
+                return (None, "", "")
         (quantized_files, ptf) = quantize(files[i], tiff_files, property_names, len(png_files), features_range, feature_percentile_range, i == len(feature_index_range) - 1)
         if ptf:
             property_texture_file = ptf
@@ -331,12 +331,12 @@ def read_buildings_obj(
         building = vtkMultiBlockDataSet()
         building.SetBlock(0, polydata)
         root.SetBlock(root.GetNumberOfBlocks(), building)
-    return (root, property_texture_file)
+    return (root, texture_base_directory, property_texture_file)
 
 
 def read_points_obj(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str, str]:
     """
     Builds a  pointset from a list of OBJ files.
     """
@@ -353,12 +353,12 @@ def read_points_obj(
             continue
         append.AddInputDataObject(polydata)
     append.Update()
-    return (append.GetOutput(), "")
+    return (append.GetOutput(), "", "")
 
 
 def read_points_vtp(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str, str]:
     """
     Builds a  pointset from a list of VTP files.
     """
@@ -373,12 +373,12 @@ def read_points_vtp(
             continue
         append.AddInputDataObject(polydata)
     append.Update()
-    return (append.GetOutput(), "")
+    return (append.GetOutput(), "", "")
 
 
 def read_points_pdal(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
+        _lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str, str]:
     """
     Reads a point set from a list of pdal files
     """
@@ -386,7 +386,7 @@ def read_points_pdal(
     for i, file_name in enumerate(files):
         reader = vtkPDALReader()
         reader.SetFileName(file_name)
-        print("Reading {} ...".format(file_name))
+        logging.info("Reading {} ...".format(file_name))
         reader.Update()
         polydata = reader.GetOutput()
         if polydata.GetNumberOfPoints() == 0:
@@ -396,12 +396,20 @@ def read_points_pdal(
     append.Update()
     for i in range(3):
         file_offset[i] = 0
-    return (append.GetOutput(), "")
+    return (append.GetOutput(), "", "")
+
+def texture_uri_absolute(wall: str, texture_path: str):
+    """
+    Make the texture_uri paths absolute paths by prepending texture_path
+    """
+    texture_uri = vtkGLTFWriter.GetFieldAsStringVector(wall, "texture_uri")
+    new_texture_uri = [texture_path + "/" + t for t in texture_uri]
+    set_field(wall, "texture_uri", new_texture_uri)
 
 
 def read_buildings_citygml(
         number_of_features : int, begin_feature_index : int, end_feature_index : int,
-        lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str]:
+        lod : int, files : List[str], file_offset : List[float], property_texture_png_index: int, quantization_percentile: float) -> Tuple[Optional[vtkMultiBlockDataSet], str, str]:
     """
     Reads a lod from a citygml file files[0], max number of buildins and sets
     the file_offset to 0.
@@ -410,7 +418,7 @@ def read_buildings_citygml(
         file_offset[i] = 0
     allBuildings = vtkMultiBlockDataSet()
     for i, file_name in enumerate(files):
-        print("Reading {} ...".format(file_name))
+        logging.info("Reading {} ...".format(file_name))
         reader = vtkCityGMLReader()
         reader.SetFileName(file_name)
         reader.SetBeginBuildingIndex(begin_feature_index)
@@ -421,7 +429,7 @@ def read_buildings_citygml(
         mb = reader.GetOutput()
         if not mb:
             logging.error("Expecting vtkMultiBlockDataSet")
-            return (None, "")
+            return (None, "", "")
         currentNumberOfBlocks = mb.GetNumberOfBlocks()
         allNumberOfBlocks = allBuildings.GetNumberOfBlocks()
         allBuildings.SetNumberOfBlocks(allNumberOfBlocks + currentNumberOfBlocks)
@@ -431,11 +439,22 @@ def read_buildings_citygml(
         buildingIt.TraverseSubTreeOff()
         buildingIt.InitTraversal()
         j = 0
+        logging.info("Updating texture_uri for {} buildings ...".format(currentNumberOfBlocks))
+        texture_path = os.path.dirname(files[i])
         while not buildingIt.IsDoneWithTraversal():
-            allBuildings.SetBlock(allNumberOfBlocks + j, buildingIt.GetCurrentDataObject())
+            building = buildingIt.GetCurrentDataObject()
+            if building.IsTypeOf("vtkMultiBlockDataSet"):
+                wallIt = building.NewTreeIterator()
+                while not wallIt.IsDoneWithTraversal():
+                    wall = wallIt.GetCurrentDataObject()
+                    texture_uri_absolute(wall, texture_path)
+                    wallIt.GoToNextItem()
+            else:
+                texture_uri_absolute(building, texture_path)
+            allBuildings.SetBlock(allNumberOfBlocks + j, building)
             j = j + 1
             buildingIt.GoToNextItem()
-    return (allBuildings, "")
+    return (allBuildings, "", "")
 
 
 READER = {
@@ -502,7 +521,7 @@ def tiler(
     if ext not in READER or input_type not in READER[ext]:
         raise Exception("No valid reader for extension {} and input_type {}".format(
             ext, input_type))
-    (root, property_texture_file) = READER[ext][input_type](
+    (root, texture_base_directory, property_texture_file) = READER[ext][input_type](
         number_of_features, begin_feature_index,
         end_feature_index, lod, files, file_offset, property_texture_png_index, quantization_percentile)
     if root is None:
@@ -511,11 +530,10 @@ def tiler(
         root.GetPointData().SetActiveScalars(points_color_array)
     logging.info("Done parsing files")
     file_offset = list(a + b for a, b in zip(file_offset, input_offset))
-    texture_path = os.path.dirname(files[0])
     writer = vtkCesium3DTilesWriter()
     writer.SetInputDataObject(root)
     writer.SetDirectoryName(output_dir)
-    writer.SetTextureBaseDirectory(texture_path)
+    writer.SetTextureBaseDirectory(texture_base_directory)
     writer.SetPropertyTextureFile(property_texture_file)
     writer.SetInputType(input_type)
     writer.SetContentGLTF(content_gltf)
@@ -582,7 +600,7 @@ def main(args):
                         "and add them to the list.")
     parser.add_argument("-b", "--begin_feature_index", type=int,
                         default=0,
-                        help="Begin feature index. Read [begin, end) range.")
+                        help="Begin feature index. Read [begin, end) range")
     parser.add_argument("-e", "--end_feature_index", type=int,
                         default=UNINITIALIZED,
                         help="End feature index. Read [begin, end) range.")
