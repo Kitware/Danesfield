@@ -1,0 +1,81 @@
+#{% set sha = "3056e46" %}
+{% set with_osmesa = os.environ.get('VTK_WITH_OSMESA', 'False') %}
+
+{% if with_osmesa == "False" %}
+{% endif %}
+
+package:
+  name: vtk
+  version: {{ environ['GIT_DESCRIBE_TAG'] ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
+
+source:
+  git_branch: 3dtiles-pointcloud
+  git_url: https://gitlab.kitware.com/danlipsa/vtk.git
+
+build:
+  number: 1
+  skip: True  # [win and py27]
+  features:
+    - vc14  # [win and py35]
+    - vc14  # [win and py36]
+{% if with_osmesa == "True" %}
+    - mesalib
+{% endif %}
+{% if with_osmesa == "True" %}
+  skip: True  # [win]
+{% endif %}
+
+requirements:
+  build:
+    - toolchain
+    - cmake
+    - ninja
+    - python
+    # VTK Third Party dependencies
+    - libgdal {{ libgdal }}
+    - pdal {{ pdal }}
+
+  run:
+    - python
+    - future  # used in the generated python wrappers
+    # VTK Third Party dependencies
+    - libgdal
+    - pdal
+
+test:
+  imports:
+    - vtk
+    - vtk.vtkChartsCore
+    - vtk.vtkCommonCore
+    - vtk.vtkFiltersCore
+    - vtk.vtkFiltersGeneric
+    - vtk.vtkGeovisCore
+    - vtk.vtkFiltersHybrid
+    - vtk.vtkIOCore
+    - vtk.vtkImagingCore
+    - vtk.vtkInfovisCore
+    - vtk.vtkRenderingCore
+    - vtk.vtkViewsCore
+    - vtk.vtkRenderingVolume
+    - vtk.vtkInteractionWidgets
+
+about:
+  home: http://www.vtk.org/
+  license: BSD 3-Clause
+  summary: >
+    The Visualization Toolkit (VTK) is an open-source, freely available software
+    system for 3D computer graphics, modeling, image processing, volume
+    rendering, scientific visualization, and information visualization.
+
+extra:
+  recipe-maintainers:
+    - Korijn
+    - ivoflipse
+    - Maxyme
+    - ccordoba12
+    - grlee77
+    - msarahan
+    - patricksnape
+    - dfroger
+    - tadeu
+    - marcelotrevisani

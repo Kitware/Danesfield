@@ -1,0 +1,14 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e6ab2af..8d2de54 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -29,6 +29,9 @@ endif()
+ FIND_PACKAGE(PDAL 1.4.0 REQUIRED)
+ LINK_DIRECTORIES(${PDAL_LIBRARY_DIRS})
+ 
++# Use old ABI for std::string to fix linker error with conda-forge pdal package
++add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
++
+ if (CMAKE_COMPILER_IS_GNUCXX)
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -O3" )
+ ENDIF()

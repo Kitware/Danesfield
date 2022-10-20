@@ -1,0 +1,19 @@
+package:
+  name: core3d-tf_ops
+  version: 0.0.6
+
+source:
+  patches:
+    - core3d-tf_ops.patch
+  git_rev: 4292663
+  git_url: https://github.com/charlesq34/pointnet2.git
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - tensorflow-gpu {{ tensorflow }}
+
+  run:
+    - tensorflow-gpu {{ tensorflow }}

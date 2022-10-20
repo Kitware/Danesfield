@@ -1,0 +1,45 @@
+# This file created by conda-build 3.12.0
+# meta.yaml template originally from:
+# /tmp/kitware-geospatial-recipes_docker/recipes/flann, last modified Wed Aug  1 19:56:11 2018
+# ------------------------------------------------
+
+package:
+    name: flann
+    version: 1.9.1
+source:
+    patches:
+        - flann.patch
+    fn: 1.9.1.zip
+    sha256: 45420be368a76d1ea1d4337e8bd9b031d75a1abc01a1120a7ab9ea72a922e45f
+    url: https://github.com/mariusmuja/flann/archive/1.9.1.zip
+
+build:
+    number: 1
+
+about:
+    home: http://www.cs.ubc.ca/research/flann/
+    license: BSD
+    license_file: COPYING
+    summary: Library for performing fast approximate nearest neighbor searches in
+        high dimensional spaces.
+
+requirements:
+    build:
+    - toolchain
+    - cmake
+    - ninja
+    - hdf5
+    - python
+    - zlib
+    - gtest
+
+    run:
+    - hdf5
+    - python
+    - zlib
+    - gtest
+
+
+extra:
+    copy_test_source_files: true
+    final: true

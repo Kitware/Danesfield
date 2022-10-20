@@ -1,0 +1,48 @@
+package:
+  name: gaia
+  version: {{ environ['GIT_DESCRIBE_TAG']  ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
+
+source:
+  git_url: https://github.com/OpenDataAnalytics/gaia
+  git_rev: 1fe5510
+
+build:
+  number: 1
+  script: python setup.py install --single-version-externally-managed --record record.txt
+  noarch: python
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - geopandas
+  run:
+    - python
+    - numpy
+    - six
+    - requests 2.20.*
+    - shapely
+    - pillow
+    - geopandas
+    - gdal 2.*
+    - python-pdal >=1.7.0
+    - celery >=3.1.20
+    - psycopg2 >=2.6.1
+    - geoalchemy2 >=0.2.6
+    - rasterio
+
+test:
+  files:
+    - test_data/test.cpg
+    - test_data/test.dbf
+    - test_data/test.shp
+    - test_data/test.shx
+
+about:
+  home: https://github.com/OpenDataAnalytics/gaia
+  license: Apache V2
+  summary: 'Geospatial analytics library'
+
+extra:
+  recipe-maintainers:
+    - kitware

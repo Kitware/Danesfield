@@ -1,0 +1,25 @@
+diff --git a/Texture_Atlas/src/camera_parallel.cpp b/Texture_Atlas/src/camera_parallel.cpp
+index d862b23..7f59948 100644
+--- a/Texture_Atlas/src/camera_parallel.cpp
++++ b/Texture_Atlas/src/camera_parallel.cpp
+@@ -1,6 +1,7 @@
+ #include "camera_parallel.h"
+ 
+ #include <iostream>
++#include <vector>
+ 
+ /**
+  * @brief Camera_Ortho::Camera_Ortho Constructor
+
+diff --git a/Texture_Atlas/src/camera.h b/Texture_Atlas/src/camera.h
+index a4ee3ea..5d4ace9 100644
+--- a/Texture_Atlas/src/camera.h
++++ b/Texture_Atlas/src/camera.h
+@@ -2,6 +2,7 @@
+ #define CAMERA_H
+ 
+ #include <Eigen/Dense>
++#include <vector>
+ 
+ class Camera
+ {
