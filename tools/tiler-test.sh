@@ -40,7 +40,7 @@ eval set -- "$PARAMS"
 # generate 3D Tiles
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 DATA_DIR=~/data
-VTK_DIR=~/projects/VTK/build-3dtiles-glb
+VTK_DIR=~/projects/VTK/build-3dtiles-add-glb
 echo "$SCRIPT_DIR" "$DATA_DIR" "$VTK_DIR"
 
 if [ "${CITY}" = "jacksonville" ]; then
@@ -86,23 +86,35 @@ elif [ "${CITY}" = "jacksonville-property-texture-buildings" ]; then
 elif [ "${CITY}" = "ucsd-limited-region-rgb" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-all-region" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_all_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/ucsd_all_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-full-region-self-error" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-full-region-with-dist" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_with_dist/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/full_region_with_dist/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+elif [ "${CITY}" = "ucsd-full-region-anchor-point" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/full_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 4 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 --property_texture_tiff_directory anchor_point -m)
+elif [ "${CITY}" = "ucsd-full-region-ppe" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/full_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 4 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 --property_texture_tiff_directory ppe -m)
+elif [ "${CITY}" = "ucsd-full-region-unmodeled" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/full_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 4 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 --property_texture_tiff_directory unmodeled -m)
 elif [ "${CITY}" = "ucsd-all-total-error" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_all_total_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/ucsd_all_total_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "berlin" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
