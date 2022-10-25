@@ -68,20 +68,20 @@ This can be used as a starting point for manually running the Danesfield Docker 
 
 There is a third option for running Danesfield's container from the command line. Using only the ``--image`` option without the ``--vissat`` option will allow the user to start with an existing point cloud (the omission of ``--vissat`` means a cloud must be provided), but still run some of the intermediate steps that require images. Notably, the image orthorectification, material classification, and texturing steps can now run with the provided images. These images will not, however, contribute to the point cloud or the reconstruction mesh in any way.
 
-Other Notes
------------
 
-Danesfield's final tiled results can be found in the ``tiler`` folder in the output directory. If images were used, textured meshes can be found in the ``texture-mapping`` folder in the output directory, and if no images were used, then meshes without texture can be found in the ``roof-geon-extraction`` folder. 
+Accessing Results
+-----------------
 
-To check for a more recent release of Danesfield's Docker image, use the ``--pull_image`` option. 
+The final results of running Danesfield are building models encoded in the 3D Tiles format.
+These can be found in the ``tiler`` folder in the output directory.
+The best way to visualize 3D tiles output is in a web browser using Cesium.JS as described in the next section.
 
-Run with ``--help`` to se a quick explanation of each command line argument. 
+Other intermediate products are also available in directories that parallel ``tiler``.
+Before encoding in 3D Tiles, mesh data is stored in OBJ files for each building.
+These files may be easier to view in desktop 3D mesh software, like MeshLab, without needing to spin up a webserver.
+If images were used as Danesfield input, textured meshes can be found in the ``texture-mapping`` folder in the output directory.
+If no images were used, then meshes without texture can be found in the ``roof-geon-extraction`` folder. 
 
-To get a shell in the container without having to run Danesfield's pipeline, run 
-::
-	docker exec -it kitware/danesfield /bin/bash
-
-All example configuration files were made with the assumption that user-specified directories were mounted to the Danesfield Docker container as they are in the example run command in the 'Running Danesfield' section. For instance, the user-specified ``imgpath`` becomes ``/mnt`` in the container. Users should change the configuration files to reflect their own mount locations if they choose to run Danesfield without the demo script. 
 
 Visualizing Results
 -------------------
@@ -92,3 +92,18 @@ The final 3D tiles outputted by Danesfield can be visualized in a web browser us
 - Copy the ``demo/index.html`` file from this repository into the ``tiler`` directory containing the results you want to visualize
 - In your terminal, navigate to that ``tiler`` directory and start an HTTP server by running ``python3 -m http.server``
 - Go to ``http://localhost:8000/`` in your browser
+
+
+
+Other Notes
+-----------
+
+To check for a more recent release of Danesfield's Docker image, use the ``--pull_image`` option. 
+
+Run with ``--help`` to se a quick explanation of each command line argument. 
+
+To get a shell in the container without having to run Danesfield's pipeline, run 
+::
+	docker exec -it kitware/danesfield /bin/bash
+
+All example configuration files were made with the assumption that user-specified directories were mounted to the Danesfield Docker container as they are in the example run command in the 'Running Danesfield' section. For instance, the user-specified ``imgpath`` becomes ``/mnt`` in the container. Users should change the configuration files to reflect their own mount locations if they choose to run Danesfield without the demo script. 
