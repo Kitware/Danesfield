@@ -1,6 +1,20 @@
 Danesfield Demo Instructions
 ============================
 
+The Danesfield system computes 3D building models from high resolution satellite imagery or geospatial point cloud sources.
+The `demonstration script <danesfield_demo.py>`_ provides an example of how to run this software on a publicly
+accessible `dataset of multi-view satellite imagery <https://spacenet.ai/core3d/>`_.
+The software has a complex set of dependencies, so this demo uses a pre-built Docker containing everthing that is needed.
+The demo script makes it easy to pull down required Docker container, imagery data, and model files and run the algorithms.
+This can be done in multiple steps or all in one command.
+The final output of the system is a collection of 3D building meshes encoded as 3D Tiles, which can be viewed in a web browser using Cesium.JS.
+
+Note that the software does rely on GPU acceleration using CUDA in a few steps, so Nvidia-Docker is required as well as a
+modern Nvidia GPU.
+In particular we use `VisSat Satellite Stereo <https://github.com/Kai-46/VisSatSatelliteStereo>`_, a third-party tool for computing point clouds from multi-view satellite images.  
+VisSat is included in the Danesfield container.  
+VisSat can be quite GPU intensive for larger scenes and may require a GPU with more than 8GB of VRAM.  
+
 Software Requirements:
 ----------------------
 
