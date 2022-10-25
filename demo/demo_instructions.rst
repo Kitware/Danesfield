@@ -68,3 +68,13 @@ To get a shell in the container without having to run Danesfield's pipeline, run
 	docker exec -it kitware/danesfield /bin/bash
 
 All example configuration files were made with the assumption that user-specified directories were mounted to the Danesfield Docker container as they are in the example run command in the 'Running Danesfield' section. For instance, the user-specified ``imgpath`` becomes ``/mnt`` in the container. Users should change the configuration files to reflect their own mount locations if they choose to run Danesfield without the demo script. 
+
+Visualizing Results
+-------------------
+
+The final 3D tiles outputted by Danesfield can be visualized in a web browser using Cesium.JS.
+
+- Install Python 3
+- Copy the ``demo/index.html`` file from this repository into the ``tiler`` directory containing the results you want to visualize
+- In your terminal, navigate to that ``tiler`` directory and start an HTTP server by running ``python3 -m http.server``
+- Go to ``http://localhost:8000/`` in your browser
