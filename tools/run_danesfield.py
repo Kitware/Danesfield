@@ -251,6 +251,7 @@ def main(args):
                         help='run pipeline with image data as the source; default uses a point cloud')
     parser.add_argument('--roads', action='store_true',
                         help='get roads from open street maps; default extracts no roads')
+    parser.add_argument('--tiles', action='store_true', help='run tiler to get tiles')
     parser.add_argument('--vNDVI', action='store_true',
                         help='run pipeline with visible NDVI computation using RGB-colored point cloud')
     args = parser.parse_args(args)
@@ -614,19 +615,20 @@ def main(args):
     #############################################
     # 3D Tiles Generation from buildings
     #############################################
-    tiler_outdir = os.path.join(working_dir, 'tiler')
-    if args.image:
-        input_tiler = glob.glob(os.path.join(texture_mapping_outdir, '*.obj'))
-    else:
-        input_tiler = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
+    if args.tiles:
+        tiler_outdir = os.path.join(working_dir, 'tiler')
+        if args.image:
+            input_tiler = glob.glob(os.path.join(texture_mapping_outdir, '*.obj'))
+        else:
+            input_tiler = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
 
-    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+        utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
 
-    cmd_args = py_cmd(relative_tool_path('tiler.py'))
-    cmd_args.extend(input_tiler)
-    cmd_args.extend(['-o', tiler_outdir])
-    cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
-                     '--utm_zone', str(utm_zone)])
+        cmd_args = py_cmd(relative_tool_path('tiler.py'))
+        cmd_args.extend(input_tiler)
+        cmd_args.extend(['-o', tiler_outdir])
+        cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
+                         '--utm_zone', str(utm_zone)])
 
     run_step_switch_env('tiler', tiler_outdir,
                  'tiler',
