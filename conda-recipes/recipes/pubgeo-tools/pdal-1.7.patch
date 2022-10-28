@@ -1,0 +1,26 @@
+diff --git a/src/align3d/plugin.cpp b/src/align3d/plugin.cpp
+index 25c50d1..fecdc64 100644
+--- a/src/align3d/plugin.cpp
++++ b/src/align3d/plugin.cpp
+@@ -29,8 +29,6 @@
+ #include "orthoimage.h"
+ #include "plugin.hpp"
+ 
+-#include <pdal/pdal_macros.hpp>
+-
+ namespace pdal
+ {
+ 
+diff --git a/src/shr3d/plugin.cpp b/src/shr3d/plugin.cpp
+index 9e84eee..f095c3c 100644
+--- a/src/shr3d/plugin.cpp
++++ b/src/shr3d/plugin.cpp
+@@ -29,8 +29,6 @@
+ #include "plugin.hpp"
+ #include "shr3d.h"
+ 
+-#include <pdal/pdal_macros.hpp>
+-
+ namespace pdal
+ {
+ 

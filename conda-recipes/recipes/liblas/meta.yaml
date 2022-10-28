@@ -1,0 +1,34 @@
+# This file created by conda-build 3.12.0
+# meta.yaml template originally from:
+# /tmp/kitware-geospatial-recipes_docker/recipes/liblas, last modified Wed Aug  1 18:53:23 2018
+# ------------------------------------------------
+
+package:
+    name: liblas
+    version: 1.8.4
+source:
+    git_rev: ded463732db1f9baf461be6f3fe5b8bb683c41cd
+    git_url: https://github.com/libLAS/libLAS.git
+
+build:
+    number: 1
+
+requirements:
+    build:
+        - cmake
+        - ninja
+        - boost-cpp {{ boostcpp }}
+        - libgdal {{ libgdal }}
+        - geotiff
+    run:
+        - boost-cpp
+        - libgdal
+        - geotiff
+about:
+    home: https://liblas.org/
+    license: BSD
+    license_file: LICENSE.txt
+    summary: Library for reading and writing the very common LAS LiDAR format.
+extra:
+    copy_test_source_files: true
+    final: true

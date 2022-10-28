@@ -4,7 +4,7 @@
 #   nvidia-docker2 (https://github.com/NVIDIA/nvidia-docker)
 #
 # Build:
-#   docker build -t core3d/danesfield .
+#   docker build -t kitware/danesfield .
 #
 # Run:
 #   docker run \
@@ -56,6 +56,32 @@ RUN apt-get update && \
   apt-get clean -y && \
   rm -rf /var/lib/apt/lists/*
 
+# update NVIDIA keys
+# see https://github.com/NVIDIA/nvidia-docker/issues/1632
+RUN rm /etc/apt/sources.list.d/cuda.list && \
+    rm /etc/apt/sources.list.d/nvidia-ml.list && \
+    apt-key del 7fa2af80 && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-keyring_1.0-1_all.deb && \
+    dpkg -i cuda-keyring_1.0-1_all.deb
+
+
+# Build packages
+RUN apt-get update -q && \
+    apt-get install -y -q \
+        build-essential \
+        vim \
+        openssh-client \
+        libgl1-mesa-dev \
+        libxt-dev
+
+
+# Generate ssh key to access private repo
+RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root/.ssh/id_ed25519 && \
+    echo "Copy the following key to gitlab, Preferences, SSH Keys:" && \
+    cat /root/.ssh/id_ed25519.pub && \
+    ssh-keyscan -t rsa gitlab.kitware.com >> ~/.ssh/known_hosts && \
+    sleep 30
+
 # Download and install miniconda3
 # Based on https://github.com/ContinuumIO/docker-images/blob/fd4cd9b/miniconda3/Dockerfile
 # The step to update 'conda' is necessary to avoid the following error when
@@ -63,33 +89,35 @@ RUN apt-get update && \
 #
 #     IsADirectoryError(21, 'Is a directory')
 #
-ENV CONDA_EXECUTABLE /opt/conda/bin/conda
-RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh && \
+ARG CONDA=/opt/conda/bin/conda
+RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    ${CONDA_EXECUTABLE} clean -tipsy && \
+    ${CONDA} clean -tipsy && \
     rm ~/miniconda.sh
 
-# Copy environment definition first so that Conda environment isn't recreated
-# unnecessarily when other source files change.
-COPY ./deployment/conda/conda_env.yml \
-     ./danesfield/deployment/conda/conda_env.yml
+RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
+# mamba works much, much faster than conda
+RUN ${CONDA} update conda -y -q && \
+    ${CONDA} install conda-libmamba-solver
+ARG SOLVER="--experimental-solver libmamba"
+RUN ${CONDA} install -n base conda-forge::mamba -y -q || exit 1
+ARG MAMBA=/opt/conda/bin/mamba
 
-# Create CORE3D Conda environment
-RUN ${CONDA_EXECUTABLE} env create -f ./danesfield/deployment/conda/conda_env.yml -n core3d && \
-    ${CONDA_EXECUTABLE} clean -tipsy
+RUN apt-get install -y -q libarchive-dev
 
-# Copy patches for Colmap and VisSat
-COPY patches /patches
+WORKDIR /
+# Patches for Colmap and VisSat
+ADD patches /patches
 
 # Install ColmapForVisSat from Github
 RUN git clone --recursive https://github.com/Kai-46/ColmapForVisSat.git && \
   cd ColmapForVisSat && \
   git checkout 9d96671 && \
-  git apply ../patches/colmap_deps.patch && \
+  git apply /patches/colmap_deps.patch && \
   chmod +x /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \
   chmod +x /ColmapForVisSat/ubuntu1804_install_colmap.sh && \
   apt-get update && \
-  /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \ 
+  /ColmapForVisSat/ubuntu1804_install_dependencies.sh && \
   cd /ColmapForVisSat && \
   ./ubuntu1804_install_colmap.sh
 
@@ -109,13 +137,6 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/Kai-46/VisSatSatelliteSter
 RUN git clone https://github.com/LAStools/LAStools.git && \
   cd LAStools && \
   make
-
-# Install Danesfield package into CORE3D Conda environment
-COPY . ./danesfield
-RUN rm -rf ./danesfield/deployment
-RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
-  conda activate core3d && \
-  pip install -e ./danesfield"]
 
 RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
   unzip /BilateralFilter.zip && \
@@ -148,6 +169,78 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/zeux/meshoptimizer.git src
      cd build && \
      cmake -DMESHOPT_BUILD_GLTFPACK:BOOL=ON ../src && \
      make -j"]
+
+
+COPY deployment/conda/conda_env.yml /root/conda_env.yml
+
+# Create CORE3D Conda environment
+RUN ${MAMBA} env create  -f /root/conda_env.yml -n core3d
+
+
+# Add the conda recipes for the build
+RUN mkdir /root/conda-recipes
+COPY conda-recipes/recipes/conda_build_config.yaml /root/conda-recipes/conda_build_config.yaml
+
+ARG CHANNELS="-c conda-forge/label/cf202003 -c defaults"
+
+# build dependent packages
+WORKDIR /root/conda-recipes
+
+ADD conda-recipes/recipes/liblas /root/conda-recipes/liblas
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml liblas
+RUN ${MAMBA} install  -n core3d -c local liblas
+
+ADD conda-recipes/recipes/pcl /root/conda-recipes/pcl
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pcl
+RUN ${MAMBA} install  -n core3d -c local pcl
+
+# this package does not exist on conda-forge. It only works with
+# a certain version of pcl which we need to build as well.
+ADD conda-recipes/recipes/python-pcl /root/conda-recipes/python-pcl
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml python-pcl
+RUN ${MAMBA} install  -n core3d -c local python-pcl
+
+ADD conda-recipes/recipes/vtk /root/conda-recipes/vtk
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml vtk
+# RUN ${MAMBA} install  -n core3d -c local vtk
+
+ADD conda-recipes/recipes/texture-atlas /root/conda-recipes/texture-atlas
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml texture-atlas
+# RUN ${MAMBA} install  -n core3d -c local texture-atlas
+
+ADD conda-recipes/recipes/core3d-purdue /root/conda-recipes/core3d-purdue
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml core3d-purdue
+RUN ${MAMBA} install  -n core3d -c local core3d-purdue
+
+ADD conda-recipes/recipes/laspy /root/conda-recipes/laspy
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml laspy
+# RUN ${MAMBA} install  -n core3d -c local laspy
+
+ADD conda-recipes/recipes/pubgeo-tools /root/conda-recipes/pubgeo-tools
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-tools
+# RUN ${MAMBA} install  -n core3d -c local pubgeo-tools
+
+ADD conda-recipes/recipes/pubgeo-core3d-metrics /root/conda-recipes/pubgeo-core3d-metrics
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-core3d-metrics
+# RUN ${MAMBA} install  -n core3d -c local pubgeo-core3d-metrics
+
+ADD conda-recipes/recipes/core3d-tf_ops /root/conda-recipes/core3d-tf_ops
+RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml core3d-tf_ops
+# RUN ${MAMBA} install  -n core3d -c local core3d-tf-ops
+
+
+WORKDIR /
+
+
+# Install Danesfield package into CORE3D Conda environment
+COPY . ./danesfield
+RUN rm -rf ./danesfield/deployment
+RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+  conda activate core3d && \
+  pip install -e ./danesfield"]
+
+# Clean up.
+RUN ${MAMBA} clean -tipsy
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]

@@ -1,26 +1,14 @@
 #!/bin/bash
 
-tiler_profile()
-{
-    PYTHONPATH=. valgrind --tool=callgrind --dump-instr=yes --simulate-cache=yes --collect-jumps=yes ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
-}
-
-tiler_debug()
-{
-    PYTHONPATH=. gdb --args ~/projects/VTK/build/bin/vtkpython tools/tiler.py "$@"
-}
-
 tiler()
 {
-    VTK_BUILD=build-cesiumoptimizer
-    #PYTHONPATH=. ~/projects/VTK/${VTK_BUILD}/bin/vtkpython tools/tiler.py "$@"
-    PYTHONPATH=. /home/danlipsa/miniconda3/envs/core3d-dev/bin/vtkpython tools/tiler.py "$@"
+    PYTHONPATH="${SCRIPT_DIR}/.." "${VTK_DIR}/bin/vtkpython" "${SCRIPT_DIR}/tiler.py" "$@"
 }
 
 print_parameters ()
 {
-    echo "$0 -c[|--city] jacksonville|berlin|nyc"
-    echo "-c <city>: selects the city mesh to convert to 3D Tiles"
+    echo "$0 -c[|--city] jacksonville|berlin|nyc|rio-points|..."
+    echo "-c <city>: selects the city to convert to 3D Tiles"
 }
 
 PARAMS=""
@@ -35,7 +23,7 @@ while (( "$#" )); do
         exit 1
       fi
       ;;
-    -*|--*=) # unsupported flags
+    -*=) # unsupported flags
       echo "Error: Unsupported flag $1" >&2
       print_parameters "$0"
       exit 1
@@ -50,47 +38,107 @@ done
 eval set -- "$PARAMS"
 
 # generate 3D Tiles
-cd ~/projects/danesfield/danesfield || exit
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+DATA_DIR=~/data
+VTK_DIR=~/projects/VTK/build-3dtiles-glb
+echo "$SCRIPT_DIR" "$DATA_DIR" "$VTK_DIR"
 
 if [ "${CITY}" = "jacksonville" ]; then
-    dir=jacksonville-3d-tiles
-    rm -rf ${dir}
-    mkdir ${dir}
-    # tiler ../../../data/CORE3D/Jacksonville/building_15_building_22.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 100
-    tiler ../../../data/CORE3D/Jacksonville/building_*_building_*.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 20 -n 100
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100)
+elif [ "${CITY}" = "jacksonville-merged" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100 --content_gltf --content_gltf_save_gltf -m --merged_texture_width 1)
+elif [ "${CITY}" = "jacksonville-gltf" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 20 -n 100 --content_gltf)
+elif [ "${CITY}" = "jacksonville-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --input_type 1)
+elif [ "${CITY}" = "jacksonville-points-gltf" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_*_building_*.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --input_type 1 --content_gltf)
 elif [ "${CITY}" = "jacksonville-triangle" ]; then
-    dir=jacksonville-triangle
-    rm -rf ${dir}
-    mkdir ${dir}
-    tiler ../../../data/CORE3D/Jacksonville/triangle.obj -o ${dir} --utm_zone 17 --utm_hemisphere N -t 2 --dont_save_textures --content_type 2
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/triangle.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --dont_save_textures --content_gltf --input_type 0)
+elif [ "${CITY}" = "jacksonville-mesh" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/Jacksonville/building_ground.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --content_gltf --input_type 2)
+elif [ "${CITY}" = "jacksonville-property-texture" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/mesh/square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 10000 --content_gltf --content_gltf_save_gltf --input_type 2)
+elif [ "${CITY}" = "jacksonville-property-texture-buildings" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/../tasks/3dtiles-property-texture/buildings/*square.obj -o "${CITY}" --utm_zone 17 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0)
+elif [ "${CITY}" = "ucsd-limited-region-rgb" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+elif [ "${CITY}" = "ucsd-all-region" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_all_region/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+elif [ "${CITY}" = "ucsd-full-region-self-error" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/full_region_self_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+elif [ "${CITY}" = "ucsd-all-total-error" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/CORE3D/ucsd_all_total_error/building_*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 2 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "berlin" ]; then
-    dir=berlin-3d-tiles
-    rm -rf $dir
-    mkdir $dir
-    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --utm_zone 33 --utm_hemisphere N -t 200 --dont_save_textures --number_of_buildings 10000 --content_type 0
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml "${DATA_DIR}"/Berlin-3D/Friedrichshain-Kreuzberg/citygml.gml -o "${CITY}" --utm_zone 33 --utm_hemisphere N -t 200 --number_of_features 10000 --input_type 0 --dont_save_textures --content_gltf)
 elif [ "${CITY}" = "berlin-stadium" ]; then
-    dir=${CITY}
-    rm -rf $dir
-    mkdir $dir
-    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml-stadium.gml -o ${dir} --crs EPSG:25833 -t 100 --dont_save_textures --number_of_buildings 1
-elif [ "${CITY}" = "berlin-stadium10" ]; then
-    dir=${CITY}
-    rm -rf $dir
-    mkdir $dir
-    tiler ../../../data/Berlin-3D/Charlottenburg-Wilmersdorf/citygml.gml -o ${dir} --crs EPSG:25833 -t 100 --dont_save_textures -b 2800 -e 3100 --content_type 1
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml-stadium.gml -o "${CITY}" --crs EPSG:25833 -t 100 --number_of_features 1)
 elif [ "${CITY}" = "nyc" ]; then
-    i=1
-    dir=nyc-3d-tiles
-    rm -rf $dir
-    mkdir $dir
-    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA${i}_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures --content_type 2 -m -n 10000
-elif [ "${CITY}" = "nyc-one" ]; then
-    dir=${CITY}
-    rm -rf $dir
-    mkdir $dir
-    tiler ../../../data/NYC-3D-Building/DA_WISE_GMLs/DA10_3D_Buildings_Merged.gml -o ${dir} --crs EPSG:2263 -t 100 --dont_save_textures -n 1 --content_type 2
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA1_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA2_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA3_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA4_3D_Buildings_Merged.gml" "${DATA_DIR}/NYC-3D-Building/DA_WISE_GMLs/DA5_3D_Buildings_Merged.gml" -o "${CITY}" --crs EPSG:2263 -t 100 --dont_save_textures --content_gltf)
+elif [ "${CITY}" = "rio-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/nga_data/RoI-keep_xy_664000_7471500-665000_7472500.las -o "${CITY}" --crs EPSG:32723 -t 10000 --input_type 1 --points_color_array Color)
+elif [ "${CITY}" = "aphill-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/TeleSculptor/examples/09172008flight1tape3_2/results/textured_mesh.vtp -o "${CITY}" --utm_zone 18 --utm_hemisphere N --translation 293513 4229533 -71.6739744841 -t 10000 --input_type 1 --points_color_array mean)
+elif [ "${CITY}" = "aphill-points-gltf" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/TeleSculptor/examples/09172008flight1tape3_2/results/textured_mesh.vtp -o "${CITY}" --utm_zone 18 --utm_hemisphere N --translation 293513 4229533 -71.6739744841 -t 10000 --input_type 1 --points_color_array mean --content_gltf)
+elif [ "${CITY}" = "berlin3" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler "${DATA_DIR}"/Berlin-3D/Charlottenburg-Wilmersdorf/citygml-three-buildings.gml -o "${CITY}" --crs EPSG:25833 -t 2)
+elif [ "${CITY}" = "rapid3d-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler /media/videonas/fouo/projects/danesfield_courier/Rapid3D/adhoc4/filter-black-points.las -o "${CITY}" --utm_zone 18 --utm_hemisphere N -t 20000 --input_type 1 --points_color_array Color)
+elif [ "${CITY}" = "ukraine-points" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler /run/user/1000/gvfs/afp-volume:host=bananas.local,user=dan.lipsa,volume=fouo/data_golden/NGA/ukraine/ukraine_sfm_[01234]_classified.laz -o "${CITY}" --utm_zone 37 --utm_hemisphere N -t 20000 --input_type 1 --points_color_array Color)
+elif [ "${CITY}" = "rapid3d-gltf" ]; then
+    rm -rf "${CITY}"
+    mkdir "${CITY}"
+    CMD=(tiler /media/videonas/fouo/projects/danesfield_courier/results/pc_texture_maps/Rapid3D/adhoc4noBlack/*.obj -o "${CITY}" --utm_zone 18 --utm_hemisphere N -t 20 --content_gltf)
 else
     echo "Error: Cannot find ${CITY}"
     print_parameters "$0"
     exit 1
 fi
+echo "${CMD[*]}"
+${CMD[*]}

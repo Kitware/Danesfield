@@ -1,62 +1,68 @@
 # conda_env.yml
-# Configuration file for creating a Conda Environment with dependencies needed for Danesfield.
-# Create the environment by running the following command (after installing Miniconda):
+# Configuration file for creating a Conda Environment with dependencies needed
+# for Danesfield.
+# Create the environment by running (after installing Miniconda):
 #   $ conda env create -f conda_env.yml
 # then:
 # source activate core3d-dev
 #
-# The kitware-danesfield-pt, kitware-danesfield-cf and kitware-danesfield-df repos store
-# private copies of packages from pytorch, conda-forge and defaults.
-# For macs (that dont have nvidia GPUS) you don't execute the last two steps.
 
+---
 name: core3d-dev
 
 channels:
-  - kitware-danesfield
-  - conda-forge/label/cf201901
+  # - local
+  - conda-forge/label/cf202003
   - defaults
   - pytorch
 
-
 dependencies:
-- vtk
-- liblas
-- flann
-- pcl
-- python-pcl
-- texture-atlas
-- core3d-purdue
-- core3d-tf_ops
-- pubgeo-tools
-- pubgeo-core3d-metrics
-- gdal
-- libgdal
-- pdal
-- python-pdal
-- pyproj
-- scipy
-- jsonschema
-- geojson
-- flake8
-- pytest
-- cuda100
-- cudatoolkit=10.0
-- pytorch=1.0.0
-- cudnn
-- cupti
-- shapely
-- scikit-learn
-- scikit-image
-- cgal
-- xorg-libsm
-- xorg-libX11
-- pip
-- pip:
-  - ubelt
-  - plyfile
-  - open3d-python
-- torchvision
-- tqdm
-- matplotlib
-- requests
-- opencv
+  # - vtk
+  # - liblas
+  # - pcl
+  # - python-pcl
+  # - texture-atlas
+  # - core3d-purdue
+  # - core3d-tf_ops
+  # - pubgeo-tools
+  # - pubgeo-core3d-metrics
+  # repeat dependencies of built packages
+  - cmake
+  - ninja
+  - boost-cpp
+  - tensorflow-gpu=1.14
+  - python
+  - libgdal
+  - pdal
+  - geotiff
+  - flann
+  - eigen
+  - qhull
+  - cython=0.25
+  - numpy
+  - pkg-config
+  - nose
+  - filelock
+  - opencv
+  - cgal
+  - laspy
+  - matplotlib
+  - scipy
+  - jsonschema
+  # end repeat
+  - pyproj
+  - flake8
+  - pytest
+  - pytorch-gpu
+  - scikit-learn
+  - scikit-image
+  - xorg-libsm
+  - xorg-libX11
+  - pip
+  - pip:
+      - ubelt
+      - plyfile
+      - open3d-python
+  - torchvision
+  - tqdm
+  - requests

@@ -1,0 +1,37 @@
+package:
+  name: pubgeo-core3d-metrics
+  version: {{ environ['GIT_DESCRIBE_TAG'] ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
+
+source:
+  patches:
+    - pubgeo-core3d-metrics.patch
+  git_rev: 5f07f3e
+  git_url: https://github.com/pubgeo/core3d-metrics.git
+
+build:
+  number: 2
+  noarch: python
+
+requirements:
+  build:
+    - python {{ python }}
+    - setuptools
+
+  run:
+    - python
+    - gdal
+    - laspy
+    - matplotlib
+    - numpy
+    - scipy
+    - jsonschema
+    - pubgeo-tools
+
+test:
+  imports:
+    - core3dmetrics
+
+about:
+  home: https://github.com/pubgeo/core3d-metrics
+  license: MIT
+  summary: Performs metric analysis for 3D models

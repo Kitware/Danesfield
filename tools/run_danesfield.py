@@ -77,10 +77,10 @@ def collate_input_paths(paths):
     :type paths: enumerable
     '''
     input_re = re.compile(r'(?P<gra>GRA_)?.*'
-                          '(?P<prefix>[0-9]{2}[A-Z]{3}[0-9]{8})\-'
-                          '(?P<modality>P1BS|M1BS|A1BS)\-'
-                          '(?P<trail>[0-9]{12}_[0-9]{2}_P[0-9]{3}).*'
-                          '(?P<ext>\..+)$')
+                          r'(?P<prefix>[0-9]{2}[A-Z]{3}[0-9]{8})\-'
+                          r'(?P<modality>P1BS|M1BS|A1BS)\-'
+                          r'(?P<trail>[0-9]{12}_[0-9]{2}_P[0-9]{3}).*'
+                          r'(?P<ext>\..+)$')
 
     modality_map = {'P1BS': 'pan',
                     'M1BS': 'msi',
@@ -119,6 +119,41 @@ def relative_tool_path(rel_path):
 def py_cmd(tool_path):
     return ['python', '-u', tool_path]
 
+
+def run_step_switch_env(conda_env, working_dir, step_name, command, abort_on_error=True):
+    '''Runs a command if it has not already been run successfully.
+
+    Before the command is run, we activate conda_env.
+
+    and exit status files are written to `working_dir`.  This script
+    will exit(1) if the command's exit status is anything but 0, and
+    if `abort_on_error` is True.
+
+    The stdout and stderr of the command are both printed to stdout
+    and written to the log file.
+
+    :param working_dir: Directory to create for log and exit status
+    output files.
+    :type working_dir: str
+
+    :param step_name: Nominal identifier for the step.
+    :type step_name: str
+
+    :param command: Command passed directly to `subprocess.Popen`.
+    :type command: array or str
+
+    :param abort_on_error: If True, the program will exit if the step
+    fails.  Default is True.
+    :type abort_on_error: bool
+
+    '''
+    command_switch_env = ['source', '/opt/conda/etc/profile.d/conda.sh', '&&',
+                          'conda', 'activate', conda_env, '&&',
+                          'export', 'PYTHONPATH=/danesfield', '&&']
+    command_switch_env.extend(command)
+    # no need to switch back as that happens when the process finishes.
+    string_command = " ".join(command_switch_env)
+    return run_step(working_dir, step_name, string_command, abort_on_error)
 
 def run_step(working_dir, step_name, command, abort_on_error=True):
     '''
@@ -172,17 +207,26 @@ def run_step(working_dir, step_name, command, abort_on_error=True):
         logging.info('---- Running step: {} ----'.format(step_name))
         logging.debug(command)
         # Run the step; newline buffered text
-        proc = subprocess.Popen(command,
-                                stderr=subprocess.STDOUT,
-                                stdout=subprocess.PIPE,
-                                universal_newlines=True,
-                                bufsize=1)
-
+        if (isinstance(command,str)):
+            proc = subprocess.Popen(command,
+                                    stderr=subprocess.STDOUT,
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True,
+                                    bufsize=1,
+                                    shell=True,
+                                    executable='/bin/bash')
+        else:
+            proc = subprocess.Popen(command,
+                                    stderr=subprocess.STDOUT,
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True,
+                                    bufsize=1)
         # Write the output/err both to stdout and the log file
         with open(step_log_fpath, 'w') as out_f:
-            for line in proc.stdout:
-                print(line, end='')
-                print(line, end='', file=out_f)
+            if (proc.stdout):
+                for line in proc.stdout:
+                    print(line, end='')
+                    print(line, end='', file=out_f)
 
         # Wait for the process to terminate and set the return code
         # (max of 5 seconds)
@@ -228,7 +272,7 @@ def main(args):
 
     aoi_name = config['aoi']['name']
 
-    gsd = float(config['params'].get('gsd', 0.25))
+    gsd = float(config['params'].get('gsd', "0.25"))
 
     #############################################
     # Run P3D point cloud generation
@@ -273,7 +317,7 @@ def main(args):
     else:
         assert use_rpcs, 'expected an rpc_dir in the config'
 
-    for root, dirs, files in iterable:
+    for root, _, files in iterable:
         input_paths.extend([os.path.join(root, f) for f in files])
 
     collection_id_to_files = collate_input_paths(input_paths)
@@ -312,6 +356,23 @@ def main(args):
              'generate-dsm',
              cmd_args)
 
+    #############################################
+    # 3D Tiles from P3D point cloud
+    #############################################
+    tiler_points_outdir = os.path.join(working_dir, 'tiler-points')
+    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+
+    cmd_args = py_cmd(relative_tool_path('tiler.py'))
+    cmd_args.append(p3d_file)
+    cmd_args.extend(['-o', tiler_points_outdir])
+    cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
+                     '--utm_zone', str(utm_zone),
+                     '-t', str(10000),
+                     '--input_type', str(1)])
+    run_step_switch_env('tiler', tiler_points_outdir,
+                        'tiler',
+                        cmd_args)
+
     # #############################################
     # # Fit Dtm to the DSM
     # #############################################
@@ -333,6 +394,7 @@ def main(args):
     # needs to use the DSM, DTM from above and Raytheon RPC file,
     # which is a by-product of P3D.
 
+    ndvi_output_fpath = ""
     if args.image:
         orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
         for collection_id, files in collection_id_to_files.items():
@@ -380,7 +442,7 @@ def main(args):
     # Get OSM road vector data
     #############################################
     # Query OpenStreetMap for road vector data
-
+    road_vector_output_fpath = ""
     if args.roads:
         get_road_vector_outdir = os.path.join(working_dir, 'get-road-vector')
         road_vector_output_fpath = os.path.join(get_road_vector_outdir, 'road_vector.geojson')
@@ -416,6 +478,7 @@ def main(args):
              'segment-by-height',
              cmd_args)
 
+
     # pythorch is broken with missing symbol.
     # That is not that surprising, given that we use three repos for
     # binary packages: conda-forge, defaults and pytorch. In this case
@@ -430,6 +493,7 @@ def main(args):
     # # Material Segmentation
     # #############################################
 
+    material_classifier_outdir = ""
     # if args.image:
     #     material_classifier_outdir = os.path.join(working_dir, 'material-classification')
     #     cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
@@ -481,6 +545,7 @@ def main(args):
              'roof-geon-extraction',
              cmd_args)
 
+    texture_mapping_outdir = ""
     if not args.image:
         occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
     else:
@@ -525,7 +590,7 @@ def main(args):
                  cmd_args)
 
     #############################################
-    # 3D Tiles Generation
+    # 3D Tiles Generation from buildings
     #############################################
     tiler_outdir = os.path.join(working_dir, 'tiler')
     if args.image:
@@ -541,9 +606,9 @@ def main(args):
     cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
                      '--utm_zone', str(utm_zone)])
 
-    run_step(tiler_outdir,
-             'tiler',
-             cmd_args)
+    run_step_switch_env('tiler', tiler_outdir,
+                 'tiler',
+                 cmd_args)
 
     #############################################
     # Buildings to DSM

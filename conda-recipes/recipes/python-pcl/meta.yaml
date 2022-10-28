@@ -1,0 +1,31 @@
+package:
+  name: python-pcl
+  version: 0.3.0
+
+source:
+  patches:
+    - python-pcl.patch
+  git_url: https://github.com/strawlab/python-pcl
+  git_rev: 8fd7bb2c9b5eff2fecea7c4ddc241763a3c77334
+
+build:
+    number: 1
+
+requirements:
+  build:
+    - cython {{ cython }}
+    - numpy
+    - pkg-config
+    - pcl=1.8.1
+    - nose
+    - filelock
+    - flann
+  run:
+    - pcl
+    - numpy
+    - filelock
+    - flann
+
+about:
+  home: https://github.com/strawlab/python-pcl
+  license: BSD

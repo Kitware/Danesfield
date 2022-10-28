@@ -1,0 +1,24 @@
+diff --git a/core3dmetrics/geometrics/plot.py b/core3dmetrics/geometrics/plot.py
+index 0d6be25..baffc0d 100644
+--- a/core3dmetrics/geometrics/plot.py
++++ b/core3dmetrics/geometrics/plot.py
+@@ -3,9 +3,9 @@ import platform
+ import numpy as np
+ 
+ import matplotlib  as mpl
+-if os.getenv('DISPLAY') is None and not platform.system() == "Windows":
+-    import matplotlib
+-    matplotlib.use('Agg')
++
++import matplotlib
++matplotlib.use('Agg')
+ 
+ import matplotlib.pyplot as plt
+ 
+@@ -129,4 +129,4 @@ class plot:
+             saveName = self.savePrefix + saveName
+ 
+         fn  = os.path.join(self.saveDir, saveName + self.saveExe)
+-        plt.savefig(fn, dpi=self.dpi)
+\ No newline at end of file
++        plt.savefig(fn, dpi=self.dpi)

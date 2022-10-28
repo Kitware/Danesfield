@@ -1,0 +1,31 @@
+{% set version = "0.1.0" %}
+
+package:
+  name: pubgeo-tools
+  version: {{ version }}
+
+source:
+  git_rev: 5223661082f13073f4e0ba0245d777f7292b65c8
+  git_url: https://github.com/pubgeo/pubgeo.git
+  patches:
+    # Compile with PDAL 1.7
+    - pdal-1.7.patch
+
+build:
+  number: 1
+  skip: True  # [win]
+
+requirements:
+  build:
+    - cmake
+    - ninja
+    - libgdal {{ libgdal }}
+    - pdal {{ pdal }}
+  run:
+    - libgdal
+    - pdal
+
+about:
+  home: http://www.jhuapl.edu/pubgeo.html
+  license: MIT
+  summary: Geospatial tools for 3D registration and scene classification

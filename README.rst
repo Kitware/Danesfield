@@ -114,7 +114,7 @@ To execute a pipeline with a point cloud, run
 
 .. code-block::
 
-   docker run --rm --gpus all -it -v ~/projects/danesfield:/root/danesfield core3d/danesfield 'LOGLEVEL=DEBUG python /danesfield/tools/run_danesfield.py /root/danesfield/run_danesfield/wrk/input.ini' > output_pointcloud.txt 2>&1
+   docker run --rm --gpus all -it -v ~/projects/danesfield:/root/danesfield -v ~/data/run_danesfield/:/root/run_danesfield kitware/danesfield 'LOGLEVEL=DEBUG python /root/danesfield//danesfield/tools/run_danesfield.py /root/run_danesfield/wrk/input.ini' > output_pointcloud.txt 2>&1
 
 
 Note: `<input.ini>`_ should contain a valid point cloud path via ``p3d_fpath``.
@@ -123,7 +123,7 @@ To execute a pipeline with a set of satellite images, run
 
 .. code-block::
 
-    docker run --rm --gpus all -it -v ~/projects/danesfield:/root/danesfield core3d/danesfield 'LOGLEVEL=DEBUG python /root/danesfield/danesfield/tools/run_danesfield.py --image /root/danesfield/run_danesfield/imageful/imageful.ini' >> output_image.txt 2>&1
+    docker run --rm --gpus all -it -v ~/projects/danesfield:/root/danesfield -v ~/data/run_danesfield/:/root/run_danesfield kitware/danesfield 'LOGLEVEL=DEBUG python /root/danesfield/danesfield/tools/run_danesfield.py --image /root/run_danesfield/imageful/imageful.ini' >> output_image.txt 2>&1
 
 Note: `<input.ini>`_ should contain a valid path to imagery via ``imagery_dir``.
 

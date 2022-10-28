@@ -1,0 +1,32 @@
+{% set version = "1.5.1" %}
+
+package:
+  name: laspy
+  version: {{ version }}
+
+source:
+  url: https://github.com/laspy/laspy/archive/{{ version }}.tar.gz
+  sha256: 3dec2f9204fedbe0cdfb124ef796272b03da858cf1a0f979002b1297d3c78ff9
+
+build:
+  number: 1
+  noarch: python
+
+requirements:
+  build:
+    - python {{ python }}
+    - setuptools
+    - numpy
+  run:
+    - python
+    - numpy
+
+test:
+  imports:
+    - laspy
+
+about:
+  home: https://github.com/laspy/laspy
+  license: BSD
+  license_file: LICENSE.txt
+  summary: Native Python ASPRS LAS read/write library

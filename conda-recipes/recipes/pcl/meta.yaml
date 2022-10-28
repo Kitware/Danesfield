@@ -1,0 +1,41 @@
+# This file created by conda-build 3.12.0
+# meta.yaml template originally from:
+# /tmp/kitware-geospatial-recipes_docker/recipes/pcl, last modified Thu Aug  2 13:33:50 2018
+# ------------------------------------------------
+
+package:
+    name: pcl
+    version: 1.8.1
+source:
+    sha256: 5738bd0da05f32ef3f7500feffec8d8821b5eb327d70d5a0b28a7eaef69d46f9
+    url: https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.1.zip
+
+build:
+    number: 1
+
+requirements:
+    build:
+        - cmake
+        - ninja
+        - flann
+        - boost-cpp {{ boostcpp }}
+        - eigen
+        - liblas
+        - qhull {{ qhull }}
+
+    run:
+        - flann
+        - boost-cpp
+        - eigen
+        - liblas
+        - qhull
+
+about:
+    home: http://www.pointclouds.org
+    license: BSD
+    license_file: LICENSE.txt
+    summary: A standalone, large scale, open project for 2D/3D image and point cloud
+        processing.
+extra:
+    copy_test_source_files: true
+    final: true

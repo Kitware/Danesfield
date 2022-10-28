@@ -1,0 +1,37 @@
+package:
+    name: core3d-purdue
+    version: {{ environ['GIT_DESCRIBE_TAG'] ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
+
+source:
+  patches:
+    - boost.patch
+  git_rev: d1dcc51
+  git_url: git@gitlab.kitware.com:core3d/core3d-purdue.git
+
+build:
+    number: 1
+
+requirements:
+  build:
+  - boost-cpp {{ boostcpp }}
+  - cmake
+  - ninja
+  - cgal
+  - eigen
+  - flann
+  - liblas
+  - pcl
+  - vtk
+
+  run:
+  - boost-cpp
+  - cgal
+  - eigen
+  - flann
+  - liblas
+  - pcl
+  - vtk
+
+about:
+    home: https://gitlab.kitware.com/core3d/core3d-purdue/
+    summary: Files are shared by the core3d Purdue team.

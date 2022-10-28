@@ -1,0 +1,30 @@
+package:
+  name: texture-atlas
+  version: {{ environ['GIT_DESCRIBE_TAG'] ~ "." ~ environ['GIT_DESCRIBE_NUMBER'] ~ "." ~ environ['GIT_DESCRIBE_HASH'] }}
+
+source:
+  git_tag: 95b9f9c65c45a788320022d68b6860311e8b0b19
+  git_url: git@gitlab.kitware.com:core3d/core3d-keu.git
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake
+    - ninja
+    - vtk
+    - eigen
+    - opencv {{ opencv }}
+    - libgdal {{ libgdal }}
+    - boost-cpp {{ boostcpp }}
+  run:
+    - vtk
+    - eigen
+    - opencv
+    - libgdal
+    - boost-cpp
+
+test:
+  commands:
+    - run_texture_mapping
