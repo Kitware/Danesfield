@@ -624,6 +624,9 @@ def main(args):
     parser.add_argument("--content_gltf_save_gltf", action="store_true",
                         help="Store tile content as GLTF or GLB."
                         "Use the 3DTILES_content_gltf extension.")
+    parser.add_argument("--external_glb_converter", action="store_true",
+                        help="Use an external glb converter as oposed to the VTK one"
+                        "Use the 3DTILES_content_gltf extension.")
     parser.add_argument("-l", "--lod", type=int,
                         help="Level of detail to be read (if available)",
                         default=2)
@@ -698,7 +701,7 @@ def main(args):
         # noq is no quantization as Cesium 1.84 does not support it.
         cmd_args_prefix = ["/meshoptimizer/build/gltfpack", "-noq", "-i"]
     if args.input_type != 1 and (not args.content_gltf or
-                                 (args.content_gltf and not args.content_gltf_save_gltf)):
+                                 (args.content_gltf and not args.content_gltf_save_gltf and args.external_glb_converter)):
         logging.info(log_text)
         gltf_files = glob(args.output + "/*/*.gltf")
         for gltf_file in gltf_files:
