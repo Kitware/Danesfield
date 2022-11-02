@@ -86,7 +86,7 @@ elif [ "${CITY}" = "jacksonville-property-texture-buildings" ]; then
 elif [ "${CITY}" = "ucsd-limited-region-rgb" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-all-region" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
