@@ -1,0 +1,13 @@
+diff --git a/Texture_Atlas/src/CMakeLists.txt b/Texture_Atlas/src/CMakeLists.txt
+index b22c261..7a6092b 100644
+--- a/Texture_Atlas/src/CMakeLists.txt
++++ b/Texture_Atlas/src/CMakeLists.txt
+@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
+ 
+ project(Texture_Atlas)
+ 
++add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
++
+ set(CMAKE_CXX_STANDARD 14)
+ 
+ set(CMAKE_MODULE_PATH "${Texture_Atlas_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})

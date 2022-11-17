@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 859b502..ea6a818 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -52,8 +52,6 @@ IF(WIN32)
+ 
+     # This part is for auto-defines in windows libraries that cause macro errors in our code
+     add_definitions(-DWIN32_LEAN_AND_MEAN -DNOMINMAX)
+-ELSE()
+-    SET(CMAKE_INSTALL_PREFIX "/usr")
+ ENDIF()
+ 
+ FIND_PACKAGE(GDAL 1.9.0 REQUIRED)# Using Open Source Geo for Windows installer

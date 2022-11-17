@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+mkdir build
+
+cd build
+
+cmake -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH=${PREFIX} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${PREFIX} \
+    -DKWIVER_ENABLE_C_BINDINGS:BOOL=ON \
+    -DKWIVER_ENABLE_LOG4CPLUS:BOOL=OFF \
+    -DKWIVER_ENABLE_PYTHON:BOOL=ON \
+    -DKWIVER_ENABLE_ARROWS:BOOL=ON \
+    -DKWIVER_PYTHON_MAJOR_VERSION=3 \
+    -G "Ninja" \
+    ${SRC_DIR}
+
+ninja install

@@ -12,25 +12,14 @@ name: core3d-dev
 
 channels:
   # - local
-  - conda-forge/label/cf202003
+  - conda-forge/label/cf201901
   - defaults
   - pytorch
 
 dependencies:
-  # - vtk
-  # - liblas
-  # - pcl
-  # - python-pcl
-  # - texture-atlas
-  # - core3d-purdue
-  # - core3d-tf_ops
-  # - pubgeo-tools
-  # - pubgeo-core3d-metrics
-  # repeat dependencies of built packages
   - cmake
   - ninja
   - boost-cpp
-  - tensorflow-gpu=1.14
   - python
   - libgdal
   - pdal
@@ -45,7 +34,6 @@ dependencies:
   - filelock
   - opencv
   - cgal
-  - laspy
   - matplotlib
   - scipy
   - jsonschema
