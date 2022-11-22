@@ -362,19 +362,20 @@ def main(args):
     #############################################
     # 3D Tiles from P3D point cloud
     #############################################
-    tiler_points_outdir = os.path.join(working_dir, 'tiler-points')
-    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+    if args.tiles:
+        tiler_points_outdir = os.path.join(working_dir, 'tiler-points')
+        utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
 
-    cmd_args = py_cmd(relative_tool_path('tiler.py'))
-    cmd_args.append(p3d_file)
-    cmd_args.extend(['-o', tiler_points_outdir])
-    cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
-                     '--utm_zone', str(utm_zone),
-                     '-t', str(10000),
-                     '--input_type', str(1)])
-    run_step_switch_env('tiler', tiler_points_outdir,
-                        'tiler',
-                        cmd_args)
+        cmd_args = py_cmd(relative_tool_path('tiler.py'))
+        cmd_args.append(p3d_file)
+        cmd_args.extend(['-o', tiler_points_outdir])
+        cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
+                         '--utm_zone', str(utm_zone),
+                         '-t', str(10000),
+                         '--input_type', str(1)])
+        run_step_switch_env('tiler', tiler_points_outdir,
+                            'tiler',
+                            cmd_args)
 
     # #############################################
     # # Fit DTM to the DSM
@@ -630,9 +631,9 @@ def main(args):
         cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
                          '--utm_zone', str(utm_zone)])
 
-    run_step_switch_env('tiler', tiler_outdir,
-                 'tiler',
-                 cmd_args)
+        run_step_switch_env('tiler', tiler_outdir,
+                     'tiler',
+                     cmd_args)
 
     #############################################
     # Buildings to DSM
