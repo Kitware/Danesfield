@@ -60,6 +60,10 @@ class DTMEstimator(object):
         """
         Recursive function to apply multi-scale DTM fitting
         """
+        num_inner_iter = self.num_inner_iter
+        if self.tension_mod:
+            if num_inner_iter>1:
+                num_inner_iter = max(1, num_inner_iter//2**level)
         # if the image is still larger than 100 pixels, downsample
         if numpy.min(dtm.shape) > 100: # TODO: param/config
             # downsample both the DTM and DSM
