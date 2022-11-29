@@ -194,7 +194,9 @@ def main(args):
     parser.add_argument('dsm_file', help='path/to/DSM/file_P3D_DSM.tif')
     parser.add_argument('--skip_complete', action='store_true',
                         help='skip check complete step status?')
-    parser.add_argument('--tension', metavar='T', type=int, default=15,
+    parser.add_argument('-t:a', '--tension_adapt', action='store_true',
+                        help='adapt tension to each level?')
+    parser.add_argument('-t', '--tension', metavar='T', type=int, default=10,
                         help='Number of inner smoothing iterations for DTM, '
                              'greater values increase surface tension; default=%(default)s')
     args = parser.parse_args(args)
@@ -202,14 +204,19 @@ def main(args):
     working_dir = args.working_dir
     aoi_name = args.aoi_name
     dsm_file = args.dsm_file
+    working_dir = os.path.dirname(os.path.dirname(dsm_file))
+    aoi_name = os.path.basename(dsm_file).split('_P3D_DSM.tif')[0]
+    sfx = 'm' if args.tension_adapt else ''
 
 ### fit DTM to the DSM
     fit_dtm_outdir = os.path.join(working_dir, 'fit-dtm')
     dtm_file = os.path.join(fit_dtm_outdir, aoi_name + f'_DTM.t{args.tension}.tif')
 
     cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
-    # NOTE -t 12 and below produce holes in roofs for short buildings
-    cmd_args += [dsm_file, dtm_file, f'--tension={args.tension}']
+    cmd_args += [dsm_file, dtm_file,
+                 f'--tension={args.tension}']
+    if args.tension_adapt:
+        cmd_args.append('--tension_adapt')
 
     run_step(fit_dtm_outdir,
              'fit-dtm',
