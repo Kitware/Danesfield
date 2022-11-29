@@ -21,13 +21,14 @@ class DTMEstimator(object):
 
     def __init__(self, nodata_val=-9999, num_outer_iter=100,
                  num_inner_iter=10, base_step=1,
-                 tension_mod=False):
+                 tension_adapt=False):
         if nodata_val is None:
             nodata_val = -9999
         self.nodata_val = nodata_val
         self.num_outer_iter = num_outer_iter
         self.num_inner_iter = num_inner_iter
         self.base_step = base_step
+        self.tension_adapt = tension_adapt
 
     @staticmethod
     def downsample(dtm):
@@ -61,7 +62,7 @@ class DTMEstimator(object):
         Recursive function to apply multi-scale DTM fitting
         """
         num_inner_iter = self.num_inner_iter
-        if self.tension_mod:
+        if self.tension_adapt:
             if num_inner_iter>1:
                 num_inner_iter = max(1, num_inner_iter//2**level)
         # if the image is still larger than 100 pixels, downsample
