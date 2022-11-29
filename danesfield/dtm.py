@@ -20,9 +20,8 @@ class DTMEstimator(object):
     """
 
     def __init__(self, nodata_val=-9999, num_outer_iter=100,
-                 num_inner_iter=10, base_step=1):
-        """Constructor
-        """
+                 num_inner_iter=10, base_step=1,
+                 tension_mod=False):
         if nodata_val is None:
             nodata_val = -9999
         self.nodata_val = nodata_val
