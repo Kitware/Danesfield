@@ -72,11 +72,10 @@ class DTMEstimator(object):
             self.upsample(sm_dtm, dtm)
             print("level {} of {}".format(level, max_level))
             # Decrease the step size exponentially when moving back down the pyramid
-            step = step / (2 * 2 ** (max_level - level))
+            denom = 2 ** (max_level - level)
+            step = step / (2 * denom)
             # Decrease the number of iterations as well
-            num_iter = max(1, int(self.num_outer_iter / (2 ** (max_level - level))))
-            # TODO increase tension
-            # num_inner_iter *= 2
+            num_iter = max(1, int(self.num_outer_iter / denom))
             # Apply iterations of cloth draping simulation to smooth out the result
             return self.drape_cloth(dtm, dsm, step, num_iter, num_inner_iter), max_level
 
@@ -98,7 +97,7 @@ class DTMEstimator(object):
                 # handle DSM intersections, snap back to below DSM
                 numpy.minimum(dtm, dsm, out=dtm, where=valid)
                 # apply spring tension forces (blur the DTM)
-                dtm = ndimage.uniform_filter(dtm, size=3)
+                dtm = ndimage.uniform_filter(dtm, size=3) # TODO: size param/config/compute
         # print newline after progress bar
         print("")
         # one final intersection check
