@@ -28,8 +28,9 @@ For details, see `Project History`_.
 
 This repository contains the algorithms to solve the CORE3D problem, but a
 web-based user interface and cloud-based processing infrastructure are provided
-in a separate project called
-`Danesfield-App <https://github.com/Kitware/Danesfield-App>`_.
+in the `girder/Danesfield repo <https://github.com/girder/Danesfield>`_.
+Additionally, an older version of the web app may be found at 
+`Kitware/Danesfield-App <https://github.com/Kitware/Danesfield-App>`_.
 The algorithms in this repository
 are written in Python or provide a Python interface.
 

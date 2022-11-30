@@ -20,15 +20,15 @@ class DTMEstimator(object):
     """
 
     def __init__(self, nodata_val=-9999, num_outer_iter=100,
-                 num_inner_iter=10, base_step=1):
-        """Constructor
-        """
+                 num_inner_iter=10, base_step=1,
+                 tension_adapt=False):
         if nodata_val is None:
             nodata_val = -9999
         self.nodata_val = nodata_val
         self.num_outer_iter = num_outer_iter
         self.num_inner_iter = num_inner_iter
         self.base_step = base_step
+        self.tension_adapt = tension_adapt
 
     @staticmethod
     def downsample(dtm):
@@ -61,8 +61,12 @@ class DTMEstimator(object):
         """
         Recursive function to apply multi-scale DTM fitting
         """
+        num_inner_iter = self.num_inner_iter
+        if self.tension_adapt:
+            if num_inner_iter>1:
+                num_inner_iter = max(1, num_inner_iter//2**level)
         # if the image is still larger than 100 pixels, downsample
-        if numpy.min(dtm.shape) > 100:
+        if numpy.min(dtm.shape) > 100: # TODO: param/config
             # downsample both the DTM and DSM
             sm_dtm = self.downsample(dtm)
             sm_dsm = self.downsample(dsm)
@@ -72,17 +76,18 @@ class DTMEstimator(object):
             self.upsample(sm_dtm, dtm)
             print("level {} of {}".format(level, max_level))
             # Decrease the step size exponentially when moving back down the pyramid
-            step = step / (2 * 2 ** (max_level - level))
+            denom = 2 ** (max_level - level)
+            step = step / (2 * denom)
             # Decrease the number of iterations as well
-            num_iter = max(1, int(self.num_outer_iter / (2 ** (max_level - level))))
+            num_iter = max(1, int(self.num_outer_iter / denom))
             # Apply iterations of cloth draping simulation to smooth out the result
-            return self.drape_cloth(dtm, dsm, step, num_iter), max_level
+            return self.drape_cloth(dtm, dsm, step, num_iter, num_inner_iter), max_level
 
         print("reached min size {}".format(dtm.shape))
         # Apply cloth draping at the coarsest level (base case)
-        return self.drape_cloth(dtm, dsm, step, self.num_outer_iter), level
+        return self.drape_cloth(dtm, dsm, step, self.num_outer_iter, self.num_inner_iter), level
 
-    def drape_cloth(self, dtm, dsm, step=1, num_outer_iter=10):
+    def drape_cloth(self, dtm, dsm, step=1, num_outer_iter=10, num_inner_iter=1):
         """
         Compute inverted 2.5D cloth draping simulation iterations
         """
@@ -92,11 +97,11 @@ class DTMEstimator(object):
             # raise the DTM by step (inverted gravity)
             valid = dsm != self.nodata_val
             dtm[valid] += step
-            for i in range(self.num_inner_iter):
+            for i in range(num_inner_iter):
                 # handle DSM intersections, snap back to below DSM
                 numpy.minimum(dtm, dsm, out=dtm, where=valid)
                 # apply spring tension forces (blur the DTM)
-                dtm = ndimage.uniform_filter(dtm, size=3)
+                dtm = ndimage.uniform_filter(dtm, size=3) # TODO: size param/config/compute
         # print newline after progress bar
         print("")
         # one final intersection check
@@ -107,8 +112,6 @@ class DTMEstimator(object):
         """
         Fit a Digital Terrain Model (DTM) to the provided Digital Surface Model (DSM)
         """
-        # initialize DTM to a deep copy of the DSM
-        dtm = dsm.copy()
         # get the range of valid height values (skipping no-data values)
         valid_data = dsm[dsm != self.nodata_val]
         minv = numpy.min(valid_data)

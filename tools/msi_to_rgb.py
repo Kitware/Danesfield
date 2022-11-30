@@ -41,7 +41,7 @@ def main(args):
 
     driver = msi_image.GetDriver()
     driver_metadata = driver.GetMetadata()
-    rgb_image = None
+    # rgb_image = None
     if driver_metadata.get(gdal.DCAP_CREATE) != "YES":
         raise RuntimeError("Error: driver {} does not supports Create().".format(driver))
 

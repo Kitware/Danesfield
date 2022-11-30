@@ -251,11 +251,14 @@ def main(args):
                         help='run pipeline with image data as the source; default uses a point cloud')
     parser.add_argument('--roads', action='store_true',
                         help='get roads from open street maps; default extracts no roads')
-    parser.add_argument('--material', action='store_true', 
-                        help='run material segmentation')
-    parser.add_argument('--gpm', action='store_true',
-                        help='indicates that input point cloud contains GPM error data; should only \
-                        be used when passing in a pre-computed point cloud')
+    parser.add_argument('--tiles', action='store_true', help='run tiler to get tiles')
+    parser.add_argument('--vNDVI', action='store_true',
+                        help='run pipeline with visible NDVI computation using RGB-colored point cloud')
+    parser.add_argument('-t:a', '--tension_adapt', action='store_true',
+                        help='adapt tension to each level?')
+    parser.add_argument('-t', '--tension', metavar='T', type=int, default=10,
+                        help='Number of inner smoothing iterations for DTM, '
+                             'greater values increase surface tension; default=%(default)s')
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -282,7 +285,7 @@ def main(args):
     #############################################
     # Run P3D point cloud generation
     #############################################
-    # This script assumes we already have a pointcloud generated from
+    # This script assumes we already have a point cloud generated from
     # Raytheon's P3D.  See the README for information regarding P3D.
 
     p3d_file = config['paths']['p3d_fpath']
@@ -362,22 +365,23 @@ def main(args):
     #############################################
     # 3D Tiles from P3D point cloud
     #############################################
-    tiler_points_outdir = os.path.join(working_dir, 'tiler-points')
-    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+    if args.tiles:
+        tiler_points_outdir = os.path.join(working_dir, 'tiler-points')
+        utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
 
-    cmd_args = py_cmd(relative_tool_path('tiler.py'))
-    cmd_args.append(p3d_file)
-    cmd_args.extend(['-o', tiler_points_outdir])
-    cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
-                     '--utm_zone', str(utm_zone),
-                     '-t', str(10000),
-                     '--input_type', str(1)])
-    run_step_switch_env('tiler', tiler_points_outdir,
-                        'tiler',
-                        cmd_args)
+        cmd_args = py_cmd(relative_tool_path('tiler.py'))
+        cmd_args.append(p3d_file)
+        cmd_args.extend(['-o', tiler_points_outdir])
+        cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
+                         '--utm_zone', str(utm_zone),
+                         '-t', str(10000),
+                         '--input_type', str(1)])
+        run_step_switch_env('tiler', tiler_points_outdir,
+                            'tiler',
+                            cmd_args)
 
     # #############################################
-    # # Fit Dtm to the DSM
+    # # Fit DTM to the DSM
     # #############################################
 
     fit_dtm_outdir = os.path.join(working_dir, 'fit-dtm')
@@ -386,19 +390,26 @@ def main(args):
     cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
     cmd_args += [dsm_file, dtm_file]
 
+    if args.tension_adapt:
+        cmd_args.append('--tension_adapt')
+
     run_step(fit_dtm_outdir,
              'fit-dtm',
              cmd_args)
 
     #############################################
-    # Orthorectify images
+    # Segment vegetation.
     #############################################
-    # For each MSI source image call orthorectify.py
-    # needs to use the DSM, DTM from above and Raytheon RPC file,
-    # which is a by-product of P3D.
-
     ndvi_output_fpath = ""
+    NDVI = False
     if args.image:
+        #############################################
+        # Orthorectify images
+        #############################################
+        # For each MSI source image call orthorectify.py
+        # needs to use the DSM, DTM from above and Raytheon RPC file,
+        # which is a by-product of P3D.
+
         orthorectify_outdir = os.path.join(working_dir, 'orthorectify')
         for collection_id, files in collection_id_to_files.items():
             # Orthorectify the msi images
@@ -437,9 +448,25 @@ def main(args):
                      'msi' in files and 'ortho_img_fpath' in files['msi']]
         cmd_args.append(ndvi_output_fpath)
 
-        run_step(ndvi_outdir,
+        NDVI = run_step(ndvi_outdir,
                  'compute-ndvi',
-                 cmd_args)
+                 cmd_args)==0
+
+    elif args.vNDVI:
+        #############################################
+        # Compute vNDVI
+        #############################################
+        # Compute the vNDVI from the RGB colored point cloud
+        # for use during segmentation
+
+        ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
+        ndvi_output_fpath = os.path.join(ndvi_outdir, 'vndvi.tif')
+        cmd_args = py_cmd(relative_tool_path('compute_vndvi.py'))
+        cmd_args += [dsm_file, p3d_file, ndvi_output_fpath]
+
+        NDVI = run_step(ndvi_outdir,
+                 'compute-vndvi',
+                 cmd_args)==0
 
     #############################################
     # Get OSM road vector data
@@ -474,7 +501,7 @@ def main(args):
                  os.path.join(seg_by_height_outdir, 'road_rasterized.tif'),
                  '--road-rasterized-bridge',
                  os.path.join(seg_by_height_outdir, 'road_rasterized_bridge.tif')]
-    if args.image:
+    if NDVI:
         cmd_args.extend(['--input-ndvi', ndvi_output_fpath])
 
     run_step(seg_by_height_outdir,
@@ -607,23 +634,24 @@ def main(args):
     #############################################
     # 3D Tiles Generation from buildings
     #############################################
-    tiler_outdir = os.path.join(working_dir, 'tiler')
-    if args.image or args.gpm:
-        input_tiler = glob.glob(os.path.join(texture_mapping_outdir, '*.obj'))
-    else:
-        input_tiler = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
+    if args.tiles:
+        tiler_outdir = os.path.join(working_dir, 'tiler')
+        if args.image:
+            input_tiler = glob.glob(os.path.join(texture_mapping_outdir, '*.obj'))
+        else:
+            input_tiler = glob.glob(os.path.join(roof_geon_extraction_outdir, '*.obj'))
 
-    utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
+        utm_zone, utm_hemisphere = gdal_utils.gdal_get_utm_zone(dsm_file)
 
-    cmd_args = py_cmd(relative_tool_path('tiler.py'))
-    cmd_args.extend(input_tiler)
-    cmd_args.extend(['-o', tiler_outdir])
-    cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
-                     '--utm_zone', str(utm_zone)])
+        cmd_args = py_cmd(relative_tool_path('tiler.py'))
+        cmd_args.extend(input_tiler)
+        cmd_args.extend(['-o', tiler_outdir])
+        cmd_args.extend(['--utm_hemisphere', utm_hemisphere,
+                         '--utm_zone', str(utm_zone)])
 
-    run_step_switch_env('tiler', tiler_outdir,
-                 'tiler',
-                 cmd_args)
+        run_step_switch_env('tiler', tiler_outdir,
+                     'tiler',
+                     cmd_args)
 
     #############################################
     # Buildings to DSM
