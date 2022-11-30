@@ -252,8 +252,10 @@ def main(args):
     parser.add_argument('--roads', action='store_true',
                         help='get roads from open street maps; default extracts no roads')
     parser.add_argument('--tiles', action='store_true', help='run tiler to get tiles')
-    parser.add_argument('--vNDVI', action='store_true',
-                        help='run pipeline with visible NDVI computation using RGB-colored point cloud')
+    parser.add_argument('--material', action='store_true', help='run material segmentation')
+    parser.add_argument('--gpm', action='store_true', 
+                        help='indicates that input point cloud contains error and RGB data;'
+                             'should only be used when starting with your own point cloud')
     parser.add_argument('-t:a', '--tension_adapt', action='store_true',
                         help='adapt tension to each level?')
     parser.add_argument('-t', '--tension', metavar='T', type=int, default=10,
@@ -390,6 +392,9 @@ def main(args):
     cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
     cmd_args += [dsm_file, dtm_file]
 
+    if args.tension:
+        cmd_args.append(f'--tension={args.tension}')
+
     if args.tension_adapt:
         cmd_args.append('--tension_adapt')
 
@@ -452,7 +457,7 @@ def main(args):
                  'compute-ndvi',
                  cmd_args)==0
 
-    elif args.vNDVI:
+    elif args.gpm:
         #############################################
         # Compute vNDVI
         #############################################

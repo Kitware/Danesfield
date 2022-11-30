@@ -32,7 +32,8 @@ FROM nvidia/cuda:10.0-devel-ubuntu18.04
 LABEL maintainer="Kitware Inc. <kitware@kitware.com>"
 
 # Install prerequisites
-RUN apt-get update && \
+RUN rm -f /etc/apt/sources.list.d/cuda.list && \
+  rm -f /etc/apt/sources.list.d/nvidia-ml.list && \apt-get update && \
   apt-get install -y software-properties-common && \
   add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
   add-apt-repository -y ppa:ubuntugis/ppa && \
@@ -58,12 +59,9 @@ RUN apt-get update && \
 
 # update NVIDIA keys
 # see https://github.com/NVIDIA/nvidia-docker/issues/1632
-RUN rm /etc/apt/sources.list.d/cuda.list && \
-    rm /etc/apt/sources.list.d/nvidia-ml.list && \
-    apt-key del 7fa2af80 && \
+RUN apt-key del 7fa2af80 && \
     wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-keyring_1.0-1_all.deb && \
     dpkg -i cuda-keyring_1.0-1_all.deb
-
 
 # Build packages
 RUN apt-get update -q && \
@@ -73,7 +71,6 @@ RUN apt-get update -q && \
         openssh-client \
         libgl1-mesa-dev \
         libxt-dev
-
 
 # Generate ssh key to access private repo
 RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root/.ssh/id_ed25519 && \
@@ -96,12 +93,10 @@ RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Minicond
     rm ~/miniconda.sh
 
 RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
-# mamba works much, much faster than conda
+# mamba works much, much faster than conda, set as default solver
 RUN ${CONDA} update conda -y -q && \
-    ${CONDA} install conda-libmamba-solver
-ARG SOLVER="--experimental-solver libmamba"
-RUN ${CONDA} install -n base conda-forge::mamba -y -q || exit 1
-ARG MAMBA=/opt/conda/bin/mamba
+    ${CONDA} install conda-libmamba-solver && \
+    ${CONDA} config --set experimental_solver libmamba
 
 RUN apt-get install -y -q libarchive-dev
 
@@ -170,77 +165,62 @@ RUN ["/bin/bash", "-c", "git clone https://github.com/zeux/meshoptimizer.git src
      cmake -DMESHOPT_BUILD_GLTFPACK:BOOL=ON ../src && \
      make -j"]
 
-
 COPY deployment/conda/conda_env.yml /root/conda_env.yml
 
-# Create CORE3D Conda environment
-RUN ${MAMBA} env create  -f /root/conda_env.yml -n core3d
+# Create CORE3D Conda environments
+RUN ${CONDA} list && ${CONDA} env create -f /root/conda_env.yml -n core3d && \
+    ${CONDA} create --name tiler --no-default-packages && \
+    ${CONDA} create --name texture --no-default-packages && \
+    ${CONDA} create --name roofgeon --no-default-packages && \
+    ${CONDA} create --name roads -c conda-forge -c defaults openssl=1.1 pyopenssl=19.1 gdal=2.4 python=3.6 pyproj requests
 
+RUN ln /usr/lib/x86_64-linux-gnu /usr/lib64 -s
+
+ARG CHANNELS="-c conda-forge/label/cf201901 -c defaults"
 
 # Add the conda recipes for the build
-RUN mkdir /root/conda-recipes
-COPY conda-recipes/recipes/conda_build_config.yaml /root/conda-recipes/conda_build_config.yaml
+ADD conda-recipes/recipes /root/conda-recipes
 
-ARG CHANNELS="-c conda-forge/label/cf202003 -c defaults"
-
-# build dependent packages
 WORKDIR /root/conda-recipes
 
-ADD conda-recipes/recipes/liblas /root/conda-recipes/liblas
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml liblas
-RUN ${MAMBA} install  -n core3d -c local liblas
+RUN chmod 777 /root/conda-recipes/build_all.sh && \
+    /root/conda-recipes/build_all.sh
 
-ADD conda-recipes/recipes/pcl /root/conda-recipes/pcl
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pcl
-RUN ${MAMBA} install  -n core3d -c local pcl
+RUN ${CONDA} install -n core3d -c local ${CHANNELS} liblas
+RUN ${CONDA} install -n roofgeon -c local ${CHANNELS} python-pcl
+RUN ${CONDA} install -n roofgeon -c kitware-danesfield ${CHANNELS} vtk=v9.1 python=3.6
+RUN ${CONDA} install -n roofgeon -c local ${CHANNELS} core3d-purdue
+RUN ${CONDA} install -n roofgeon -c local ${CHANNELS} core3d-tf_ops gdal tqdm shapely matplotlib tensorflow-gpu=1.13 cudatoolkit=10
 
-# this package does not exist on conda-forge. It only works with
-# a certain version of pcl which we need to build as well.
-ADD conda-recipes/recipes/python-pcl /root/conda-recipes/python-pcl
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml python-pcl
-RUN ${MAMBA} install  -n core3d -c local python-pcl
+RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+  conda activate roofgeon && \
+  pip install plyfile"]
 
-ADD conda-recipes/recipes/vtk /root/conda-recipes/vtk
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml vtk
-# RUN ${MAMBA} install  -n core3d -c local vtk
+RUN ${CONDA} install -n core3d -c local ${CHANNELS} laspy
+RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-tools
+RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-core3d-metrics
+RUN ${CONDA} install -n texture -c kitware-danesfield ${CHANNELS} vtk=v9.1
+RUN ${CONDA} install -n texture -c local ${CHANNELS} texture-atlas gdal scipy pyproj python-pdal
 
-ADD conda-recipes/recipes/texture-atlas /root/conda-recipes/texture-atlas
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml texture-atlas
-# RUN ${MAMBA} install  -n core3d -c local texture-atlas
+# Install KWIVER for GPM texture mapping
+RUN ${CONDA} install -n texture -c local ${CHANNELS} kwiver
 
-ADD conda-recipes/recipes/core3d-purdue /root/conda-recipes/core3d-purdue
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml core3d-purdue
-RUN ${MAMBA} install  -n core3d -c local core3d-purdue
-
-ADD conda-recipes/recipes/laspy /root/conda-recipes/laspy
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml laspy
-# RUN ${MAMBA} install  -n core3d -c local laspy
-
-ADD conda-recipes/recipes/pubgeo-tools /root/conda-recipes/pubgeo-tools
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-tools
-# RUN ${MAMBA} install  -n core3d -c local pubgeo-tools
-
-ADD conda-recipes/recipes/pubgeo-core3d-metrics /root/conda-recipes/pubgeo-core3d-metrics
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml pubgeo-core3d-metrics
-# RUN ${MAMBA} install  -n core3d -c local pubgeo-core3d-metrics
-
-ADD conda-recipes/recipes/core3d-tf_ops /root/conda-recipes/core3d-tf_ops
-RUN ${MAMBA} build ${CHANNELS} -m conda_build_config.yaml core3d-tf_ops
-# RUN ${MAMBA} install  -n core3d -c local core3d-tf-ops
-
+ARG CHANNELS="-c conda-forge/label/cf202003 -c defaults"
+RUN ${CONDA} install -n tiler -c local ${CHANNELS} vtk gdal pyproj
 
 WORKDIR /
-
 
 # Install Danesfield package into CORE3D Conda environment
 COPY . ./danesfield
 RUN rm -rf ./danesfield/deployment
 RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
+  conda activate roads && \
+  pip install -e ./danesfield && \
   conda activate core3d && \
   pip install -e ./danesfield"]
 
 # Clean up.
-RUN ${MAMBA} clean -tipsy
+RUN ${CONDA} clean -tipy
 
 # Set entrypoint to script that sets up and activates CORE3D environment
 ENTRYPOINT ["/bin/bash", "./danesfield/docker-entrypoint.sh"]
