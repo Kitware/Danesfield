@@ -26,6 +26,8 @@ def main(args):
                         help="Digital terrain model (DTM) image file name")
     parser.add_argument('-n', "--num-iterations", type=int, default=100,
                         help="Base number of iteration at the coarsest scale")
+    parser.add_argument('-t:a', '--tension_adapt', action='store_true',
+                        help='adapt tension to each level?')
     parser.add_argument('-t', "--tension", type=int, default=10,
                         help="Number of inner smoothing iterations, "
                              "greater values increase surface tension.")
@@ -45,7 +47,8 @@ def main(args):
     # Estimate the DTM data from the DSM data
     estimator = danesfield.dtm.DTMEstimator(band.GetNoDataValue(),
                                             args.num_iterations,
-                                            args.tension)
+                                            args.tension,
+                                            tension_adapt=args.tension_adapt)
     dtm = estimator.fit_dtm(dsmRaster)
 
     # create the DTM image

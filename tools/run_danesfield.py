@@ -254,6 +254,11 @@ def main(args):
     parser.add_argument('--tiles', action='store_true', help='run tiler to get tiles')
     parser.add_argument('--vNDVI', action='store_true',
                         help='run pipeline with visible NDVI computation using RGB-colored point cloud')
+    parser.add_argument('-t:a', '--tension_adapt', action='store_true',
+                        help='adapt tension to each level?')
+    parser.add_argument('-t', '--tension', metavar='T', type=int, default=10,
+                        help='Number of inner smoothing iterations for DTM, '
+                             'greater values increase surface tension; default=%(default)s')
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -386,6 +391,9 @@ def main(args):
 
     cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
     cmd_args += [dsm_file, dtm_file]
+
+    if args.tension_adapt:
+        cmd_args.append('--tension_adapt')
 
     run_step(fit_dtm_outdir,
              'fit-dtm',
