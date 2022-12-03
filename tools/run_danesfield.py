@@ -147,9 +147,15 @@ def run_step_switch_env(conda_env, working_dir, step_name, command, abort_on_err
     :type abort_on_error: bool
 
     '''
-    command_switch_env = ['source', '/opt/conda/etc/profile.d/conda.sh', '&&',
-                          'conda', 'activate', conda_env, '&&',
-                          'export', 'PYTHONPATH=/danesfield', '&&']
+    if conda_env=='texture':
+        command_switch_env = ['source', '/opt/conda/envs/texture/setup_KWIVER.sh', '&&',
+                            'source', '/opt/conda/etc/profile.d/conda.sh', '&&',
+                            'conda', 'activate', conda_env, '&&',
+                            'export', 'PYTHONPATH=/danesfield', '&&']
+    else:
+        command_switch_env = ['source', '/opt/conda/etc/profile.d/conda.sh', '&&',
+                            'conda', 'activate', conda_env, '&&',
+                            'export', 'PYTHONPATH=/danesfield', '&&']
     command_switch_env.extend(command)
     # no need to switch back as that happens when the process finishes.
     string_command = " ".join(command_switch_env)
@@ -254,13 +260,15 @@ def main(args):
     parser.add_argument('--tiles', action='store_true', help='run tiler to get tiles')
     parser.add_argument('--material', action='store_true', help='run material segmentation')
     parser.add_argument('--gpm', action='store_true', 
-                        help='indicates that input point cloud contains error and RGB data;'
+                        help='indicates that input point cloud contains GPM error data;'
                              'should only be used when starting with your own point cloud')
     parser.add_argument('-t:a', '--tension_adapt', action='store_true',
-                        help='adapt tension to each level?')
+                        help='adapt tension to each level')
     parser.add_argument('-t', '--tension', metavar='T', type=int, default=10,
                         help='Number of inner smoothing iterations for DTM, '
                              'greater values increase surface tension; default=%(default)s')
+    parser.add_argument('--vNDVI', action='store_true',
+                        help='run pipeline with visible NDVI computation using RGB-colored point cloud')
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -457,7 +465,7 @@ def main(args):
                  'compute-ndvi',
                  cmd_args)==0
 
-    elif args.gpm:
+    elif args.vNDVI:
         #############################################
         # Compute vNDVI
         #############################################
@@ -592,9 +600,9 @@ def main(args):
             run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
 
             gpm_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
-            cmd_args = py_cmd(relative_tool_path('texture_mapping_point_cloud.py'))
-            cmd_args += ['--output_dir', gpm_outdir, '--point_cloud', p3d_file,
-                         '--mesh_dir', roof_geon_extraction_outdir, '--gpm_json', meta_file]
+            cmd_args = py_cmd(relative_tool_path('texture_map_point_cloud.py'))
+            cmd_args += ['--output_dir', gpm_outdir, '--gpm_json', meta_file,
+                         roof_geon_extraction_outdir, p3d_file]
             run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args)
 
         else:

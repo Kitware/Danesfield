@@ -200,10 +200,7 @@ RUN ${CONDA} install -n core3d -c local ${CHANNELS} laspy
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-tools
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-core3d-metrics
 RUN ${CONDA} install -n texture -c kitware-danesfield ${CHANNELS} vtk=v9.1
-RUN ${CONDA} install -n texture -c local ${CHANNELS} texture-atlas gdal scipy pyproj python-pdal
-
-# Install KWIVER for GPM texture mapping
-RUN ${CONDA} install -n texture -c local ${CHANNELS} kwiver
+RUN ${CONDA} install -n texture -c local ${CHANNELS} kwiver vtk=v9.1 texture-atlas gdal scipy pyproj imageio python-pdal
 
 ARG CHANNELS="-c conda-forge/label/cf202003 -c defaults"
 RUN ${CONDA} install -n tiler -c local ${CHANNELS} vtk gdal pyproj
