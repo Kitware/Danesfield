@@ -147,9 +147,15 @@ def run_step_switch_env(conda_env, working_dir, step_name, command, abort_on_err
     :type abort_on_error: bool
 
     '''
-    command_switch_env = ['source', '/opt/conda/etc/profile.d/conda.sh', '&&',
-                          'conda', 'activate', conda_env, '&&',
-                          'export', 'PYTHONPATH=/danesfield', '&&']
+    if conda_env=='texture':
+        command_switch_env = ['source', '/opt/conda/envs/texture/setup_KWIVER.sh', '&&',
+                            'source', '/opt/conda/etc/profile.d/conda.sh', '&&',
+                            'conda', 'activate', conda_env, '&&',
+                            'export', 'PYTHONPATH=/danesfield', '&&']
+    else:
+        command_switch_env = ['source', '/opt/conda/etc/profile.d/conda.sh', '&&',
+                            'conda', 'activate', conda_env, '&&',
+                            'export', 'PYTHONPATH=/danesfield', '&&']
     command_switch_env.extend(command)
     # no need to switch back as that happens when the process finishes.
     string_command = " ".join(command_switch_env)
@@ -252,13 +258,17 @@ def main(args):
     parser.add_argument('--roads', action='store_true',
                         help='get roads from open street maps; default extracts no roads')
     parser.add_argument('--tiles', action='store_true', help='run tiler to get tiles')
-    parser.add_argument('--vNDVI', action='store_true',
-                        help='run pipeline with visible NDVI computation using RGB-colored point cloud')
+    parser.add_argument('--material', action='store_true', help='run material segmentation')
+    parser.add_argument('--gpm', action='store_true', 
+                        help='indicates that input point cloud contains GPM error data;'
+                             'should only be used when starting with your own point cloud')
     parser.add_argument('-t:a', '--tension_adapt', action='store_true',
-                        help='adapt tension to each level?')
+                        help='adapt tension to each level')
     parser.add_argument('-t', '--tension', metavar='T', type=int, default=10,
                         help='Number of inner smoothing iterations for DTM, '
                              'greater values increase surface tension; default=%(default)s')
+    parser.add_argument('--vNDVI', action='store_true',
+                        help='run pipeline with visible NDVI computation using RGB-colored point cloud')
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -308,7 +318,7 @@ def main(args):
                      '--work_dir', vissat_workdir,
                      '--point_cloud', p3d_file,
                      '--utm', utm]
-        run_step(vissat_workdir, 'VisSat', cmd_args)
+        run_step_switch_env('vissat', vissat_workdir, 'VisSat', cmd_args)
 
     #############################################
     # Find all NTF and corresponding rpc and info
@@ -322,8 +332,6 @@ def main(args):
         iterable = os.walk(config['paths']['rpc_dir'])
     if args.image:
         iterable = itertools.chain(os.walk(config['paths']['imagery_dir']), iterable)
-    else:
-        assert use_rpcs, 'expected an rpc_dir in the config'
 
     for root, _, files in iterable:
         input_paths.extend([os.path.join(root, f) for f in files])
@@ -391,6 +399,9 @@ def main(args):
 
     cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
     cmd_args += [dsm_file, dtm_file]
+
+    if args.tension:
+        cmd_args.append(f'--tension={args.tension}')
 
     if args.tension_adapt:
         cmd_args.append('--tension_adapt')
@@ -481,7 +492,7 @@ def main(args):
         cmd_args = py_cmd(relative_tool_path('get_road_vector.py'))
         cmd_args += ['--bounding-img', dsm_file,
                      '--output-dir', get_road_vector_outdir]
-        run_step(get_road_vector_outdir,
+        run_step_switch_env('roads', get_road_vector_outdir,
                  'get-road-vector',
                  cmd_args)
 
@@ -526,31 +537,30 @@ def main(args):
     # #############################################
 
     material_classifier_outdir = ""
-    # if args.image:
-    #     material_classifier_outdir = os.path.join(working_dir, 'material-classification')
-    #     cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
-    #     cmd_args += ['--image_paths']
-    #     # We build these up separately because they have to be 1-to-1 on the command line
-    #     # and dictionaries are unordered
-    #     img_paths = []
-    #     info_paths = []
-    #     for collection_id, files in collection_id_to_files.items():
-    #         img_paths.append(files['msi']['ortho_img_fpath'])
-    #         info_paths.append(files['msi']['info'])
-    #     cmd_args.extend(img_paths)
-    #     cmd_args.append('--info_paths')
-    #     cmd_args.extend(info_paths)
-    #     cmd_args.extend(['--output_dir', material_classifier_outdir,
-    #                      '--model_path', config['material']['model_fpath'],
-    #                      '--outfile_prefix', aoi_name])
-    #     if config.has_option('material', 'batch_size'):
-    #         cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
-    #     if config['material'].getboolean('cuda'):
-    #             cmd_args.append('--cuda')
-
-    #     run_step(material_classifier_outdir,
-    #              'material-classification',
-    #              cmd_args)
+    if args.image and args.material:
+        material_classifier_outdir = os.path.join(working_dir, 'material-classification')
+        cmd_args = py_cmd(relative_tool_path('material_classifier.py'))
+        cmd_args += ['--image_paths']
+        # We build these up separately because they have to be 1-to-1 on the command line
+        # and dictionaries are unordered
+        img_paths = []
+        info_paths = []
+        for collection_id, files in collection_id_to_files.items():
+            img_paths.append(files['msi']['ortho_img_fpath'])
+            info_paths.append(files['msi']['info'])
+        cmd_args.extend(img_paths)
+        cmd_args.append('--info_paths')
+        cmd_args.extend(info_paths)
+        cmd_args.extend(['--output_dir', material_classifier_outdir,
+                         '--model_path', config['material']['model_fpath'],
+                         '--outfile_prefix', aoi_name])
+        if config.has_option('material', 'batch_size'):
+            cmd_args.extend(['--batch_size', config.get('material', 'batch_size')])
+        if config['material'].getboolean('cuda'):
+                cmd_args.append('--cuda')
+        run_step(material_classifier_outdir,
+                'material-classification',
+                cmd_args)
 
     #############################################
     # Roof Geon Extraction & PointNet Geon Extraction
@@ -573,18 +583,31 @@ def main(args):
         '--output_dir', roof_geon_extraction_outdir
     ]
 
-    run_step(roof_geon_extraction_outdir,
+    run_step_switch_env('roofgeon', roof_geon_extraction_outdir,
              'roof-geon-extraction',
              cmd_args)
 
+    #############################################
+    # Texture Mapping
+    #############################################
     texture_mapping_outdir = ""
     if not args.image:
-        occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
-    else:
-        #############################################
-        # Texture Mapping
-        #############################################
+        if args.gpm:
+            gpm_meta_outdir = os.path.join(working_dir, 'gpm-data')
+            meta_file = os.path.join(gpm_meta_outdir, 'gpm_metadata.json')
+            cmd_args = py_cmd(relative_tool_path('extract_gpm_metadata.py'))
+            cmd_args += ['--output_file', meta_file, p3d_file]
+            run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
 
+            gpm_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
+            cmd_args = py_cmd(relative_tool_path('texture_map_point_cloud.py'))
+            cmd_args += ['--output_dir', gpm_outdir, '--gpm_json', meta_file,
+                         roof_geon_extraction_outdir, p3d_file]
+            run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args)
+
+        else:
+            occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
+    else:
         crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
         for collection_id, files in collection_id_to_files.items():
             cmd_args = py_cmd(relative_tool_path('crop_and_pansharpen.py'))
@@ -617,7 +640,7 @@ def main(args):
         cmd_args.append('--buildings')
         cmd_args.extend(orig_meshes)
 
-        run_step(texture_mapping_outdir,
+        run_step_switch_env('texture', texture_mapping_outdir,
                  'texture-mapping',
                  cmd_args)
 

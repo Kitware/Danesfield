@@ -17,6 +17,12 @@ def run(args):
 		default='Jacksonville')
 	parser.add_argument('--point_cloud', help='Start Danesfield with the point \
 		cloud at this path instead of generating one from images')
+	parser.add_argument('--gpm', action='store_true', help='Indicates that the \
+		input point cloud contains GPM error data; should only be used when \
+		starting with your own point cloud.')
+	parser.add_argument('--rgb', action='store_true', help='Indicates that the \
+		input point cloud contains RGB data; should only be used when starting \
+		with your own point cloud')
 	parser.add_argument('--img_path', help='Location where WV3 images should be \
 		downloaded to', default=f'{os.getcwd()}/imgpath')
 	parser.add_argument('--run', help='Run the Danesfield pipeline', 
@@ -140,13 +146,16 @@ def run(args):
 			cmd_args.extend(['-v', img_path+':/mnt','kitware/danesfield', 
 				'source /opt/conda/etc/profile.d/conda.sh && \
 				conda activate core3d && python danesfield/tools/run_danesfield.py \
-				--image --vissat --roads /configs/input_'+args.site+'.ini'])
+				--image --vissat --roads --tiles --tension_adapt \
+				/configs/input_'+args.site+'.ini'])
 		else:
 			shutil.copyfile(args.point_cloud, os.path.join(args.out_path, 
 				args.site,os.path.basename(args.point_cloud)))
+			gpm = ' --gpm ' if args.gpm else ''
+			rgb = ' --rgb ' if args.rgb else ''
 			cmd_args.extend(['kitware/danesfield', 'source /opt/conda/etc/profile.d/conda.sh \
 				&& conda activate core3d && python danesfield/tools/run_danesfield.py \
-				--roads /configs/input_'+args.site+'.ini'])
+				--roads --tiles --tension_adapt --tension '+gpm+rgb+' /configs/input_'+args.site+'.ini'])
 			config['paths']['p3d_fpath'] = os.path.join('/workdir', args.site,
 				os.path.basename(args.point_cloud))
 
