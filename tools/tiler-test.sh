@@ -50,7 +50,7 @@ if [ "${CITY}" = "jacksonville" ]; then
 elif [ "${CITY}" = "toycity" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler  "${DATA_DIR}"/citygml/CityGML_2.0_Test_Dataset_2012-04-23/*.gml -o "${CITY}" --utm_zone 18 --utm_hemisphere N -t 2 --translation 486981.5 4421889 -10 --lod 3 --content_gltf --content_gltf_save_gltf)
+    CMD=(tiler  "${DATA_DIR}"/citygml/CityGML_2.0_Test_Dataset_2012-04-23/*.gml -o "${CITY}" --utm_zone 18 --utm_hemisphere N -t 2 --translation 486981.5 4421889 -10 --lod 3 --content_gltf)
 elif [ "${CITY}" = "jacksonville-merged" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
@@ -86,7 +86,7 @@ elif [ "${CITY}" = "jacksonville-property-texture-buildings" ]; then
 elif [ "${CITY}" = "ucsd-limited-region-rgb" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
-    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --content_gltf_save_gltf --input_type 0 --property_texture_png_index 1 -m)
+    CMD=(tiler "${DATA_DIR}"/CORE3D/UCSD_chet/ucsd_limited_region/*.obj -o "${CITY}" --utm_zone 11 --utm_hemisphere N -t 5 --content_gltf --input_type 0 --property_texture_png_index 1 -m)
 elif [ "${CITY}" = "ucsd-all-region" ]; then
     rm -rf "${CITY}"
     mkdir "${CITY}"
