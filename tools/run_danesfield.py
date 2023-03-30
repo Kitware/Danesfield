@@ -475,7 +475,7 @@ def main(args):
         ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
         ndvi_output_fpath = os.path.join(ndvi_outdir, 'vndvi.tif')
         cmd_args = py_cmd(relative_tool_path('compute_vndvi.py'))
-        cmd_args += [dsm_file, p3d_file, ndvi_output_fpath]
+        cmd_args += [dsm_file, p3d_file, ndvi_output_fpath, str(gsd)]
 
         NDVI = run_step(ndvi_outdir,
                  'compute-vndvi',
