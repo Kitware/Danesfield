@@ -592,19 +592,20 @@ def main(args):
     #############################################
     texture_mapping_outdir = ""
     if not args.image:
-        if args.gpm:
-            gpm_meta_outdir = os.path.join(working_dir, 'gpm-data')
-            meta_file = os.path.join(gpm_meta_outdir, 'gpm_metadata.json')
-            cmd_args = py_cmd(relative_tool_path('extract_gpm_metadata.py'))
-            cmd_args += ['--output_file', meta_file, p3d_file]
-            run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
-
+        if args.vNDVI:
             gpm_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
-            cmd_args = py_cmd(relative_tool_path('texture_map_point_cloud.py'))
-            cmd_args += ['--output_dir', gpm_outdir, '--gpm_json', meta_file,
-                         roof_geon_extraction_outdir, p3d_file]
-            run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args)
+            cmd_args_tm = py_cmd(relative_tool_path('texture_map_point_cloud.py'))  
 
+            if args.gpm:
+                gpm_meta_outdir = os.path.join(working_dir, 'gpm-data')
+                meta_file = os.path.join(gpm_meta_outdir, 'gpm_metadata.json')
+                cmd_args = py_cmd(relative_tool_path('extract_gpm_metadata.py'))
+                cmd_args += ['--output_file', meta_file, p3d_file]
+                run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
+                cm_args_tm += ['--gpm_json', meta_file]
+
+            cmd_args_tm += ['--output_dir', gpm_outdir, roof_geon_extraction_outdir, p3d_file]
+            run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args_tm)
         else:
             occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
     else:
