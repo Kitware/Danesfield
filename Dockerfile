@@ -199,6 +199,7 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} laspy
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-tools
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-core3d-metrics
+RUN ${CONDA} install -n core3d -c kitware-danesfield ${CHANNELS} vtk=v9.1
 RUN ${CONDA} install -n texture -c kitware-danesfield ${CHANNELS} vtk=v9.1
 RUN ${CONDA} install -n texture -c local ${CHANNELS} kwiver vtk=v9.1 texture-atlas gdal scipy pyproj imageio python-pdal
 
