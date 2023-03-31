@@ -46,7 +46,7 @@ def main(argv):
     parser.add_argument('image', help='path/to/DSM.tif')
     parser.add_argument('input', help='path/to/colored/point/cloud.las')
     parser.add_argument('output', help='path/to/NDVI.tif')
-    parser.add_argument('--gsd', help='ground sample distance')
+    parser.add_argument('gsd', help='ground sample distance')
     args = parser.parse_args(argv)
 
     imgFN = args.image
