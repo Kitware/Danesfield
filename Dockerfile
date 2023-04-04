@@ -89,7 +89,7 @@ RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root
 ARG CONDA=/opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    ${CONDA} clean -tipsy && \
+    ${CONDA} clean -tipy && \
     rm ~/miniconda.sh
 
 RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
