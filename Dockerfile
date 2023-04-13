@@ -89,14 +89,14 @@ RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root
 ARG CONDA=/opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    ${CONDA} clean -tipsy && \
+    ${CONDA} clean -tipy && \
     rm ~/miniconda.sh
 
 RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
 # mamba works much, much faster than conda, set as default solver
 RUN ${CONDA} update conda -y -q && \
     ${CONDA} install conda-libmamba-solver && \
-    ${CONDA} config --set experimental_solver libmamba
+    ${CONDA} config --set solver libmamba
 
 RUN apt-get install -y -q libarchive-dev
 
