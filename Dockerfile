@@ -145,7 +145,7 @@ RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
 # Install latest stable version of node and npm
 RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \
      /usr/bin/npm install -g n  && \
-     n stable"]
+     n 16.20.0"]
 
 # Install 3d-tiles-tools for converting glb to b3dm
 RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git && \
