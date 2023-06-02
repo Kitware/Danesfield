@@ -593,7 +593,7 @@ def main(args):
     texture_mapping_outdir = ""
     if not args.image:
         if args.vNDVI:
-            gpm_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
+            texture_mapping_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
             cmd_args_tm = py_cmd(relative_tool_path('texture_map_point_cloud.py'))  
 
             if args.gpm:
@@ -604,8 +604,8 @@ def main(args):
                 run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
                 cm_args_tm += ['--gpm_json', meta_file]
 
-            cmd_args_tm += ['--output_dir', gpm_outdir, roof_geon_extraction_outdir, p3d_file]
-            run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args_tm)
+            cmd_args_tm += ['--output_dir', texture_mapping_outdir, roof_geon_extraction_outdir, p3d_file]
+            run_step_switch_env('texture', texture_mapping_outdir, 'gpm-texture-mapping', cmd_args_tm)
     else:
         crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
         for collection_id, files in collection_id_to_files.items():
@@ -642,6 +642,19 @@ def main(args):
         run_step_switch_env('texture', texture_mapping_outdir,
                  'texture-mapping',
                  cmd_args)
+        
+    #############################################
+    # Texture Dialation
+    #############################################
+    dialate_texture_outdir = os.path.join(working_dir, 'dialate-texture')
+    cmd_args = py_cmd(relative_tool_path('dialate_texture.py'))
+    cmd_args += [
+        texture_mapping_outdir
+    ]
+
+    run_step(dialate_texture_outdir,
+             'dialate-texture',
+             cmd_args)
 
     #############################################
     # 3D Tiles Generation from buildings
