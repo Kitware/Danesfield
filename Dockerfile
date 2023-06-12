@@ -96,7 +96,7 @@ RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
 # mamba works much, much faster than conda, set as default solver
 RUN ${CONDA} update conda -y -q && \
     ${CONDA} install conda-libmamba-solver && \
-    ${CONDA} config --set experimental_solver libmamba
+    ${CONDA} config --set solver libmamba
 
 RUN apt-get install -y -q libarchive-dev
 
@@ -145,7 +145,7 @@ RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
 # Install latest stable version of node and npm
 RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \
      /usr/bin/npm install -g n  && \
-     n stable"]
+     n 16.20.0"]
 
 # Install 3d-tiles-tools for converting glb to b3dm
 RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git && \
