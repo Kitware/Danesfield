@@ -475,7 +475,7 @@ def main(args):
         ndvi_outdir = os.path.join(working_dir, 'compute-ndvi')
         ndvi_output_fpath = os.path.join(ndvi_outdir, 'vndvi.tif')
         cmd_args = py_cmd(relative_tool_path('compute_vndvi.py'))
-        cmd_args += [dsm_file, p3d_file, ndvi_output_fpath]
+        cmd_args += [dsm_file, p3d_file, ndvi_output_fpath, str(gsd)]
 
         NDVI = run_step(ndvi_outdir,
                  'compute-vndvi',
@@ -592,21 +592,20 @@ def main(args):
     #############################################
     texture_mapping_outdir = ""
     if not args.image:
-        if args.gpm:
-            gpm_meta_outdir = os.path.join(working_dir, 'gpm-data')
-            meta_file = os.path.join(gpm_meta_outdir, 'gpm_metadata.json')
-            cmd_args = py_cmd(relative_tool_path('extract_gpm_metadata.py'))
-            cmd_args += ['--output_file', meta_file, p3d_file]
-            run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
-
+        if args.vNDVI:
             gpm_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
-            cmd_args = py_cmd(relative_tool_path('texture_map_point_cloud.py'))
-            cmd_args += ['--output_dir', gpm_outdir, '--gpm_json', meta_file,
-                         roof_geon_extraction_outdir, p3d_file]
-            run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args)
+            cmd_args_tm = py_cmd(relative_tool_path('texture_map_point_cloud.py'))  
 
-        else:
-            occlusion_mesh = os.path.join(roof_geon_extraction_outdir, 'occlusion_mesh.obj')
+            if args.gpm:
+                gpm_meta_outdir = os.path.join(working_dir, 'gpm-data')
+                meta_file = os.path.join(gpm_meta_outdir, 'gpm_metadata.json')
+                cmd_args = py_cmd(relative_tool_path('extract_gpm_metadata.py'))
+                cmd_args += ['--output_file', meta_file, p3d_file]
+                run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
+                cm_args_tm += ['--gpm_json', meta_file]
+
+            cmd_args_tm += ['--output_dir', gpm_outdir, roof_geon_extraction_outdir, p3d_file]
+            run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args_tm)
     else:
         crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
         for collection_id, files in collection_id_to_files.items():
@@ -679,7 +678,8 @@ def main(args):
     cmd_args.append('--input_obj_paths')
     obj_list = glob.glob('{}/*.obj'.format(roof_geon_extraction_outdir))
     # remove occlusion_mesh
-    obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
+    if args.image:
+        obj_list = [e for e in obj_list if e.find(occlusion_mesh) < 0]
     cmd_args.extend(obj_list)
 
     run_step(buildings_to_dsm_outdir,

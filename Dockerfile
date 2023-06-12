@@ -89,7 +89,7 @@ RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root
 ARG CONDA=/opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    ${CONDA} clean -tipsy && \
+    ${CONDA} clean -tipy && \
     rm ~/miniconda.sh
 
 RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
@@ -199,6 +199,7 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} laspy
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-tools
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-core3d-metrics
+RUN ${CONDA} install -n core3d -c kitware-danesfield ${CHANNELS} vtk=v9.1
 RUN ${CONDA} install -n texture -c kitware-danesfield ${CHANNELS} vtk=v9.1
 RUN ${CONDA} install -n texture -c local ${CHANNELS} kwiver vtk=v9.1 texture-atlas gdal scipy pyproj imageio python-pdal
 

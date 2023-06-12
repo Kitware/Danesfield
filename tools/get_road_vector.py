@@ -114,7 +114,7 @@ def main(args):
     geojson_output_filepath = os.path.join(
         args.output_dir, "{}.geojson".format(args.output_prefix))
     # Manually tweak GeoJSON to fit expected format
-    with open(geojson_preform_output_filepath, 'r') as f:
+    with open(geojson_preform_output_filepath, 'r', encoding='utf-8') as f:
         json_data = json.load(f)
 
     json_data["features"] = [feature_map(f) for f in json_data["features"]]
