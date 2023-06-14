@@ -89,9 +89,6 @@ def tri_area(tri):
 class pointCloudTextureMapper(object):
     def __init__(self, points, output_dir, color_data, err_data=None, use_dist=False):
 
-        # Size of texture image
-        self.img_size = (500, 500)
-
         self.points = points
 
         # KDTree for efficient searches of closest point
@@ -112,7 +109,6 @@ class pointCloudTextureMapper(object):
     # Create a texture map image by finding the nearest point to a pixel and using
     # its value to set the color.
     def texture_sample(self, img, mesh, data, utm_shift):
-
         faces = mesh.faces()
         vertices = np.array(mesh.vertices())
 
@@ -196,8 +192,23 @@ class pointCloudTextureMapper(object):
                 return px + covar_corr
             else:
                 return px
+    
+    @staticmethod
+    def triangle_area(p1, p2, p3):
+        _p1 = np.float64(p1)
+        _p2 = np.float64(p2)
+        _p3 = np.float64(p3)
+        v1 = _p2 - _p1
+        v2 = _p3 - _p1
+
+        return 0.5 * np.linalg.norm(np.cross(v1, v2))
 
     def process_mesh(self, meshfile):
+        GSD = 0.5
+        MAX_TEX_SIZE = 8000
+
+        self.img_size = (100, 100)
+        
         print('Processing mesh ', meshfile)
         new_mesh = Mesh.from_obj_file(str(meshfile))
         new_name = self.output_dir / meshfile.stem
@@ -205,6 +216,23 @@ class pointCloudTextureMapper(object):
         mesh_triangulate(new_mesh)
         uv_unwrap_mesh = UVUnwrapMesh.create('core')
         uv_unwrap_mesh.unwrap(new_mesh)
+
+        # Compute texture size
+        verts = new_mesh.vertices()
+        uvs = new_mesh.tex_coords()
+        ps = np.array([], dtype=np.float64) # Number of pixels needed for each triangle
+        for f in new_mesh.faces():
+            xyz_area = pointCloudTextureMapper.triangle_area(verts[f[0]], verts[f[1]], verts[f[2]])
+            uv_area = pointCloudTextureMapper.triangle_area(uvs[f[0]], uvs[f[1]], uvs[f[2]])
+
+            if uv_area != np.array(0):
+                p = xyz_area / (uv_area * GSD)
+                ps = np.append(ps, p)
+        self.img_size = int(np.sqrt(np.max(ps)))
+
+        # Cap image size at 8k for super large meshes
+        self.img_size = min(MAX_TEX_SIZE, self.img_size)
+        self.img_size = (self.img_size, self.img_size) 
 
         # Create the color texture image
         color_img = np.zeros(self.img_size + (3,), dtype=np.float32)
@@ -276,7 +304,7 @@ def main(args):
     # Get list of mesh files
     mesh_files = list(Path(args.mesh_dir).glob('*.obj'))
 
-    # Create output directory if needed
+    # Create output directory     print("[DEBUG] test test 123")if needed
     if args.output_dir:
         output_dir = Path(args.output_dir)
         if not output_dir.is_dir():
@@ -287,7 +315,7 @@ def main(args):
     pc_data = load_point_cloud(args.point_cloud)
     points = np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
 
-    # Get color data from point cloud
+    # Get color data from point  cloud
     color_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
     color_data = color_data/np.max(color_data)
 
