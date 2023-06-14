@@ -110,6 +110,7 @@ class pointCloudTextureMapper(object):
     # Create a texture map image by finding the nearest point to a pixel and using
     # its value to set the color.
     def texture_sample(self, img, mesh, data, utm_shift):
+        
         faces = mesh.faces()
         vertices = np.array(mesh.vertices())
 
@@ -305,7 +306,7 @@ def main(args):
     # Get list of mesh files
     mesh_files = list(Path(args.mesh_dir).glob('*.obj'))
 
-    # Create output directory     print("[DEBUG] test test 123")if needed
+    # Create output directory if needed
     if args.output_dir:
         output_dir = Path(args.output_dir)
         if not output_dir.is_dir():
@@ -316,7 +317,7 @@ def main(args):
     pc_data = load_point_cloud(args.point_cloud)
     points = np.stack([pc_data['X'], pc_data['Y'], pc_data['Z']], axis=1)
 
-    # Get color data from point  cloud
+    # Get color data from point cloud
     color_data = np.stack([pc_data['Red'], pc_data['Green'], pc_data['Blue']], axis=1)
     color_data = color_data/np.max(color_data)
 
