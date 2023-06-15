@@ -89,14 +89,14 @@ RUN ssh-keygen -q -t ed25519 -C 'danlipsa@danesfield-conda-build' -N '' -f /root
 ARG CONDA=/opt/conda/bin/conda
 RUN curl --silent -o ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    ${CONDA} clean -tipsy && \
+    ${CONDA} clean -tipy && \
     rm ~/miniconda.sh
 
 RUN ${CONDA} install anaconda-client conda-build -y -q || exit 1
 # mamba works much, much faster than conda, set as default solver
 RUN ${CONDA} update conda -y -q && \
     ${CONDA} install conda-libmamba-solver && \
-    ${CONDA} config --set experimental_solver libmamba
+    ${CONDA} config --set solver libmamba
 
 RUN apt-get install -y -q libarchive-dev
 
@@ -145,7 +145,7 @@ RUN wget https://www.ipol.im/pub/art/2017/179/BilateralFilter.zip && \
 # Install latest stable version of node and npm
 RUN ["/bin/bash", "-c", "/usr/bin/npm cache clean -f && \
      /usr/bin/npm install -g n  && \
-     n stable"]
+     n 16.20.0"]
 
 # Install 3d-tiles-tools for converting glb to b3dm
 RUN ["/bin/bash", "-c", "git clone https://github.com/CesiumGS/3d-tiles-validator.git && \
@@ -199,6 +199,7 @@ RUN ["/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && \
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} laspy
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-tools
 RUN ${CONDA} install -n core3d -c local ${CHANNELS} pubgeo-core3d-metrics
+RUN ${CONDA} install -n core3d -c kitware-danesfield ${CHANNELS} vtk=v9.1
 RUN ${CONDA} install -n texture -c kitware-danesfield ${CHANNELS} vtk=v9.1
 RUN ${CONDA} install -n texture -c local ${CHANNELS} kwiver vtk=v9.1 texture-atlas gdal scipy pyproj imageio python-pdal
 
