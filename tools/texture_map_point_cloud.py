@@ -21,7 +21,8 @@ import pdal
 import sys
 
 from pathlib import Path
-from scipy.spatial import KDTree
+# If scipy upgraded to >= 1.6 then return to KDTree
+from scipy.spatial import cKDTree as KDTree
 from time import time
 
 from danesfield.gpm import GPM
