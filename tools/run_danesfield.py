@@ -23,6 +23,7 @@ import sys
 import json
 from pathlib import Path
 from danesfield import gdal_utils
+from danesfield.point_cloud_utils import get_pc_bounds
 
 
 def create_working_dir(working_dir, imagery_dir):
@@ -50,7 +51,7 @@ def create_working_dir(working_dir, imagery_dir):
     return working_dir
 
 
-def ensure_complete_modality(modality_dict, require_rpc=False):
+def ensure_complete_modality(modality_dict, require_rpc=False, material=False):
     '''
     Ensures that a certain modality (MSI, PAN, SWIR) has all of the required files for computation
     through the whole pipeline.
@@ -62,7 +63,9 @@ def ensure_complete_modality(modality_dict, require_rpc=False):
     a complete modality.
     :type require_rpc: bool
     '''
-    keys = ['image', 'info']
+    keys = ['image']
+    if material:
+        keys.append('info')
     if require_rpc:
         keys.append('rpc')
     return all(key in modality_dict for key in keys)
@@ -254,7 +257,7 @@ def main(args):
     parser.add_argument('--run_metrics', action='store_true',
                         help='run evaluation metrics; requires ground truth for DSM, DTM, etc.')
     parser.add_argument('--image', action='store_true',
-                        help='run pipeline with image data as the source; default uses a point cloud')
+                        help='use images to texture the meshes')
     parser.add_argument('--roads', action='store_true',
                         help='get roads from open street maps; default extracts no roads')
     parser.add_argument('--tiles', action='store_true', help='run tiler to get tiles')
@@ -269,6 +272,8 @@ def main(args):
                              'greater values increase surface tension; default=%(default)s')
     parser.add_argument('--vNDVI', action='store_true',
                         help='run pipeline with visible NDVI computation using RGB-colored point cloud')
+    parser.add_argument('--dtm', action='store_true',
+                        help='Use the provided DTM instead of generating one from the DSM')
     args = parser.parse_args(args)
 
     # Read configuration file
@@ -289,15 +294,7 @@ def main(args):
         working_dir = create_working_dir(config['paths'].get('work_dir'), None)
 
     aoi_name = config['aoi']['name']
-
-    gsd = float(config['params'].get('gsd', "0.25"))
-
-    #############################################
-    # Run P3D point cloud generation
-    #############################################
-    # This script assumes we already have a point cloud generated from
-    # Raytheon's P3D.  See the README for information regarding P3D.
-
+    bounds = None
     p3d_file = config['paths']['p3d_fpath']
 
     #############################################
@@ -318,7 +315,37 @@ def main(args):
                      '--work_dir', vissat_workdir,
                      '--point_cloud', p3d_file,
                      '--utm', utm]
+        if args.dtm:
+            cmd_args += ['--dtm', config['paths']['dtm_fpath']]
         run_step_switch_env('vissat', vissat_workdir, 'VisSat', cmd_args)
+
+    if args.dtm:
+        import gdal
+        # if a DTM is provided, process with its GSD
+        # and limit bounds to overlap of DTM and point cloud
+        src = gdal.Open(config['paths']['dtm_fpath'])
+        ulx, xres, xskew, uly, yskew, yres  = src.GetGeoTransform()
+        lrx = ulx + (src.RasterXSize * xres)
+        lry = uly + (src.RasterYSize * yres)
+        gsd = xres
+
+        minX, maxX, minY, maxY = get_pc_bounds([p3d_file])
+        minX = max(minX, ulx)
+        maxX = min(maxX, lrx)
+        minY = max(minY, lry)
+        maxY = min(maxY, uly)
+        bounds = [str(minX), str(maxX), str(minY), str(maxY)]
+
+        print("DTM-point cloud overlap:", bounds)
+
+        filled = gdal.FillNodata(targetBand=src.GetRasterBand(1), 
+                                 maskBand=None, 
+                                 maxSearchDist=100, 
+                                 smoothingIterations=0)
+        gdal.Warp(os.path.join(working_dir, 'dtm_fixed.tif'), src, xRes=xres, yRes=yres, 
+                                format='GTiff', outputBounds=[minX, minY, maxX, maxY])
+    else:
+        gsd = float(config['params'].get('gsd', "0.25"))
 
     #############################################
     # Find all NTF and corresponding rpc and info
@@ -341,8 +368,8 @@ def main(args):
     # Prune the collection
     incomplete_ids = []
     for prefix, files in collection_id_to_files.items():
-        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=use_rpcs) and \
-           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=use_rpcs):
+        if 'msi' in files and ensure_complete_modality(files['msi'], require_rpc=use_rpcs, material=args.material) and \
+           'pan' in files and ensure_complete_modality(files['pan'], require_rpc=use_rpcs, material=args.material):
             pass
         else:
             logging.warning('skipping incomplete modality for collection ID: {}'
@@ -355,7 +382,6 @@ def main(args):
     #############################################
     # Render DSM from P3D point cloud
     #############################################
-
     generate_dsm_outdir = os.path.join(working_dir, 'generate-dsm')
     dsm_file = os.path.join(generate_dsm_outdir, aoi_name + '_P3D_DSM.tif')
 
@@ -363,14 +389,16 @@ def main(args):
     cmd_args += [dsm_file, '-s', p3d_file]
     cmd_args += ['--gsd', str(gsd)]
 
-    bounds = config['aoi'].get('bounds')
     if bounds:
         cmd_args += ['--bounds']
-        cmd_args += bounds.split(' ')
+        cmd_args += bounds
+    elif config['aoi'].get('bounds'):
+        cmd_args += ['--bounds']
+        cmd_args += config['aoi'].get('bounds').split(' ')
 
     run_step(generate_dsm_outdir,
-             'generate-dsm',
-             cmd_args)
+            'generate-dsm',
+            cmd_args)
 
     #############################################
     # 3D Tiles from P3D point cloud
@@ -393,22 +421,24 @@ def main(args):
     # #############################################
     # # Fit DTM to the DSM
     # #############################################
+    if not args.dtm:
+        fit_dtm_outdir = os.path.join(working_dir, 'fit-dtm')
+        dtm_file = os.path.join(fit_dtm_outdir, aoi_name + '_DTM.tif')
 
-    fit_dtm_outdir = os.path.join(working_dir, 'fit-dtm')
-    dtm_file = os.path.join(fit_dtm_outdir, aoi_name + '_DTM.tif')
+        cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
+        cmd_args += [dsm_file, dtm_file]
 
-    cmd_args = py_cmd(relative_tool_path('fit_dtm.py'))
-    cmd_args += [dsm_file, dtm_file]
+        if args.tension:
+            cmd_args.append(f'--tension={args.tension}')
 
-    if args.tension:
-        cmd_args.append(f'--tension={args.tension}')
+        if args.tension_adapt:
+            cmd_args.append('--tension_adapt')
 
-    if args.tension_adapt:
-        cmd_args.append('--tension_adapt')
-
-    run_step(fit_dtm_outdir,
-             'fit-dtm',
-             cmd_args)
+        run_step(fit_dtm_outdir,
+                'fit-dtm',
+                cmd_args)
+    else:
+        dtm_file = os.path.join(working_dir, 'dtm_fixed.tif')
 
     #############################################
     # Segment vegetation.
@@ -476,7 +506,9 @@ def main(args):
         ndvi_output_fpath = os.path.join(ndvi_outdir, 'vndvi.tif')
         cmd_args = py_cmd(relative_tool_path('compute_vndvi.py'))
         cmd_args += [dsm_file, p3d_file, ndvi_output_fpath, str(gsd)]
-
+        if bounds:
+            cmd_args += ['--bounds']
+            cmd_args += bounds
         NDVI = run_step(ndvi_outdir,
                  'compute-vndvi',
                  cmd_args)==0
@@ -520,17 +552,6 @@ def main(args):
     run_step(seg_by_height_outdir,
              'segment-by-height',
              cmd_args)
-
-
-    # pythorch is broken with missing symbol.
-    # That is not that surprising, given that we use three repos for
-    # binary packages: conda-forge, defaults and pytorch. In this case
-    # pytorch was the problem. I think the way to solve this is to
-    # move away from one environment supporting everything - with
-    # three different repos providing binary packages. We'll have to
-    # create a bash script to drive parts of run_danesfield that run
-    # in different conda environments and activate / deactivate the
-    # right environment as needed.
 
     # #############################################
     # # Material Segmentation
@@ -593,7 +614,7 @@ def main(args):
     texture_mapping_outdir = ""
     if not args.image:
         if args.vNDVI:
-            gpm_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
+            texture_mapping_outdir = os.path.join(working_dir, 'gpm-texture-mapping')
             cmd_args_tm = py_cmd(relative_tool_path('texture_map_point_cloud.py'))  
 
             if args.gpm:
@@ -602,10 +623,10 @@ def main(args):
                 cmd_args = py_cmd(relative_tool_path('extract_gpm_metadata.py'))
                 cmd_args += ['--output_file', meta_file, p3d_file]
                 run_step_switch_env('texture', gpm_meta_outdir, 'gpm-data', cmd_args)
-                cm_args_tm += ['--gpm_json', meta_file]
+                cmd_args_tm += ['--gpm_json', meta_file]
 
-            cmd_args_tm += ['--output_dir', gpm_outdir, roof_geon_extraction_outdir, p3d_file]
-            run_step_switch_env('texture', gpm_outdir, 'gpm-texture-mapping', cmd_args_tm)
+            cmd_args_tm += ['--output_dir', texture_mapping_outdir, roof_geon_extraction_outdir, p3d_file]
+            run_step_switch_env('texture', texture_mapping_outdir, 'gpm-texture-mapping', cmd_args_tm)
     else:
         crop_and_pansharpen_outdir = os.path.join(working_dir, 'crop-and-pansharpen')
         for collection_id, files in collection_id_to_files.items():
@@ -642,6 +663,20 @@ def main(args):
         run_step_switch_env('texture', texture_mapping_outdir,
                  'texture-mapping',
                  cmd_args)
+
+    
+    #############################################
+    # Texture Dilation
+    #############################################
+    dilate_texture_outdir = os.path.join(working_dir, 'dilate-texture')
+    cmd_args = py_cmd(relative_tool_path('dilate_texture.py'))
+    cmd_args += [
+        texture_mapping_outdir
+    ]
+
+    run_step(dilate_texture_outdir,
+             'dilate-texture',
+             cmd_args)
 
     #############################################
     # 3D Tiles Generation from buildings

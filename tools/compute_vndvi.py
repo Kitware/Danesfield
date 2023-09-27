@@ -47,11 +47,16 @@ def main(argv):
     parser.add_argument('input', help='path/to/colored/point/cloud.las')
     parser.add_argument('output', help='path/to/NDVI.tif')
     parser.add_argument('gsd', help='ground sample distance')
+    parser.add_argument('--bounds', help='bounds to generate NDVI.tif', nargs=4)
     args = parser.parse_args(argv)
 
     imgFN = args.image
     path2output = os.path.dirname(args.output)
-    computeRGB([path2output, '--source_points', args.input, '--gsd', args.gsd])
+    cmd_args = [path2output, '--source_points', args.input, '--gsd', args.gsd]
+    if args.bounds:
+        cmd_args += ['--bounds']
+        cmd_args += args.bounds
+    computeRGB(cmd_args)
     vndvi = vNDVI(path2output)
     gdal_save(vndvi, gdal_open(imgFN), args.output,
               gdal.GDT_Float32,

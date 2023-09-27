@@ -48,13 +48,15 @@ def texture_mapping(dsm_file, dtm_file, crops, output_dir, orig_meshes, occlusio
         cmd_args = [mesh, tri_meshes_dir]
         triangulate_mesh.main(cmd_args)
 
+    tri_meshes = glob.glob(os.path.join(tri_meshes_dir, "*.obj"))
     # Generate the mesh of the ground
     logging.info("---- Generate ground mesh from DTM ----")
-    ground_mesh = os.path.join(tri_meshes_dir, "ground.obj")
+    ground_mesh = os.path.join(tri_meshes_dir, str(len(tri_meshes))+"_ground.obj")
     cmd_args = [dtm_file, ground_mesh, "--offset"] + list(map(str, offset)) + ["--downsample", "40"]
     script_call = ["dtm_to_mesh.py"] + cmd_args
     print(*script_call)
     dtm_to_mesh.main(cmd_args)
+    tri_meshes = glob.glob(os.path.join(tri_meshes_dir, "*.obj"))
 
     # Generate the occlusion mesh
     # This mesh is used to compute occlusions and contains all the buildings and roads of the AOI
@@ -78,7 +80,6 @@ def texture_mapping(dsm_file, dtm_file, crops, output_dir, orig_meshes, occlusio
     #       mesh_X_name: is just the name that we want for the output textured mesh that
     #                    is generated.
     #                    This name is also used for the sub-working-directory of the mesh
-    tri_meshes = glob.glob(os.path.join(tri_meshes_dir, "*.obj"))
     meshes = map(lambda x: (x, os.path.splitext(os.path.basename(x))[0]), tri_meshes)
 
     for mesh, mesh_name in meshes:

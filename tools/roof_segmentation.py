@@ -165,7 +165,7 @@ def main(args):
     ec = remaining_cloud.make_EuclideanClusterExtraction()
     ec.set_ClusterTolerance(2)
     ec.set_MinClusterSize(100)
-    ec.set_MaxClusterSize(550000)
+    ec.set_MaxClusterSize(600000)
     ec.set_SearchMethod(tree)
     cluster_indices = ec.Extract()
 
