@@ -24,7 +24,22 @@ def main(args):
                         help='Output LAS file', required=True)
     parser.add_argument('--utm', 
                         help='UTM zone that AOI is located in', required=True)
+    parser.add_argument('--dtm', help='Provide a DTM to obtain min and max alt.')
     args = parser.parse_args(args)
+    
+    if args.dtm:
+        from danesfield.gdal_utils import gdal_open
+        import json
+        src = gdal_open(args.dtm)
+        data = src.GetRasterBand(1).ReadAsArray()
+        min_val = min(data[data!=src.GetRasterBand(1).GetNoDataValue()])
+        max_val = max(data[data!=src.GetRasterBand(1).GetNoDataValue()])
+        with open(args.config_file, 'r') as f:
+            config = json.load(f)
+        config['alt_min'] = float(min_val)
+        config['alt_max'] = float(max_val)
+        with open(args.config_file, 'w') as f:
+            json.dump(config, f, indent=4)
     cmd_args = ['/bin/bash', '-c', 
                 'python3 /VisSatSatelliteStereo/stereo_pipeline.py --config_file '
                 +args.config_file]

@@ -8,7 +8,7 @@ KERNEL_SIZE = 5
 
 def main(args):
     texture_path = args[0]
-    backup_path = os.path.join(texture_path, "undialated_textures")
+    backup_path = os.path.join(texture_path, "undilated_textures")
 
     # Make the backup path
     if not os.path.exists(backup_path):
@@ -19,7 +19,7 @@ def main(args):
             # Backup the image at backup_path
             fname = os.path.basename(fpath)
             cv.imwrite(backup_path + "/" + fname, cv.imread(fpath))
-    
+
             # Delete the image from texture_path
             os.remove(fpath)
 
@@ -31,19 +31,19 @@ def main(args):
         if not os.path.exists(os.path.join(texture_path, fname)):
             tmg = cv.imread(fpath)
 
-            # Dialate the texture
+            # Dilate the texture
             krn = np.ones((KERNEL_SIZE, KERNEL_SIZE), dtype=tmg.dtype)
             dmg = cv.dilate(tmg, krn)
-    
-            # Put the original texture back into the dialated one
+
+            # Put the original texture back into the dilated one
             _, mask = cv.threshold(tmg, 0, 255, cv.THRESH_BINARY)
             mask = cv.bitwise_not(mask)
             dmg = cv.bitwise_and(dmg, mask)
             dmg = cv.add(tmg, dmg)
-    
-            # Overwrite the image with the dialated one
+
+            # Overwrite the image with the dilated one
             cv.imwrite(texture_path + '/' + fname, dmg)
-    
+
             # cv.namedWindow("test")
             # cv.imshow("test", dmg)
             # while cv.waitKey(0) != 27:
