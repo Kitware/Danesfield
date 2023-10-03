@@ -663,6 +663,19 @@ def main(args):
         run_step_switch_env('texture', texture_mapping_outdir,
                  'texture-mapping',
                  cmd_args)
+        
+    #############################################
+    # Texture Dialation
+    #############################################
+    dialate_texture_outdir = os.path.join(working_dir, 'dialate-texture')
+    cmd_args = py_cmd(relative_tool_path('dialate_texture.py'))
+    cmd_args += [
+        texture_mapping_outdir
+    ]
+
+    run_step(dialate_texture_outdir,
+             'dialate-texture',
+             cmd_args)
 
     
     #############################################
